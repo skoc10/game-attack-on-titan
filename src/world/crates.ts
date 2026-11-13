@@ -90,6 +90,10 @@ export class Crates {
     add(-20, 560, 'gas');
     add(22, 760, 'needle', 'firtina');
     add(-26, 900, 'needle', 'kaya');
+    add(-30, CFG.world.walls[1].r + 150, 'needle', 'zirve');
+    // Sur ötesi: son görevlerde iğnesiz kalan oyuncu için kulenin yolunda iki sandık.
+    add(26, CFG.world.walls[2].r + 110, 'needle', 'ofke');
+    add(-34, CFG.world.walls[2].r + 220, 'needle', 'kaya');
     for (const v of villages) {
       if (this.list.length >= CFG.crate.count - 10) break;
       const x = v.x + (rng() - 0.5) * 30;
@@ -120,6 +124,30 @@ export class Crates {
     return best;
   }
 
+  /** Verilen türden (ya da 'any' ise herhangi bir türden) en yakın iğne sandığı; açılmışsa yeniden doldurulur. */
+  restock(form: TitanId | 'any', x: number, z: number) {
+    let best: Crate | null = null;
+    let bd = Infinity;
+    for (const c of this.list) {
+      if (c.content !== 'needle' || (form !== 'any' && c.form !== form)) continue;
+      const d = (c.x - x) ** 2 + (c.z - z) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    if (best?.opened) this.close(best);
+    return best;
+  }
+
+  private close(c: Crate) {
+    c.opened = false;
+    c.timer = 0;
+    c.beam.visible = true;
+    c.lid.position.set(0, 1.2, 0);
+    c.lid.rotation.z = 0;
+  }
+
   open(c: Crate, game: Game) {
     if (c.opened) return;
     c.opened = true;
@@ -137,12 +165,7 @@ export class Crates {
         continue;
       }
       c.timer -= dt;
-      if (c.timer <= 0) {
-        c.opened = false;
-        c.beam.visible = true;
-        c.lid.position.set(0, 1.2, 0);
-        c.lid.rotation.z = 0;
-      }
+      if (c.timer <= 0) this.close(c);
     }
   }
 }

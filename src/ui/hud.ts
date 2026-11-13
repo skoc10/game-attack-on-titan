@@ -1,8 +1,11 @@
 import type { Game } from '../game';
 import { CFG } from '../data/config';
-import { hex, TITAN_IDS, TITANS } from '../data/titans';
+import { FORMS, hex, TITAN_IDS, TITANS } from '../data/titans';
 import { xpToNext } from '../systems/progression';
 import { FREE_HUNT } from '../systems/quests';
+import { SPEAKERS, withHero } from '../data/story';
+
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 const $ = <T extends HTMLElement>(root: HTMLElement, sel: string) => root.querySelector(sel) as T;
 
@@ -12,6 +15,7 @@ export class Hud {
   private readonly el: Record<string, HTMLElement> = {};
   private flashTimer = 0;
   private bannerTimer = 0;
+  private cardTimer = 0;
   private last: Record<string, string> = {};
 
   constructor(private readonly game: Game) {
@@ -24,7 +28,7 @@ export class Hud {
         <div class="zone" data-id="zone"></div>
       </div>
       <div class="tc" data-id="bossWrap">
-        <div class="bossName">KAPI KIRAN</div>
+        <div class="bossName" data-id="bossName"></div>
         <div class="bar boss"><i data-id="boss"></i></div>
         <div class="bossHint" data-id="bossHint"></div>
       </div>
@@ -39,6 +43,8 @@ export class Hud {
         <div class="grabKeys" data-id="grabKeys"></div>
       </div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
+      <div class="chapter" data-id="chapter"><small data-id="chapterLabel"></small><div data-id="chapterTitle"></div><p data-id="chapterSub"></p></div>
+      <div class="dialog" data-id="dialog"><b data-id="dialogWho"></b><span data-id="dialogText"></span><kbd>Enter</kbd></div>
       <div class="bl">
         <div class="row"><span class="label">CAN</span><div class="bar hp"><i data-id="hp"></i></div></div>
         <div class="row"><span class="label">GAZ</span><div class="bar gas"><i data-id="gas"></i></div></div>
@@ -96,6 +102,15 @@ export class Hud {
     this.bannerTimer = 2.6;
   }
 
+  /** Sezon açılış kartı: ekranı kısa süre karartıp büyük başlık gösterir. */
+  chapterCard(label: string, title: string, sub: string) {
+    this.el.chapterLabel.textContent = label;
+    this.el.chapterTitle.textContent = title;
+    this.el.chapterSub.textContent = sub;
+    this.el.chapter.classList.add('show');
+    this.cardTimer = 4.6;
+  }
+
   flash(color: string, strength = 0.6, time = 0.35) {
     this.flashEl.style.transition = 'none';
     this.flashEl.style.background = color;
@@ -115,12 +130,38 @@ export class Hud {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.el.banner.classList.remove('show');
     }
+    if (this.cardTimer > 0) {
+      this.cardTimer -= dt;
+      if (this.cardTimer <= 0) this.el.chapter.classList.remove('show');
+    }
+    const story = g.save.mode === 'story';
     this.width('hp', p.hp / p.maxHp);
     this.width('gas', p.gas / p.maxGas);
     this.width('blade', p.blades / p.maxBlades);
     this.width('xp', g.save.xp / xpToNext(g.save.level));
-    this.text('lvl', `Sv ${g.save.level} · ${p.cls.name}`);
-    this.text('quest', g.quests.current?.text ?? FREE_HUNT);
+    this.text('lvl', `Sv ${g.save.level} · ${p.char.name} · ${p.cls.name} · ◆ ${g.save.coins}`);
+    if (story) {
+      const st = g.story;
+      const steps = st.objectives
+        .map((o) => {
+          const n = o.goal > 1 ? ` <i>${o.count}/${o.goal}</i>` : '';
+          return `<li class="${o.state}">${esc(o.text)}${n}</li>`;
+        })
+        .join('');
+      this.html('quest', `<div class="qHead">${esc(st.heading)}</div><ul class="steps">${steps}</ul>${st.hint ? `<div class="qHint">${esc(st.hint)}</div>` : ''}`);
+    } else {
+      this.html('quest', esc(g.quests.current?.text ?? FREE_HUNT));
+    }
+    // Telsiz konuşması
+    const line = story ? g.story.line : null;
+    this.el.dialog.classList.toggle('show', line !== null);
+    if (line) {
+      const who = SPEAKERS[line[0]];
+      this.text('dialogWho', withHero(who.name, p.char.name));
+      this.el.dialogWho.style.color = who.color;
+      this.el.dialog.classList.toggle('narr', who.name === '');
+      this.text('dialogText', withHero(line[1], p.char.name));
+    }
     this.text('zone', g.zone);
     this.text('hint', g.stations.filling ? 'Gaz doluyor…' : p.interactHint());
     this.el.gas.parentElement!.classList.toggle('low', p.gas / p.maxGas < CFG.gas.lowRatio);
@@ -129,15 +170,13 @@ export class Hud {
     this.width('titan', m.ratio);
     // İğne envanteri: eldeki türler renkli çiplerle, seçili olan çerçeveli.
     const owned = TITAN_IDS.filter((id) => m.needles[id] > 0);
-    this.html(
-      'needles',
-      owned.length === 0
-        ? 'İĞNE YOK'
-        : owned
-            .map((id) => `<span class="nd ${id === m.selected ? 'sel' : ''}" style="--c:${hex(TITANS[id].color)}">${TITANS[id].name.replace(' Devi', '')} ×${m.needles[id]}</span>`)
-            .join('') + (owned.length > 1 && !titan ? '<kbd>Tab</kbd>' : ''),
+    const chips = owned.map(
+      (id) => `<span class="nd ${id === m.selected ? 'sel' : ''}" style="--c:${hex(TITANS[id].color)}">${TITANS[id].name.replace(' Devi', '')} ×${m.needles[id]}</span>`,
     );
-    const sel = TITANS[m.selected];
+    // Karakterin kendi formu: iğne sayısı yerine yıldızla gösterilir.
+    if (m.innate) chips.push(`<span class="nd ${m.usesInnate ? 'sel' : ''}" style="--c:${hex(FORMS[m.innate].color)}">${FORMS[m.innate].name.replace(' Devi', '')} ★</span>`);
+    this.html('needles', chips.length === 0 ? 'İĞNE YOK' : chips.join('') + (chips.length > 1 && !titan ? '<kbd>Tab</kbd>' : ''));
+    const sel = FORMS[m.selected];
     const formName = (titan ? p.titan.def.name : sel.name).toLocaleUpperCase('tr');
     this.text('titanLabel', titan ? `${formName} · kalan bar ${Math.max(0, Math.ceil(m.value))}` : `DEV BARI · ${Math.floor(m.value)}/${m.max}`);
     const bc = this.el.titan.parentElement!.parentElement!;
@@ -160,6 +199,8 @@ export class Hud {
       );
     } else if (m.canTransform()) {
       this.html('titanInfo', `<kbd>T</kbd> ${formName}’NE DÖNÜŞ — bar ne kadar doluysa o kadar güç`);
+    } else if (m.usesInnate) {
+      this.html('titanInfo', `Bar tamamen dolunca <kbd>T</kbd> ile iğnesiz ${formName}’NE dönüşürsün`);
     } else if (m.charged) {
       this.html('titanInfo', 'Bar yeterli — dönüşmek için renkli ışıklı bir kutudan iğne bul');
     } else {
@@ -196,10 +237,10 @@ export class Hud {
       );
     }
 
-    const boss = g.spawner.boss;
-    const showBoss = !!boss && boss.alive && Math.hypot(boss.pos.x - p.pos.x, boss.pos.z - p.pos.z) < CFG.world.walls[1].r * 0.3;
-    this.el.bossWrap.style.display = showBoss ? 'block' : 'none';
-    if (showBoss && boss) {
+    const boss = g.bossInView();
+    this.el.bossWrap.style.display = boss ? 'block' : 'none';
+    if (boss) {
+      this.text('bossName', boss.type.name.toLocaleUpperCase('tr'));
       this.width('boss', boss.hp / boss.maxHp);
       this.text('bossHint', boss.state === 'downed' ? 'YERDE — ENSESİNE VUR!' : 'Zırhlı: bacaklarını kes ya da Taş Yumruk kullan');
     }

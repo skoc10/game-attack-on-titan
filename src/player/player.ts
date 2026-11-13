@@ -3,9 +3,9 @@ import type { Game } from '../game';
 import type { Giant, NapeResult } from '../enemies/giant';
 import { CFG } from '../data/config';
 import { clamp, lerp, turnToward } from '../core/rng';
-import { TITANS } from '../data/titans';
-import { autoBend, buildHumanoid, GEO, Rig, type Humanoid } from '../enemies/humanoid';
-import type { ClassId } from '../systems/progression';
+import { CHARACTERS, type CharDef } from '../data/characters';
+import { FORMS } from '../data/titans';
+import { autoBend, buildHumanoid, disposeHumanoid, GEO, Rig, type Humanoid } from '../enemies/humanoid';
 import { CLASSES, type ClassDef } from './classes';
 import { Grapple } from './grapple';
 import { TitanForm } from './titanForm';
@@ -13,8 +13,6 @@ import { TitanForm } from './titanForm';
 export type PlayerMode = 'foot' | 'mounted' | 'titan';
 
 const P = CFG.player;
-/** Sınıfa göre pelerin rengi. */
-const CLOAK_COLORS: Record<ClassId, number> = { nefer: 0x7a2230, as: 0x1f5a66, muhafiz: 0x4a4f5c, taktisyen: 0x7a6220 };
 const wish = new THREE.Vector3();
 const look = new THREE.Vector3();
 const chest = new THREE.Vector3();
@@ -40,7 +38,12 @@ export class Player {
   heavyT = 0;
   readonly grapple: Grapple;
   readonly titan: TitanForm;
-  private readonly body: Humanoid;
+  private body!: Humanoid;
+  /** Seçili karakter ve sınıfla birleşmiş çarpanları. */
+  char: CharDef = CHARACTERS.aras;
+  private speedMul = 1;
+  private reachMul = 1;
+  reelMul = 1;
   private swingT = -1;
   private swingBonus = 1;
   private swingReach = 0;
@@ -62,16 +65,33 @@ export class Player {
   escape = 0;
   private burstCd = 0;
   private eaten = false;
-  private readonly cloak = new THREE.Group();
-  private readonly cloakMat: THREE.MeshToonMaterial;
+  private cloak = new THREE.Group();
+  private cloakMat!: THREE.MeshToonMaterial;
 
   constructor(private readonly game: Game) {
+    this.buildBody(this.char.look);
+    this.grapple = new Grapple(game.scene);
+    this.titan = new TitanForm(game);
+  }
+
+  get inTown() {
+    return Math.hypot(this.pos.x, this.pos.z) < CFG.world.townR;
+  }
+
+  /** Karakterin görünümüyle avcı modelini (yeniden) kurar. */
+  private buildBody(look: CharDef['look']) {
     // Avcı: lacivert kaput, koyu pantolon, deri çizme, sırtta ikiz gaz tüpü, omuzda pelerin.
+    const L = look;
+    if (this.body) {
+      this.game.scene.remove(this.body.root);
+      disposeHumanoid(this.body);
+    }
     this.body = buildHumanoid(
       1.8,
-      { skin: 0xf2cfae, top: 0x34506e, sleeve: 0x34506e, legs: 0x3b3835, boots: 0x5a3b26, hair: 0x2b1d14, hairStyle: 'spiky', eye: 0x4f8fd0 },
+      { skin: L.skin, top: L.top, sleeve: L.top, legs: 0x3b3835, boots: 0x5a3b26, hair: L.hair, hairStyle: L.hairStyle, eye: L.eye },
       { style: 'human', outline: 0.0048, head: 1.12 },
     );
+    this.cloak = new THREE.Group();
     const b = this.body;
     const rig = new Rig(0.0048);
     const steel = rig.toon(0xdfe5ec);
@@ -91,30 +111,33 @@ export class Player {
       rig.part(hand, GEO.box, steel, 0.008, 0.026, 0.5, 0, 0, 0.31, false);
     }
     // Pelerin omuzdan menteşeli; hızlandıkça arkada dalgalanır.
-    this.cloakMat = rig.toon(CLOAK_COLORS.nefer);
+    this.cloakMat = rig.toon(L.cloak);
     this.cloakMat.side = THREE.DoubleSide;
     this.cloak.position.set(0, 0.778, -0.062);
     b.tilt.add(this.cloak);
     const cloth = rig.part(this.cloak, GEO.box, this.cloakMat, 0.27, 0.44, 0.012, 0, -0.22, -0.062, false);
     cloth.castShadow = true;
     rig.part(this.cloak, GEO.sphere, this.cloakMat, 0.135, 0.032, 0.085, 0, -0.008, 0.06, false);
-    game.scene.add(this.body.root);
-    this.grapple = new Grapple(game.scene);
-    this.titan = new TitanForm(game);
-  }
-
-  get inTown() {
-    return Math.hypot(this.pos.x, this.pos.z) < CFG.world.townR;
+    this.body.root.visible = this.mode !== 'titan';
+    this.game.scene.add(this.body.root);
   }
 
   /** Sınıf ve yükseltmelere göre değerleri kurar ve doldurur. */
   applyLoadout() {
     const s = this.game.save;
     this.cls = CLASSES[s.cls];
-    this.cloakMat.color.setHex(CLOAK_COLORS[s.cls]);
-    this.maxHp = this.cls.hp;
-    this.maxGas = CFG.gas.max * this.cls.gas * (1 + 0.15 * s.upgrades.gas);
-    this.maxBlades = Math.round(CFG.blade.max * (1 + 0.2 * s.upgrades.blade));
+    const ch = CHARACTERS[s.char];
+    if (ch !== this.char) {
+      this.char = ch;
+      this.buildBody(ch.look);
+    }
+    this.game.meter.setInnate(ch.titan);
+    this.speedMul = this.cls.speed * ch.speed;
+    this.reachMul = this.cls.reach * ch.reach;
+    this.reelMul = this.cls.reel * ch.reel;
+    this.maxHp = Math.round(this.cls.hp * ch.hp);
+    this.maxGas = CFG.gas.max * this.cls.gas * ch.gas * (1 + 0.15 * s.upgrades.gas);
+    this.maxBlades = Math.round(CFG.blade.max * ch.blades * (1 + 0.2 * s.upgrades.blade));
     this.hp = this.maxHp;
     this.gas = this.maxGas;
     this.blades = this.maxBlades;
@@ -180,8 +203,9 @@ export class Player {
       // Eldeki iğneler arasında geçiş: hangi deve dönüşüleceğini seçer.
       const before = g.meter.selected;
       const id = g.meter.cycle();
-      if (g.meter.totalNeedles === 0) g.hud.toast('Hiç iğnen yok');
-      else g.hud.toast(id === before ? `Tek iğne türün: ${TITANS[id].needle}` : `Seçili: ${TITANS[id].needle} → ${TITANS[id].name}`);
+      const via = FORMS[id].needle || 'kendi formun';
+      if (!g.meter.has(id)) g.hud.toast('Hiç iğnen yok');
+      else g.hud.toast(id === before ? `Tek seçeneğin: ${FORMS[id].name}` : `Seçili: ${via} → ${FORMS[id].name}`);
     }
     if (inp.pressed('KeyT')) {
       this.tryTransform();
@@ -438,7 +462,7 @@ export class Player {
     const g = this.game;
     const m = g.meter;
     if (!m.canTransform()) {
-      g.hud.toast(m.needles[m.selected] <= 0 ? 'İğnen yok — ışıklı bir kutu bul' : 'Dev barı en az yarıya kadar dolmalı');
+      g.hud.toast(m.usesInnate ? `${FORMS[m.selected].name} için dev barı tamamen dolmalı` : !m.has(m.selected) ? 'İğnen yok — ışıklı bir kutu bul' : 'Dev barı en az yarıya kadar dolmalı');
       return;
     }
     if (this.mode === 'mounted') this.dismount(false);
@@ -535,7 +559,7 @@ export class Player {
       if (!gi.alive || this.swingHit.has(gi)) continue;
       const span = gi.h + 12;
       if (Math.abs(gi.pos.x - this.pos.x) > span || Math.abs(gi.pos.z - this.pos.z) > span) continue;
-      const reach = CFG.sword.reach * this.cls.reach + extraReach;
+      const reach = CFG.sword.reach * this.reachMul + extraReach;
       gi.napeWorld(tmp);
       if (chest.distanceTo(tmp) < reach + gi.napeRadius) {
         // Tek temiz ense kesiği devi öldürür.
@@ -672,7 +696,7 @@ export class Player {
     const hooked = this.grapple.active;
     const grounded = this.onGround && !hooked;
     if (grounded) {
-      const sp = (sprint ? P.sprint : P.walk) * this.cls.speed;
+      const sp = (sprint ? P.sprint : P.walk) * this.speedMul;
       const cur = Math.hypot(this.vel.x, this.vel.z);
       const rate = (cur > sp + 2 ? P.friction : P.accelGround) * dt;
       const ddx = wish.x * sp - this.vel.x;
@@ -787,7 +811,7 @@ export class Player {
       this.onGround = false;
     }
     this.titan.update(dt, this);
-    if (g.meter.tick(dt, T.drain * (1 - 0.1 * g.save.upgrades.titan))) this.revert();
+    if (g.meter.tick(dt, T.drain * this.char.drain * (1 - 0.1 * g.save.upgrades.titan))) this.revert();
   }
 
   // ---------------------------------------------------------------- görsel

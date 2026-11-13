@@ -1,10 +1,11 @@
 import { CFG, type MeterKind } from '../data/config';
-import { TITAN_IDS, type TitanId } from '../data/titans';
+import { TITAN_IDS, type FormId, type InnateId, type TitanId } from '../data/titans';
 
 /**
  * Dev barı + iğneler. Saf mantık, sahneye dokunmaz.
  * Her iğne türü ayrı bir dev formuna dönüştürür; oyuncu elindekilerden birini seçer.
- * Bar en az yarıya kadar doluysa dönüşülebilir; dev formunda bar bir güç
+ * Bazı karakterlerin iğne istemeyen kendi formu vardır; o forma yalnızca bar tamamen dolunca dönüşülür.
+ * Bar en az yarıya kadar doluysa iğneyle dönüşülebilir; dev formunda bar bir güç
  * kaynağıdır: zamanla azalır ve her güç kendi bedeli kadar bar harcar.
  */
 export class TitanMeter {
@@ -12,7 +13,9 @@ export class TitanMeter {
   active = false;
   readonly needles: Record<TitanId, number> = { ofke: 0, firtina: 0, kaya: 0, zirve: 0 };
   /** T'ye basınca dönüşülecek form. */
-  selected: TitanId = 'ofke';
+  selected: FormId = 'ofke';
+  /** Seçili karakterin kendi formu (yoksa null). */
+  innate: InnateId | null = null;
 
   constructor(
     readonly max: number = CFG.meter.max,
@@ -30,18 +33,36 @@ export class TitanMeter {
     return TITAN_IDS.reduce((n, id) => n + this.needles[id], 0);
   }
 
-  /** İğne ekler; seçili türden yoksa yeni gelen tür seçilir. */
-  addNeedle(id: TitanId, count = 1) {
-    this.needles[id] += count;
-    if (this.needles[this.selected] <= 0) this.selected = id;
+  /** Seçili form karakterin kendi formu mu (iğne harcamaz, dolu bar ister). */
+  get usesInnate() {
+    return this.innate !== null && this.selected === this.innate;
   }
 
-  /** Elde iğnesi olan bir sonraki forma geçer; seçili formu döner. */
+  /** Bu forma dönüşmenin bir yolu var mı: kendi formu ya da elde iğnesi. */
+  has(id: FormId) {
+    return id === this.innate || ((this.needles as Record<string, number>)[id] ?? 0) > 0;
+  }
+
+  /** Karakter değişince kendi formunu ayarlar; seçim geçersiz kaldıysa düzeltir. */
+  setInnate(id: InnateId | null) {
+    this.innate = id;
+    if (id !== null && this.totalNeedles === 0) this.selected = id;
+    else if (!this.has(this.selected)) this.selected = id ?? TITAN_IDS.find((t) => this.needles[t] > 0) ?? 'ofke';
+  }
+
+  /** İğne ekler; seçili forma dönüşme yolu yoksa yeni gelen tür seçilir. */
+  addNeedle(id: TitanId, count = 1) {
+    this.needles[id] += count;
+    if (!this.has(this.selected)) this.selected = id;
+  }
+
+  /** Dönüşülebilecek bir sonraki forma (eldeki iğneler, sonra kendi formu) geçer; seçili formu döner. */
   cycle() {
-    const start = TITAN_IDS.indexOf(this.selected);
-    for (let i = 1; i <= TITAN_IDS.length; i++) {
-      const id = TITAN_IDS[(start + i) % TITAN_IDS.length];
-      if (this.needles[id] > 0) {
+    const order: FormId[] = this.innate ? [...TITAN_IDS, this.innate] : TITAN_IDS;
+    const start = order.indexOf(this.selected);
+    for (let i = 1; i <= order.length; i++) {
+      const id = order[(start + i) % order.length];
+      if (this.has(id)) {
         this.selected = id;
         break;
       }
@@ -51,7 +72,7 @@ export class TitanMeter {
 
   clearNeedles() {
     for (const id of TITAN_IDS) this.needles[id] = 0;
-    this.selected = 'ofke';
+    this.selected = this.innate ?? 'ofke';
   }
 
   /** Dev öldürünce barı doldurur. Dev formundayken bar dolmaz. */
@@ -61,13 +82,14 @@ export class TitanMeter {
   }
 
   canTransform() {
-    return !this.active && this.charged && this.needles[this.selected] > 0;
+    if (this.active) return false;
+    return this.usesInnate ? this.full : this.charged && this.has(this.selected);
   }
 
-  /** Seçili türden bir iğne harcar; mevcut bar dev formunun güç havuzu olur. */
+  /** İğneyle dönüşüyorsa seçili türden bir iğne harcar; mevcut bar dev formunun güç havuzu olur. */
   transform() {
     if (!this.canTransform()) return false;
-    this.needles[this.selected] -= 1;
+    if (!this.usesInnate) this.needles[this.selected as TitanId] -= 1;
     this.active = true;
     return true;
   }
@@ -99,7 +121,7 @@ export class TitanMeter {
   end() {
     this.active = false;
     this.value = Math.max(0, this.value);
-    if (this.needles[this.selected] <= 0) this.cycle();
+    if (!this.has(this.selected)) this.cycle();
   }
 
   /** HUD için 0..1 doluluk. */

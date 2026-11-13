@@ -139,3 +139,36 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     downTime: 9,
   },
 };
+
+export type BossId = 'gate' | 'bekci' | 'kadim';
+
+/** Bölüm sonu devleri: aynı gövde ve davranış, farklı boy ve dayanıklılık. */
+export const BOSSES: Record<BossId, GiantType> = {
+  gate: GIANT_TYPES.boss,
+  bekci: {
+    ...GIANT_TYPES.boss,
+    name: 'Sur Bekçisi',
+    minH: 36,
+    maxH: 36,
+    speed: 5,
+    hpBase: 1300,
+    legCuts: 5,
+    dmg: 40,
+    xp: 800,
+    skins: [0x6f6a66],
+  },
+  kadim: {
+    ...GIANT_TYPES.boss,
+    name: 'Kadim Dev',
+    minH: 44,
+    maxH: 44,
+    speed: 5.4,
+    hpBase: 1900,
+    legCuts: 6,
+    napeCuts: 4,
+    aggro: 320,
+    dmg: 46,
+    xp: 1500,
+    skins: [0x5a4a52],
+  },
+};

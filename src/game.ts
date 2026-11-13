@@ -3,6 +3,8 @@ import { CFG } from './data/config';
 import { Input } from './core/input';
 import { GameAudio } from './core/audio';
 import { Particles } from './core/particles';
+import { SlashFx } from './core/slashfx';
+import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { clamp, lerp } from './core/rng';
 import { World } from './world/world';
@@ -18,7 +20,11 @@ import { Horse } from './player/horse';
 import type { AimHit } from './player/grapple';
 import type { Giant } from './enemies/giant';
 import { TitanMeter } from './systems/titanMeter';
-import { addXp, classUnlocked, CLASS_UNLOCK, newSave, type ClassId, type SaveData } from './systems/progression';
+import { addXp, buyChar, classUnlocked, CLASS_UNLOCK, coinsFor, newSave, ownsChar, selectChar, type ClassId, type GameMode, type SaveData } from './systems/progression';
+import { CHARACTERS, type CharId } from './data/characters';
+import { Story } from './systems/story';
+import type { StoryEvent } from './systems/storyRules';
+import { buildBeacon } from './world/beacon';
 import { QuestLog } from './systems/quests';
 import { CLASSES } from './player/classes';
 import { Hud } from './ui/hud';
@@ -37,6 +43,7 @@ export class Game {
   readonly meter = new TitanMeter();
   readonly world: World;
   readonly particles: Particles;
+  readonly slashes: SlashFx;
   readonly player: Player;
   readonly horse: Horse;
   readonly crates: Crates;
@@ -46,6 +53,7 @@ export class Game {
   private skyTime = 0;
   readonly spawner = new Spawner();
   readonly quests: QuestLog;
+  readonly story: Story;
   readonly hud: Hud;
   readonly menu: Menu;
   readonly minimap: Minimap;
@@ -69,6 +77,8 @@ export class Game {
   aimOnGround = false;
   private readonly cursorRay = new THREE.Raycaster();
   private readonly marker: THREE.Mesh;
+  /** Görev hedefini uzaktan gösteren ışık sütunu. */
+  private readonly waypoint: THREE.Mesh;
   private yawPending = 0;
   private pitchPending = 0;
   private lowGasWarned = false;
@@ -113,12 +123,15 @@ export class Game {
     this.save = loadSave();
     this.world = new World(this.scene, fogColor);
     this.particles = new Particles(this.scene);
+    this.slashes = new SlashFx(this.scene);
     this.player = new Player(this);
     this.horse = new Horse(this, CFG.player.spawn.x + 4, CFG.player.spawn.z + 2);
     this.crates = new Crates(this.scene, this.world.villages);
     this.stations = new Stations(this.scene, this.world);
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
+    this.story = new Story(this);
+    this.scene.add(buildBeacon());
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
     this.menu = new Menu(this);
@@ -141,6 +154,21 @@ export class Game {
     );
     this.marker.visible = false;
     this.scene.add(this.marker);
+
+    this.waypoint = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.1, 180, 8, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe07a,
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        fog: false,
+      }),
+    );
+    this.waypoint.visible = false;
+    this.scene.add(this.waypoint);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -191,6 +219,7 @@ export class Game {
 
   pause() {
     this.running = false;
+    this.audio.frame({ x: 0, z: 0, yaw: 0 }, 0, 0, false);
     this.hud.setVisible(false);
     this.menu.show();
     this.renderer.domElement.classList.remove('playing');
@@ -203,14 +232,72 @@ export class Game {
     this.loadoutChanged();
   }
 
+  /** Karakteri seçer; sahip değilse ve av puanı yetiyorsa satın alır. İşlem yapıldıysa true döner. */
+  pickChar(id: CharId) {
+    const s = this.save;
+    if (s.char === id) return false;
+    const ok = ownsChar(s, id) ? selectChar(s, id) : buyChar(s, id);
+    if (ok) this.loadoutChanged();
+    return ok;
+  }
+
+  /** Av puanı ekler (dev öldürme ve görev ödülleri). */
+  grantCoins(amount: number) {
+    if (amount <= 0) return;
+    this.save.coins += Math.round(amount);
+    storeSave(this.save);
+  }
+
   loadoutChanged() {
     this.loadoutDirty = true;
     storeSave(this.save);
   }
 
+  setMode(mode: GameMode) {
+    if (this.save.mode === mode) return;
+    this.save.mode = mode;
+    this.story.restart();
+    storeSave(this.save);
+  }
+
+  /** Hikâyede daha önce ulaşılmış bir sezonun başına döner. */
+  playChapter(chapter: number) {
+    this.save.mode = 'story';
+    this.story.jump(chapter);
+    storeSave(this.save);
+  }
+
+  /** Etkin görevin haritada gösterilecek hedefi. */
+  objectiveTarget(): [number, number] | null {
+    return this.save.mode === 'story' ? this.story.target : (this.quests.current?.target ?? null);
+  }
+
+  /** Yakındaki bölüm sonu devi (can barı için). */
+  bossInView() {
+    const p = this.player.pos;
+    let best: Giant | null = null;
+    let bd = 340;
+    for (const g of this.giants) {
+      if (g.type.kind !== 'boss' || !g.alive) continue;
+      const d = Math.hypot(g.pos.x - p.x, g.pos.z - p.z);
+      if (d < bd) {
+        bd = d;
+        best = g;
+      }
+    }
+    return best;
+  }
+
+  private storyEvent(e: StoryEvent) {
+    if (this.save.mode === 'story') this.story.emit(e);
+  }
+
   resetProgress() {
+    const mode = this.save.mode;
     clearSave();
     this.save = newSave();
+    this.save.mode = mode;
+    this.story.restart();
     this.loadoutDirty = true;
     this.meter.value = 0;
     this.meter.clearNeedles();
@@ -290,17 +377,71 @@ export class Game {
   onGiantKilled(g: Giant, source: 'blade' | 'titan') {
     this.stats.kills += 1;
     this.save.kills += 1;
-    this.meter.addKill(g.type.meter, 1 + 0.15 * this.save.upgrades.meter);
-    this.audio.kill();
-    if (source === 'blade') this.slowT = 0.16;
-    this.shakeCam(0.35);
-    this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP`);
+    this.meter.addKill(g.type.meter, (1 + 0.15 * this.save.upgrades.meter) * CHARACTERS[this.save.char].meter);
+    this.audio.kill(g.type.kind === 'boss');
+    this.killFx(g, source);
+    const coins = coinsFor(g.type.xp);
+    this.save.coins += coins;
+    this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP · +${coins} puan`);
     if (g.type.kind === 'boss') {
-      this.save.bossDefeated = true;
       this.meter.value = this.meter.max;
-      this.hud.banner('KAPI KIRAN DÜŞTÜ', 'Demir Sur kapısı yeniden açık');
+      if (g.tag === 'gate') this.save.bossDefeated = true;
+      this.hud.banner(`${g.type.name.toLocaleUpperCase('tr')} DÜŞTÜ`, g.tag === 'gate' ? 'Demir Sur kapısı yeniden açık' : 'Dev barın doldu');
     }
     this.grantXp(g.type.xp);
+    const p = this.player;
+    this.storyEvent({ type: 'kill', giant: g.type.kind, by: source, form: p.mode === 'titan' ? p.titan.def.id : null, tag: g.tag });
+  }
+
+  /**
+   * Öldürme efekti. Kılıçla: ensede çapraz iki kesik izi, gidiş yönüne fışkıran kan ve buhar;
+   * hızla içinden geçildiyse iz uzar, zaman daha çok yavaşlar. Dev formunda: tek büyük darbe izi.
+   */
+  private killFx(g: Giant, source: 'blade' | 'titan') {
+    const p = this.player;
+    const at = g.napeWorld(target);
+    const speed = p.vel.length();
+    if (speed > 3) look.copy(p.vel).divideScalar(speed);
+    else look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
+    const lying = g.state === 'dead' && g.wasLying;
+    if (source === 'titan') {
+      const col = p.titan.def.color;
+      this.slashes.spawn(at, look, g.h * 0.45 + 3, col, 0.2, 0.4);
+      this.particles.burst(at, 60, g.h * 1.4 + 10, 1.1, col, g.h * 0.15);
+      this.shakeCam(0.6);
+      return;
+    }
+    const power = Math.min(1, speed / 38);
+    const size = 1.8 + g.h * 0.13 + power * 2.2;
+    this.audio.slash(power);
+    this.slashes.spawn(at, look, size, 0xffffff, 0.55);
+    this.slashes.spawn(at, look, size * 0.92, 0xff7a6a, -0.55, 0.36);
+    // Kan: kesiğin gittiği yöne doğru dar bir koni halinde fışkırır.
+    const jet = 26 + Math.round(power * 44);
+    for (let i = 0; i < jet; i++) {
+      const sp = (8 + Math.random() * 16) * (0.6 + power);
+      this.particles.emit(
+        at.x,
+        at.y,
+        at.z,
+        look.x * sp + (Math.random() - 0.5) * 7,
+        look.y * sp + Math.random() * 7 + (lying ? 6 : 1),
+        look.z * sp + (Math.random() - 0.5) * 7,
+        0.5 + Math.random() * 0.6,
+        i % 3 === 0 ? 0xff4a3a : 0xc8201a,
+        -16,
+      );
+    }
+    if (power > 0.45) {
+      // Hızlı geçiş: yol boyunca beyaz bir iz ve kısa bir parlama.
+      for (let i = 0; i < 26; i++) {
+        const along = -3 + i * 0.5;
+        this.particles.emit(at.x + look.x * along, at.y + look.y * along, at.z + look.z * along, look.x * 3, 0.5, look.z * 3, 0.35 + i * 0.012, 0xfff4e0);
+      }
+      this.hud.flash('#ffffff', 0.12 + power * 0.14, 0.25);
+    }
+    this.slowT = 0.14 + power * 0.26;
+    this.shakeCam(0.3 + power * 0.5);
   }
 
   onCrateOpened(c: Crate) {
@@ -315,6 +456,7 @@ export class Game {
       color = def.color;
       this.hud.toast(`${def.needle} bulundu → ${def.name}`);
       if (first && this.meter.totalNeedles > 1) this.hud.toast('Tab ile hangi deve dönüşeceğini seç');
+      this.storyEvent({ type: 'needle', form: c.form });
     } else if (c.content === 'gas') {
       p.gas = p.maxGas;
       this.hud.toast('Gaz tüpleri dolduruldu');
@@ -343,6 +485,7 @@ export class Game {
     for (const g of this.giants) {
       if (g.alive && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 32) g.stun(2);
     }
+    this.storyEvent({ type: 'transform', form: def.id });
   }
 
   onPlayerHurt() {
@@ -394,6 +537,25 @@ export class Game {
     this.sun.position.set(cx + SUN_DIR.x * 350, cy + SUN_DIR.y * 350, cz + SUN_DIR.z * 350);
     this.sun.target.updateMatrixWorld();
     this.grass.update(p.x, p.z);
+  }
+
+  /** Dinleyici, rüzgâr ve savaş müziği yoğunluğu. Yoğunluk saniyede birkaç kez yeniden hesaplanır. */
+  private audioT = 0;
+  private audioIntensity = 0;
+  private updateAudio(dt: number) {
+    const p = this.player;
+    this.audioT -= dt;
+    if (this.audioT <= 0) {
+      this.audioT = 0.3;
+      let chasing = 0;
+      for (const g of this.giants) {
+        if (!g.alive || g.state === 'wander' || g.state === 'downed') continue;
+        if (Math.hypot(g.pos.x - p.pos.x, g.pos.z - p.pos.z) < 95) chasing++;
+      }
+      this.audioIntensity = p.dead ? 0 : combatIntensity({ chasing, boss: this.bossInView() !== null, grabbed: p.grabbedBy !== null, titan: p.mode === 'titan' });
+    }
+    const cam = this.camera.position;
+    this.audio.frame({ x: cam.x, z: cam.z, yaw: this.camYaw }, p.mode === 'titan' ? 0 : p.vel.length(), this.audioIntensity, this.running);
   }
 
   private idleCamera(dt: number) {
@@ -475,7 +637,14 @@ export class Game {
     if (mt) this.marker.position.set(mt.x, this.world.heightAt(mt.x, mt.z) + 0.15, mt.z);
     this.player.animate(sdt);
     this.particles.update(sdt);
-    this.quests.update();
+    this.slashes.update(sdt);
+    this.updateAudio(dt);
+    if (this.save.mode === 'story') this.story.update(dt);
+    else this.quests.update();
+    const wp = this.objectiveTarget();
+    const wpOn = wp !== null && Math.hypot(wp[0] - this.player.pos.x, wp[1] - this.player.pos.z) > 16;
+    this.waypoint.visible = wpOn;
+    if (wp && wpOn) this.waypoint.position.set(wp[0], this.world.heightAt(wp[0], wp[1]) + 90, wp[1]);
 
     if (this.boltT > 0) {
       this.boltT -= dt;
@@ -551,5 +720,6 @@ export class Game {
       this.spawner.spawn('normal', p.pos.x + look.x * 30, p.pos.z + look.z * 30, this);
     }
     if (inp.pressed('Digit5')) this.grantXp(200);
+    if (inp.pressed('Digit6')) this.grantCoins(500);
   }
 }

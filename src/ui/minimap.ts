@@ -107,9 +107,9 @@ export class Minimap {
     c.restore();
 
     // Görev hedefi: görüş dışındaysa kenara sabitlenir.
-    const q = g.quests.current;
-    if (q?.target) {
-      let [x, y] = map(q.target[0], q.target[1]);
+    const goal = g.objectiveTarget();
+    if (goal) {
+      let [x, y] = map(goal[0], goal[1]);
       const dx = x - R;
       const dy = y - R;
       const d = Math.hypot(dx, dy);

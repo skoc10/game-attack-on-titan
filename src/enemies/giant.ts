@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { lerp, turnToward } from '../core/rng';
+import { rollVoice, type IdleVoice } from '../core/audioMath';
+import type { GiantSound } from '../core/audio';
 import { wallPush } from '../world/walls';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
 import type { GiantType } from './giantTypes';
@@ -30,6 +32,10 @@ export class Giant {
   marked = false;
   gone = false;
   home: THREE.Vector3 | null = null;
+  /** Hikâye görevinin doğurduğu devlerin etiketi. */
+  tag = '';
+  /** Oyuncu uzaklaşsa da kaldırılmaz (bölüm sonu devleri). */
+  persistent = false;
   private attackCd = 0;
   private leapCd = 2;
   private attackKind: 'swipe' | 'stomp' | 'grab' = 'swipe';
@@ -47,6 +53,10 @@ export class Giant {
   private avoidT = 0;
   private avoidSign = 1;
   private lying = false;
+  /** Bu devin kendine özgü sesi ve bir sonraki ses çıkarışına kalan süre. */
+  readonly voice: IdleVoice = rollVoice(Math.random(), Math.random());
+  private talkT = 1 + Math.random() * 8;
+  private stepNo = 0;
   private impacted = false;
   private fallDir = 1;
   private napeCuts: number;
@@ -138,6 +148,17 @@ export class Giant {
     return this.body.handR.getWorldPosition(out);
   }
 
+  /** Yerdeyken mi öldürüldü (ölüm efekti buna göre değişir). */
+  get wasLying() {
+    return this.lying;
+  }
+
+  /** Devin sesini bulunduğu yerden çalar. */
+  private say(kind: GiantSound, loud = 1) {
+    this.game.audio.giant(kind, this.h, this.pos.x, this.pos.z, loud);
+    this.talkT = Math.max(this.talkT, 2.5);
+  }
+
   stun(seconds: number) {
     if (!this.alive || this.state === 'downed') return;
     this.stunDur = seconds;
@@ -172,6 +193,7 @@ export class Giant {
     this.legCuts -= armorBreak ? 99 : 1;
     if (this.legCuts <= 0) {
       this.setState('downed');
+      this.say('pain', 1.3);
       return 'down';
     }
     return 'hit';
@@ -205,7 +227,8 @@ export class Giant {
   private die(game: Game, source: 'blade' | 'titan', from?: THREE.Vector3) {
     // Zaten yerdeyse devrilmez; ayaktaysa önce sendeler, sonra kütük gibi devrilir.
     this.lying = this.state === 'downed';
-    this.impacted = this.lying;
+    this.impacted = false;
+    this.say(this.lying ? 'rattle' : 'death', this.type.kind === 'boss' ? 2.5 : 1.4);
     this.fallDir = 1;
     if (from && !this.lying) {
       // Önden gelen dev yumruğu sırtüstü devirir.
@@ -271,6 +294,14 @@ export class Giant {
     }
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.leapCd > 0) this.leapCd -= dt;
+    // Arada bir kendi sesini çıkarır; kovalarken daha sık.
+    this.talkT -= dt;
+    if (this.talkT <= 0) {
+      const busy = this.state === 'chase';
+      this.talkT = (busy ? 3 : 5) + Math.random() * (busy ? 4 : 8);
+      if (this.state === 'downed') this.say('pain', 0.7);
+      else if (this.state === 'wander' || busy) this.say(this.voice);
+    }
 
     const dx = p.pos.x - this.pos.x;
     const dz = p.pos.z - this.pos.z;
@@ -299,7 +330,12 @@ export class Giant {
           moveYaw = this.wanderYaw;
         }
         const aggro = this.home ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < this.type.aggro : dist < this.type.aggro;
-        if (targetable && aggro) this.setState('chase');
+        if (targetable && aggro) {
+          this.setState('chase');
+          // Avını fark etti: hızlı türler çığlık atar, diğerleri kendi sesiyle seslenir.
+          if (this.type.kind === 'runner' || this.type.kind === 'leaper') this.say('shriek', 1.2);
+          else this.say(this.type.kind === 'boss' ? 'growl' : this.voice, this.type.kind === 'boss' ? 2.5 : 1.2);
+        }
         break;
       }
       case 'chase': {
@@ -315,6 +351,7 @@ export class Giant {
           if (this.type.kind === 'boss') this.attackKind = titan || dy < 8 ? 'stomp' : 'swipe';
           else this.attackKind = !titan && Math.random() < this.grabChance ? 'grab' : 'swipe';
           this.setState('windup');
+          this.say('grunt');
         } else if (this.type.kind === 'leaper' && this.leapCd <= 0 && !p.onGround && p.mode === 'foot' && dist > 12 && dist < 60) {
           const T = Math.min(1.3, Math.max(0.6, dist / 35));
           const tx = p.pos.x + p.vel.x * T * 0.6;
@@ -420,6 +457,12 @@ export class Giant {
           }
         }
         this.phase += step / (this.h * 0.22);
+        // Her yarım yürüyüş döngüsünde bir ayak yere basar.
+        const stepNo = Math.floor(this.phase / Math.PI);
+        if (stepNo !== this.stepNo) {
+          this.stepNo = stepNo;
+          if (dist < 40 + this.h * 5) game.audio.footstep(this.h, this.pos.x, this.pos.z);
+        }
         this.moving = true;
       }
       this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
@@ -454,8 +497,28 @@ export class Giant {
     let since = t; // yere çarpıştan beri geçen süre
 
     if (this.lying) {
-      b.tilt.rotation.x = lerp(b.tilt.rotation.x, Math.PI / 2, k);
-      arms = -2.9;
+      // Yerde ölüm: gövde bir kez kasılıp yaylanır, kollar bacaklar çırpınır, sonra yığılır.
+      const THROE = 0.75;
+      const u = Math.min(1, t / THROE);
+      const fade = 1 - u;
+      const arch = Math.sin(u * Math.PI) * 0.42;
+      b.tilt.rotation.x = lerp(b.tilt.rotation.x, Math.PI / 2 - arch, 1 - Math.exp(-dt * 22));
+      head = -arch * 2 - 0.3 * fade;
+      arms = -2.9 + Math.sin(t * 34) * 0.9 * fade + arch * 1.6;
+      legs = Math.sin(t * 27) * 0.55 * fade;
+      knees = 0.3 + Math.abs(Math.sin(t * 27)) * 0.7 * fade;
+      since = t - THROE;
+      if (u >= 1 && !this.impacted) {
+        this.impacted = true;
+        this.impact(game, 0.45);
+      }
+      // Açılan enseden buhar sütunu fışkırır.
+      if (t < 1.6) {
+        this.napeWorld(v);
+        for (let i = 0; i < 3; i++) {
+          game.particles.emit(v.x, v.y, v.z, (Math.random() - 0.5) * 5, 9 + Math.random() * (8 + this.h * 0.5), (Math.random() - 0.5) * 5, 1.4, i === 0 ? 0xff9a8a : 0xe4e4e4, 10);
+        }
+      }
     } else if (t < STAGGER) {
       // Sendeleme: baş geriye savrulur, dizler çözülür.
       const u = t / STAGGER;
@@ -483,7 +546,7 @@ export class Giant {
     b.armL.rotation.z = lerp(b.armL.rotation.z, fd < 0 ? -0.9 : 0, k);
     b.armR.rotation.z = lerp(b.armR.rotation.z, fd < 0 ? 0.9 : 0, k);
     b.legL.rotation.x = lerp(b.legL.rotation.x, legs, k);
-    b.legR.rotation.x = lerp(b.legR.rotation.x, legs, k);
+    b.legR.rotation.x = lerp(b.legR.rotation.x, this.lying ? -legs : legs, k);
     b.head.rotation.x = lerp(b.head.rotation.x, head, k);
     b.jaw.rotation.x = lerp(b.jaw.rotation.x, 0.35, k);
     autoBend(b, k, { kneeL: knees, kneeR: knees, elbowL: -0.15, elbowR: -0.15 });
@@ -519,12 +582,12 @@ export class Giant {
   }
 
   /** Devrilen gövdenin yere çarpışı. */
-  private impact(game: Game) {
+  private impact(game: Game, force = 1) {
     const p = game.player.pos;
     const dist = Math.hypot(p.x - this.pos.x, p.z - this.pos.z);
-    game.audio.stomp();
-    game.shakeCam(Math.max(0, 1.1 - dist / 90) * Math.min(1.4, this.h / 9));
-    const n = 30 + Math.round(this.h * 2);
+    if (dist < 160) game.audio.stomp((this.h / 16) * force);
+    game.shakeCam(Math.max(0, 1.1 - dist / 90) * Math.min(1.4, this.h / 9) * force);
+    const n = Math.round((30 + this.h * 2) * (0.5 + force * 0.5));
     for (let i = 0; i < n; i++) {
       const along = Math.random() * this.h * 0.95 * this.fallDir;
       const side = Math.random() < 0.5 ? -1 : 1;

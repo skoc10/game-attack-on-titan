@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { Giant } from '../enemies/giant';
-import { GIANT_TYPES, type GiantKind } from '../enemies/giantTypes';
+import { BOSSES, GIANT_TYPES, type BossId, type GiantKind } from '../enemies/giantTypes';
 
 const S = CFG.spawn;
 
@@ -28,12 +28,20 @@ export class Spawner {
   private timer = 0;
   boss: Giant | null = null;
 
+  /** Kapı Kıran: Demir Sur kapısının önünde bekler. */
   spawnBoss(game: Game) {
-    const g = new Giant(GIANT_TYPES.boss, 0, CFG.world.walls[1].r - 70, game);
-    g.home = new THREE.Vector3(0, 0, CFG.world.walls[1].r - 70);
+    this.boss = this.spawnBossAt('gate', 0, CFG.world.walls[1].r - 70, game);
+    this.boss.tag = 'gate';
+    return this.boss;
+  }
+
+  spawnBossAt(id: BossId, x: number, z: number, game: Game) {
+    const g = new Giant(BOSSES[id], x, z, game);
+    g.home = new THREE.Vector3(x, 0, z);
     g.yaw = Math.PI;
-    this.boss = g;
+    g.persistent = true;
     game.giants.push(g);
+    return g;
   }
 
   spawn(kind: GiantKind, x: number, z: number, game: Game) {
@@ -48,14 +56,14 @@ export class Spawner {
     let alive = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const g = list[i];
-      const far = g !== this.boss && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) > S.despawn;
+      const far = !g.persistent && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) > S.despawn;
       if (g.gone || far) {
         g.dispose(game.scene);
         list.splice(i, 1);
         if (g === this.boss) this.boss = null;
         continue;
       }
-      if (g !== this.boss && g.alive) alive++;
+      if (!g.persistent && !g.tag && g.alive) alive++;
     }
 
     // Devler birbirinin içine girmesin.
@@ -72,8 +80,8 @@ export class Spawner {
         if (d2 < min * min && d2 > 1e-4) {
           const d = Math.sqrt(d2);
           const push = (min - d) / 2;
-          const ka = a === this.boss ? 0 : 1;
-          const kb = b === this.boss ? 0 : 1;
+          const ka = a.persistent ? 0 : 1;
+          const kb = b.persistent ? 0 : 1;
           a.pos.x -= (dx / d) * push * ka;
           a.pos.z -= (dz / d) * push * ka;
           b.pos.x += (dx / d) * push * kb;

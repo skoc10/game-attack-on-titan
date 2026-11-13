@@ -57,6 +57,53 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 **Devler:** sıradan, Koşucu, Sıçrayan, Zırhlı (önce düşürülmeli) ve bölüm sonu Kapı Kıran.
 İlerleme (seviye, yükseltmeler, sınıf, görev) tarayıcıda `localStorage`'a kaydedilir.
 
+## Hikâye modu
+
+Menüden **Hikâye Modu** ya da **Serbest Av** seçilir; seviye, sınıf ve yükseltmeler iki modda ortaktır.
+
+Hikâye modunda Öncü Birliği'nin çaylağını oynarsın: başlangıçta **Aras**, başka bir karakter seçtiysen o karakter (konuşmalarda adı geçer). Hikâye bu oyuna özgüdür ve beş sezona bölünmüş 20 görevden oluşur:
+
+| Sezon | Başlık | Konu |
+| --- | --- | --- |
+| 1 | Kapı | İlk çıkış, ikmal, ilk av, ilk iğne ve ilk dönüşüm; kapıya yürüyen sürü |
+| 2 | Demir Sur | Koşucular, sıçrayanlar, zırhlılar ve Kapı Kıran |
+| 3 | Dört Miras | Fırtına ve Kaya iğneleri; Demir Sur ötesindeki karakolun kuşatması |
+| 4 | Kalkan Suru | Doruk iğnesi, son düzlük ve Sur Bekçisi |
+| Final | Sur Ötesi | Çağrı Kulesi ve Kadim Dev |
+
+- Görev adımları sol üstte sırayla listelenir; hedef haritada sarı elmasla, dünyada sarı ışık sütunuyla gösterilir.
+- Komutan Sare, Usta Behram ve Yel telsizden konuşur; satırlar kendiliğinden ilerler, `Enter` ile geçilir. Oyun konuşma sırasında durmaz.
+- Görev devleri görevle birlikte doğar; ölürsen ya da uzaklaşırsan görev kaldığı adımdan sürer.
+- Bir adım iğne istiyorsa ve elinde yoksa en yakın sandık yeniden doldurulup işaretlenir.
+- Ulaştığın sezonlar menüden yeniden oynanabilir (ilerleme o sezonun başına döner).
+
+## Av puanı ve karakterler
+
+Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kadar); hikâye görevleri ve sezon sonları da av puanı verir. Av puanıyla menüden karakter alınır. Karakterler bu oyuna özgüdür; her biri sınıfın değerlerini kendi çarpanlarıyla değiştirir ve kendi görünümüne sahiptir. Sınıf (yetenek) ve karakter birbirinden bağımsız seçilir.
+
+| Karakter | Unvan | ◆ | Özellik | Kendi dev formu |
+| --- | --- | --- | --- | --- |
+| Aras | Çaylak | 0 | Dev barı %10 hızlı dolar | — |
+| Defne | Hat Öncüsü | 150 | Hız +%8, kanca çekişi +%12 | — |
+| Bora | Kalkan | 300 | Can +%35 | — |
+| İlkim | Tüpçü | 450 | Gaz +%40 | — |
+| Kuzey | Kılıç Ustası | 650 | Kılıç erişimi +%15, dayanımı +%50 | — |
+| Zeren | Gölge | 900 | Hız +%5 | Gölge Devi (9 m): en hızlı form, seri atılım ve sersemleten sis |
+| Tuğrul | Demirci | 1300 | Can +%20 | Örs Devi (19 m): zırh kıran çekiç, güçlenme ve alan darbesi |
+| Ece | Gök Gözcüsü | 1700 | Bar %20 hızlı dolar | Şimşek Devi (13 m): kısa aralıklı yıldırım, geniş sersemletme |
+| Mete | Mancınıkçı | 2200 | Gaz +%15 | Mancınık Devi (21 m): seri kaya atışı, zırh kıran yer darbesi |
+| Aybüke | Son Simyacı | 3200 | Bar %15 hızlı dolar, formda %15 yavaş biter | Şafak Devi (22 m): büyük, hızlı, barı en yavaş yakan form |
+
+Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun için dev barının **tamamen dolması** gerekir (iğneyle dönüşüm yarım barda olur). İğne de taşıyorsan `Tab` ile iğne formları ve kendi formun arasında geçersin; HUD'da kendi formun ★ ile gösterilir.
+
+## Efektler ve sesler
+
+- **Kesip geçme:** öldürücü ense kesiğinde çapraz iki kılıç izi parlar, kan gidiş yönüne fışkırır ve zaman kısa süre yavaşlar. Ne kadar hızlı geçersen iz o kadar büyür; yüksek hızda yol boyunca beyaz bir iz ve kısa bir parlama eklenir. Dev formundaki öldürmelerde formun renginde tek büyük darbe izi çıkar.
+- **Yerde ölüm:** yere düşmüş dev ensesinden vurulunca gövdesi kasılıp yaylanır, kolları bacakları çırpınır, sonra yığılır; ensesinden buhar sütunu fışkırır.
+- **Dev sesleri:** her devin kendi sesi vardır ve boyu büyüdükçe kalınlaşır. Çoğu iniltiyle ya da hırıltıyla seslenir; yaklaşık üçte biri tuhaf sesler çıkarır (kıkırtı, gurultu, üç notalı mırıltı). Seni fark edince, saldırmadan önce, bacağı kesilince ve ölürken ayrı sesler duyulur; büyük devlerin adımları yaklaştıkça işitilir. Sesler uzaklığa göre kısılır ve geldikleri yandan duyulur.
+- **Müzik ve ortam:** devler kovalamaya başlayınca savaş davulu girer, yoğunluk arttıkça üst davul ve bas eklenir; bölüm sonu devinde ve yakalandığında en üst düzeye çıkar. Rüzgâr sesi hızınla birlikte yükselir. Art arda öldürmelerde zafer akoru her seferinde yarım ses tizleşir.
+- Tüm sesler tarayıcıda sentezlenir; ses dosyası yoktur.
+
 ## Geliştirme
 
 - `src/data/config.ts` — denge sayıları; `src/data/titans.ts` — dev formları (boy, hız, güçler, bar bedelleri).

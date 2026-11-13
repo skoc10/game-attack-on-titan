@@ -3,7 +3,7 @@ import type { Game } from '../game';
 import type { Giant } from '../enemies/giant';
 import type { Player } from './player';
 import { lerp } from '../core/rng';
-import { TITANS, type Ability, type TitanDef, type TitanId } from '../data/titans';
+import { FORMS, type Ability, type FormId, type TitanDef } from '../data/titans';
 import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
 
 const v = new THREE.Vector3();
@@ -19,7 +19,7 @@ interface Body {
  * yumruk, iki güç (Q/E) ve sıçrayıp ezme, formun verisindeki sayılarla çalışır.
  */
 export class TitanForm {
-  def: TitanDef = TITANS.ofke;
+  def: TitanDef = FORMS.ofke;
   punchT = -1;
   /** Q ve E güçlerinin bekleme süreleri. */
   qCd = 0;
@@ -38,7 +38,7 @@ export class TitanForm {
   private punchArm = 1;
   private phase = 0;
   private warnT = 0;
-  private readonly bodies = new Map<TitanId, Body>();
+  private readonly bodies = new Map<FormId, Body>();
   private readonly armStone = new THREE.Color(0xb9d3e6);
   private readonly boulder: THREE.Mesh;
   private readonly boulderVel = new THREE.Vector3();
@@ -53,10 +53,10 @@ export class TitanForm {
   }
 
   /** Formun modeli ilk dönüşümde kurulur, sonra saklanır. */
-  private ensureBody(id: TitanId) {
+  private ensureBody(id: FormId) {
     let b = this.bodies.get(id);
     if (!b) {
-      const d = TITANS[id];
+      const d = FORMS[id];
       const model = buildHumanoid(d.height, d.palette, d.opts);
       model.root.visible = false;
       this.game.scene.add(model.root);
@@ -75,8 +75,8 @@ export class TitanForm {
     return this.buffT > 0;
   }
 
-  enter(id: TitanId) {
-    this.def = TITANS[id];
+  enter(id: FormId) {
+    this.def = FORMS[id];
     this.ensureBody(id).model.root.visible = true;
     this.punchT = -1;
     this.qCd = 0;

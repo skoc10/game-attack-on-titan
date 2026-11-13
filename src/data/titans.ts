@@ -2,6 +2,10 @@ import type { HumanoidOpts, Palette } from '../enemies/humanoid';
 
 export type TitanId = 'ofke' | 'firtina' | 'kaya' | 'zirve';
 export const TITAN_IDS: TitanId[] = ['ofke', 'firtina', 'kaya', 'zirve'];
+/** Karakterlere özgü formlar: iğneyle değil, o karakterin kendi gücüyle (bar dolunca) açılır. */
+export type InnateId = 'golge' | 'ors' | 'simsek' | 'mancinik' | 'safak';
+export const INNATE_IDS: InnateId[] = ['golge', 'ors', 'simsek', 'mancinik', 'safak'];
+export type FormId = TitanId | InnateId;
 
 /** Bir dev formu gücü. Her tür, aynı kodla farklı sayılarla çalışır. */
 export type Ability =
@@ -17,9 +21,9 @@ export type Ability =
   | { kind: 'throw'; name: string; cost: number; cd: number; dmg: number; radius: number; speed: number };
 
 export interface TitanDef {
-  id: TitanId;
+  id: FormId;
   name: string;
-  /** Bu forma dönüştüren iğnenin adı. */
+  /** Bu forma dönüştüren iğnenin adı (karaktere özgü formlarda boş). */
   needle: string;
   tagline: string;
   /** İğne, ışık sütunu ve parıltı rengi. */
@@ -144,6 +148,133 @@ export const TITANS: Record<TitanId, TitanDef> = {
     opts: { style: 'titan', outline: 0.002, bulk: 1.25, head: 0.8, arm: 1.15, cracks: true },
   },
 };
+
+/** Karakterlere özgü formlar. Kutulardan çıkmazlar (ağırlık 0). */
+export const INNATE: Record<InnateId, TitanDef> = {
+  // Küçük suikastçı: en hızlı form, arka arkaya atılır.
+  golge: {
+    id: 'golge',
+    name: 'Gölge Devi',
+    needle: '',
+    tagline: 'Görmeden önce biter.',
+    color: 0x3fe0c5,
+    height: 9,
+    radius: 1.7,
+    speed: 26,
+    sprint: 36,
+    jump: 38,
+    gravity: 46,
+    drain: 1.7,
+    armor: 1.5,
+    camDist: 21,
+    punch: { name: 'Hançer', dmg: 80, range: 5.5, reach: 4, time: 0.22, cost: 2, armorBreak: false },
+    q: { kind: 'rush', name: 'Gölge Adımı', cost: 8, cd: 2, speed: 95, time: 0.3, dmg: 170, hitRadius: 4.5, armorBreak: false },
+    e: { kind: 'stun', name: 'Sis', cost: 14, cd: 10, radius: 45, stun: 4 },
+    slam: { name: 'Pusu', cost: 7, radius: 10, dmg: 130 },
+    weight: 0,
+    palette: { skin: 0x4a4658, top: 0x3e3a4c, legs: 0x343042, hair: 0x111018, hairStyle: 'short', eye: 0x3fe0c5, glow: 0x3fe0c5 },
+    opts: { style: 'titan', outline: 0.0038, bulk: 0.78, head: 1.02, arm: 1.25, cracks: true },
+  },
+  // Kızgın demir zırhlı çekiççi: en ağır yumruk, her darbesi zırh kırar.
+  ors: {
+    id: 'ors',
+    name: 'Örs Devi',
+    needle: '',
+    tagline: 'Döv, kır, yeniden döv.',
+    color: 0xff4a2a,
+    height: 19,
+    radius: 3.5,
+    speed: 9,
+    sprint: 13.5,
+    jump: 14,
+    gravity: 44,
+    drain: 1.3,
+    armor: 0.25,
+    camDist: 37,
+    punch: { name: 'Çekiç', dmg: 230, range: 9, reach: 7, time: 0.8, cost: 6, armorBreak: true },
+    q: { kind: 'buff', name: 'Kızgın Demir', cost: 20, cd: 18, dur: 10, mult: 2 },
+    e: { kind: 'burst', name: 'Örs Darbesi', cost: 24, cd: 10, radius: 22, dmg: 240, stun: 3, armorBreak: true },
+    slam: { name: 'Ezme', cost: 10, radius: 17, dmg: 130 },
+    weight: 0,
+    palette: { skin: 0x6b5a50, top: 0x5c4c44, legs: 0x4e403a, eye: 0xff4a2a, glow: 0xff4a2a },
+    opts: { style: 'titan', outline: 0.0024, bulk: 1.5, head: 0.82, arm: 1.1, armor: true, plateColor: 0x3a3432, cracks: true },
+  },
+  // Yıldırım çağıran: orta boy, kısa bekleme süreli patlamalar ve geniş sersemletme.
+  simsek: {
+    id: 'simsek',
+    name: 'Şimşek Devi',
+    needle: '',
+    tagline: 'Önce ışık, sonra ses.',
+    color: 0xffe94a,
+    height: 13,
+    radius: 2.3,
+    speed: 18,
+    sprint: 27,
+    jump: 30,
+    gravity: 44,
+    drain: 2.1,
+    armor: 1.1,
+    camDist: 27,
+    punch: { name: 'Kırbaç', dmg: 110, range: 9, reach: 6, time: 0.35, cost: 3, armorBreak: false },
+    q: { kind: 'burst', name: 'Yıldırım', cost: 14, cd: 5, radius: 18, dmg: 220, stun: 2, armorBreak: false },
+    e: { kind: 'stun', name: 'Gök Gürültüsü', cost: 18, cd: 14, radius: 90, stun: 6 },
+    slam: { name: 'Çakım', cost: 9, radius: 15, dmg: 120 },
+    weight: 0,
+    palette: { skin: 0xd8cfa8, top: 0xc8bf98, legs: 0xb4ab86, hair: 0xfff4b0, hairStyle: 'long', eye: 0xffe94a, glow: 0xffe94a },
+    opts: { style: 'titan', outline: 0.0032, bulk: 0.95, head: 0.98, arm: 1.18, cracks: true },
+  },
+  // Uzun kollu atıcı: kısa aralıklarla uzağa kaya fırlatır.
+  mancinik: {
+    id: 'mancinik',
+    name: 'Mancınık Devi',
+    needle: '',
+    tagline: 'Yaklaşmalarına gerek yok.',
+    color: 0xc9a06a,
+    height: 21,
+    radius: 3.8,
+    speed: 9,
+    sprint: 13,
+    jump: 12,
+    gravity: 44,
+    drain: 1.9,
+    armor: 0.7,
+    camDist: 40,
+    punch: { name: 'Savurma', dmg: 150, range: 12, reach: 9, time: 0.75, cost: 5, armorBreak: false },
+    q: { kind: 'throw', name: 'Kaya At', cost: 9, cd: 2.2, dmg: 240, radius: 12, speed: 95 },
+    e: { kind: 'burst', name: 'Yer Yaran', cost: 22, cd: 12, radius: 30, dmg: 150, stun: 3.5, armorBreak: true },
+    slam: { name: 'Tepinme', cost: 10, radius: 18, dmg: 100 },
+    weight: 0,
+    palette: { skin: 0xa08060, top: 0x8e7052, legs: 0x7c6146, hair: 0x5a3a20, hairStyle: 'long', eye: 0xc9a06a, glow: 0xc9a06a },
+    opts: { style: 'titan', outline: 0.0022, bulk: 1.05, head: 0.86, arm: 1.38, cracks: true },
+  },
+  // Son simyacının formu: büyük, hızlı ve barı en yavaş yakan form.
+  safak: {
+    id: 'safak',
+    name: 'Şafak Devi',
+    needle: '',
+    tagline: 'Karanlık burada biter.',
+    color: 0xfff0c0,
+    height: 22,
+    radius: 3.6,
+    speed: 14,
+    sprint: 20,
+    jump: 22,
+    gravity: 44,
+    drain: 1.1,
+    armor: 0.5,
+    camDist: 40,
+    punch: { name: 'Işık Yumruğu', dmg: 210, range: 11, reach: 8, time: 0.55, cost: 4, armorBreak: true },
+    q: { kind: 'stun', name: 'Şafak Çanı', cost: 16, cd: 10, radius: 80, stun: 6 },
+    e: { kind: 'buff', name: 'Tan Ateşi', cost: 22, cd: 16, dur: 12, mult: 2.2 },
+    slam: { name: 'Göktaşı', cost: 10, radius: 22, dmg: 160 },
+    weight: 0,
+    palette: { skin: 0xe8e2d8, top: 0xd8d0c2, legs: 0xc4bcae, hair: 0xffffff, hairStyle: 'long', eye: 0xfff0c0, glow: 0xfff0c0 },
+    opts: { style: 'titan', outline: 0.0022, bulk: 1.1, head: 0.88, arm: 1.12, cracks: true },
+  },
+};
+
+/** Tüm formlar: iğneyle açılanlar ve karakterlere özgü olanlar. */
+export const FORMS: Record<FormId, TitanDef> = { ...TITANS, ...INNATE };
 
 /** 0..1 arası bir zarla, ağırlıklara göre bir form seçer (kutulardaki iğne türü). */
 export function rollTitan(roll: number): TitanId {

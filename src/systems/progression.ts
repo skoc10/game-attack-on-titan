@@ -1,3 +1,8 @@
+import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
+import { CHAPTERS } from '../data/story';
+import { clampProgress, type StoryProgress } from './storyRules';
+
+export type GameMode = 'story' | 'free';
 export type ClassId = 'nefer' | 'as' | 'muhafiz' | 'taktisyen';
 export type UpgradeId = 'gas' | 'blade' | 'meter' | 'titan';
 
@@ -10,6 +15,17 @@ export interface SaveData {
   quest: number;
   bossDefeated: boolean;
   kills: number;
+  /** Seçili oyun modu. */
+  mode: GameMode;
+  /** Hikâyede sıradaki görev. */
+  story: StoryProgress;
+  /** Ulaşılan en ileri sezon; önceki sezonlar yeniden oynanabilir. */
+  storyMax: number;
+  /** Av puanı: dev öldürerek ve görev bitirerek kazanılır, karakter almaya yarar. */
+  coins: number;
+  /** Sahip olunan karakterler ve seçili olan. */
+  chars: CharId[];
+  char: CharId;
 }
 
 export const MAX_UPGRADE = 5;
@@ -33,6 +49,12 @@ export function newSave(): SaveData {
     quest: 0,
     bossDefeated: false,
     kills: 0,
+    mode: 'story',
+    story: { chapter: 0, mission: 0 },
+    storyMax: 0,
+    coins: 0,
+    chars: ['aras'],
+    char: 'aras',
   };
 }
 
@@ -60,6 +82,31 @@ export function buyUpgrade(s: SaveData, id: UpgradeId) {
   return true;
 }
 
+/** Kazanılan XP'nin yarısı kadar av puanı verilir. */
+export function coinsFor(xp: number) {
+  return Math.max(0, Math.round(xp / 2));
+}
+
+export function ownsChar(s: SaveData, id: CharId) {
+  return s.chars.includes(id);
+}
+
+/** Karakteri av puanıyla alır ve seçer; puan yetmiyorsa ya da zaten varsa false döner. */
+export function buyChar(s: SaveData, id: CharId) {
+  const price = CHARACTERS[id].price;
+  if (ownsChar(s, id) || s.coins < price) return false;
+  s.coins -= price;
+  s.chars.push(id);
+  s.char = id;
+  return true;
+}
+
+export function selectChar(s: SaveData, id: CharId) {
+  if (!ownsChar(s, id)) return false;
+  s.char = id;
+  return true;
+}
+
 export function classUnlocked(s: SaveData, cls: ClassId) {
   return s.level >= CLASS_UNLOCK[cls];
 }
@@ -80,6 +127,14 @@ export function sanitizeSave(raw: unknown): SaveData {
   d.bossDefeated = r.bossDefeated === true;
   const up = (r.upgrades ?? {}) as Record<string, unknown>;
   for (const k of Object.keys(d.upgrades) as UpgradeId[]) d.upgrades[k] = num(up[k], 0, 0, MAX_UPGRADE);
+  d.mode = r.mode === 'free' ? 'free' : 'story';
+  const st = (r.story ?? {}) as Record<string, unknown>;
+  d.story = clampProgress(num(st.chapter, 0), num(st.mission, 0));
+  d.storyMax = Math.max(d.story.chapter, num(r.storyMax, 0, 0, CHAPTERS.length));
+  d.coins = num(r.coins, 0);
+  const owned = Array.isArray(r.chars) ? r.chars : [];
+  d.chars = CHAR_IDS.filter((id) => id === 'aras' || owned.includes(id));
+  if (typeof r.char === 'string' && d.chars.includes(r.char as CharId)) d.char = r.char as CharId;
   if (typeof r.cls === 'string' && r.cls in CLASS_UNLOCK && classUnlocked(d, r.cls as ClassId)) d.cls = r.cls as ClassId;
   return d;
 }
