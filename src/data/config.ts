@@ -1,0 +1,71 @@
+// Tüm denge sayıları tek yerde.
+export const CFG = {
+  world: {
+    size: 5200,
+    walls: [
+      { name: 'Taç Suru', r: 300 },
+      { name: 'Demir Sur', r: 1100 },
+      { name: 'Kalkan Suru', r: 2000 },
+    ],
+    wallH: 50,
+    wallT: 12,
+    gateHalfW: 11,
+    gateH: 24,
+    townR: 292,
+  },
+  player: {
+    walk: 7,
+    sprint: 10.5,
+    jump: 9,
+    gravity: 26,
+    radius: 0.45,
+    accelGround: 70,
+    friction: 22,
+    airAccel: 16,
+    maxAirWish: 9,
+    spawn: { x: 0, z: 225 },
+  },
+  grapple: {
+    range: 130,
+    reelAccel: 44,
+    gasPerSec: 2.5,
+    boostAccel: 32,
+    boostGasPerSec: 10,
+    maxSpeed: 50,
+    holdDist: 2.2,
+  },
+  // Gaz kendiliğinden dolmaz; yalnızca ikmal noktalarında ve gaz kutularında dolar.
+  gas: { max: 100, stationRate: 55, stationReach: 5, lowRatio: 0.2 },
+  blade: { max: 20 },
+  horse: { speed: 28, trot: 12, accel: 16, turn: 3.4, teleportDist: 170 },
+  sword: { base: 40, reach: 2.7, duration: 0.38, activeFrom: 0.05, activeTo: 0.3, cooldown: 0.42 },
+  // minRatio: dönüşmek için gereken en az doluluk oranı.
+  meter: { max: 100, normal: 10, elite: 25, boss: 100, minRatio: 0.5 },
+  titan: {
+    height: 15,
+    radius: 2.6,
+    // Dev formunda bar saniyede bu kadar azalır; güçler ayrıca bedel öder.
+    drain: 1.6,
+    cost: { punch: 3, slam: 10, roar: 15, stone: 25 },
+    speed: 15,
+    sprint: 22,
+    jump: 24,
+    gravity: 42,
+    punchDmg: 130,
+    punchRange: 8,
+    punchTime: 0.5,
+    roarRadius: 70,
+    roarStun: 5,
+    roarCd: 12,
+    stoneDur: 8,
+    stoneCd: 20,
+    stoneMult: 2.5,
+    slamRadius: 14,
+    slamDmg: 80,
+    hitDrain: 3,
+  },
+  spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
+  crate: { count: 46, respawn: 240, reach: 3.6 },
+} as const;
+
+export type MeterKind = 'normal' | 'elite' | 'boss';
