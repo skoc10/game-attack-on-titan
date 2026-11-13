@@ -8,7 +8,8 @@ export interface ClassDef {
   hp: number;
   speed: number;
   reel: number;
-  dmg: number;
+  /** Kılıç erişim çarpanı. */
+  reach: number;
   gas: number;
   ability: string;
   abilityDesc: string;
@@ -24,7 +25,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     hp: 100,
     speed: 1,
     reel: 1,
-    dmg: 1,
+    reach: 1,
     gas: 1,
     ability: 'İkinci Nefes',
     abilityDesc: 'Anında can tazeler, kısa süre hasar almaz.',
@@ -38,7 +39,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     hp: 75,
     speed: 1.12,
     reel: 1.3,
-    dmg: 0.9,
+    reach: 0.95,
     gas: 1,
     ability: 'Girdap',
     abilityDesc: 'Dönerek çevresindeki her şeyi biçer.',
@@ -48,25 +49,25 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'muhafiz',
     name: 'Muhafız',
     role: 'Güç',
-    desc: 'Tek vuruşta bitirir. Ağır teçhizat gazı çabuk tüketir.',
+    desc: 'Uzun kılıçlar, geniş erişim. Ağır teçhizat az gaz taşır.',
     hp: 130,
     speed: 0.95,
     reel: 0.95,
-    dmg: 1.35,
+    reach: 1.2,
     gas: 0.8,
     ability: 'Ağır Darbe',
-    abilityDesc: 'Sonraki vuruş 3 kat hasar verir ve daha uzağa erişir.',
+    abilityDesc: 'Sonraki vuruş zırhı deler: zırhlı devi ayaktayken de keser.',
     abilityCd: 9,
   },
   taktisyen: {
     id: 'taktisyen',
     name: 'Taktisyen',
     role: 'Destek',
-    desc: 'Kılıcı zayıf, aklı keskin. Kutuları haritada görür.',
+    desc: 'Kılıcı kısa, aklı keskin. Kutuları haritada görür.',
     hp: 90,
     speed: 1,
     reel: 1.05,
-    dmg: 0.85,
+    reach: 0.9,
     gas: 1.15,
     ability: 'İşaret Fişeği',
     abilityDesc: 'Yakındaki devleri işaretler ve yavaşlatır.',

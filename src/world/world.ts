@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../core/rng';
 import { CFG } from '../data/config';
-import { buildSky, buildTerrain, heightAt } from './terrain';
+import { buildMountains, buildSky, buildTerrain, heightAt } from './terrain';
 import { buildWalls, wallPush, wallTopAt } from './walls';
-import { buildForest, generateTrees, type Tree } from './forest';
-import { buildRuins, generateBuildings, type Building, type Village } from './ruins';
+import { buildForest, buildProps, generateTrees, type Tree } from './forest';
+import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
 
 const CELL = 32;
 const key = (cx: number, cz: number) => (cx + 512) * 1024 + (cz + 512);
@@ -20,12 +20,15 @@ export class World {
   readonly buildings: Building[];
   readonly villages: Village[];
   readonly grappleTargets: THREE.Object3D[] = [];
+  /** Kamerayı izleyen gökyüzü kubbesi. */
+  readonly sky: THREE.Mesh;
   private readonly treeGrid = new Map<number, Tree[]>();
   private readonly buildingGrid = new Map<number, Building[]>();
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
     const rng = mulberry32(20261113);
-    scene.add(buildSky(fogColor));
+    this.sky = buildSky(fogColor);
+    scene.add(this.sky, buildMountains(fogColor));
     scene.add(buildTerrain());
 
     const walls = buildWalls();
@@ -33,7 +36,7 @@ export class World {
 
     this.trees = generateTrees(rng);
     const forest = buildForest(this.trees, rng);
-    scene.add(forest.trunks, forest.leaves);
+    scene.add(...forest, ...buildProps(this.trees, rng));
 
     const gen = generateBuildings(rng);
     this.buildings = gen.buildings;
@@ -41,7 +44,7 @@ export class World {
     const ruins = buildRuins(this.buildings, rng);
     scene.add(ruins.walls, ruins.roofs);
 
-    this.grappleTargets.push(walls, forest.trunks, forest.leaves, ruins.walls, ruins.roofs);
+    this.grappleTargets.push(walls, ...forest, ruins.walls, ruins.roofs);
 
     for (const t of this.trees) {
       const k = key(Math.floor(t.x / CELL), Math.floor(t.z / CELL));
@@ -73,9 +76,10 @@ export class World {
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {
-        if (b.top > g && y >= b.top - 0.9 && x > b.minX - 0.3 && x < b.maxX + 0.3 && z > b.minZ - 0.3 && z < b.maxZ + 0.3) {
-          g = b.top;
-        }
+        if (x <= b.minX - 0.3 || x >= b.maxX + 0.3 || z <= b.minZ - 0.3 || z >= b.maxZ + 0.3) continue;
+        // Beşik çatının eğimi üzerinde yürünür.
+        const ry = roofY(b, x, z);
+        if (ry > g && y >= ry - 0.9) g = ry;
       }
     }
     return g;
@@ -95,7 +99,7 @@ export class World {
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {
-        if (y < b.top + margin && x > b.minX - margin && x < b.maxX + margin && z > b.minZ - margin && z < b.maxZ + margin) return true;
+        if (x > b.minX - margin && x < b.maxX + margin && z > b.minZ - margin && z < b.maxZ + margin && y < roofY(b, x, z) + margin) return true;
       }
     }
     return false;
@@ -133,7 +137,7 @@ export class World {
           const cell = this.buildingGrid.get(k);
           if (cell) {
             for (const b of cell) {
-              if (pos.y >= b.top - 0.6) continue;
+              if (pos.y >= roofY(b, pos.x, pos.z) - 0.6) continue;
               const l = pos.x - (b.minX - radius);
               const r = b.maxX + radius - pos.x;
               const n = pos.z - (b.minZ - radius);

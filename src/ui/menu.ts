@@ -3,16 +3,17 @@ import { CLASSES } from '../player/classes';
 import { buyUpgrade, classUnlocked, CLASS_UNLOCK, MAX_UPGRADE, UPGRADES, type ClassId, type UpgradeId } from '../systems/progression';
 
 const CONTROLS: [string, string][] = [
-  ['Sağ tık (basılı)', 'İmlecin gösterdiği yere yürü'],
-  ['Sol tık (basılı)', 'İmlece kanca at, çekil'],
+  ['Fareyi hareket ettir', 'Yönünü ve bakışını çevir'],
+  ['Sağ tık (basılı)', 'Baktığın yöne koş'],
+  ['Sol tık (basılı)', 'Nişana kanca at, çekil'],
   ['Sol tık', 'Dev yakınken kılıç — enseye vur'],
-  ['Fare tekerleği', 'Sağa / sola bak'],
-  ['Shift + tekerlek', 'Yukarı / aşağı bak'],
+  ['Yakalanınca', 'Sol tık seri: kes · Space: gazla sıyrıl'],
   ['Shift', 'Koş · havada gaz itişi'],
   ['Space', 'Zıpla · kancadan fırla'],
   ['E', 'Kutu aç · ata bin/in'],
   ['F', 'Atı çağır'],
   ['R', 'Sınıf yeteneği'],
+  ['Tab', 'Dönüşülecek devi seç (iğne türü)'],
   ['T', 'Deve dönüş (bar yarı + iğne)'],
   ['W A S D', 'Klavyeyle hareket (isteğe bağlı)'],
   ['Esc', 'Duraklat'],
@@ -94,8 +95,10 @@ export class Menu {
               <li>Kapıdan çık; atınla uzak surlara doğru yol al.</li>
               <li>Kancayla ağaçlara ve devlere tutun, hızlanıp <b>enseden</b> vur.</li>
               <li>Gaz kendiliğinden dolmaz: <b>mavi bayraklı ikmal noktalarında</b> doldur.</li>
-              <li>Sarı ışıklı kutulardan <b>Öz İğnesi</b> topla.</li>
-              <li>Dev barı yarıyı geçince <kbd>T</kbd> ile <b>Öfke Devi</b>’ne dönüş; her güç bar harcar.</li>
+              <li>Büyük devler seni <b>yakalayıp ağzına götürür</b>: sol tıkla kes ya da Space ile sıyrıl.</li>
+              <li>Enseye <b>tek temiz kesik</b> devi devirir.</li>
+              <li>Renkli ışıklı kutulardan <b>dev iğnesi</b> topla: her renk başka bir dev.</li>
+              <li>Dev barı yarıyı geçince <kbd>T</kbd> ile deve dönüş; her güç bar harcar.</li>
             </ol>
           </section>
           <section><h2>Kontroller</h2><ul class="keys">${controls}</ul></section>

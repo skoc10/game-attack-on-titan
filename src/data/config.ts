@@ -25,6 +25,8 @@ export const CFG = {
     maxAirWish: 9,
     spawn: { x: 0, z: 225 },
   },
+  // Serbest imleçte: ortadaki ölü bölge (yarı genişlik oranı) ve kenardaki dönüş hızı (rad/sn).
+  camera: { deadZone: 0.28, edgeTurn: 2.6 },
   grapple: {
     range: 130,
     reelAccel: 44,
@@ -41,28 +43,20 @@ export const CFG = {
   sword: { base: 40, reach: 2.7, duration: 0.38, activeFrom: 0.05, activeTo: 0.3, cooldown: 0.42 },
   // minRatio: dönüşmek için gereken en az doluluk oranı.
   meter: { max: 100, normal: 10, elite: 25, boss: 100, minRatio: 0.5 },
-  titan: {
-    height: 15,
-    radius: 2.6,
-    // Dev formunda bar saniyede bu kadar azalır; güçler ayrıca bedel öder.
-    drain: 1.6,
-    cost: { punch: 3, slam: 10, roar: 15, stone: 25 },
-    speed: 15,
-    sprint: 22,
-    jump: 24,
-    gravity: 42,
-    punchDmg: 130,
-    punchRange: 8,
-    punchTime: 0.5,
-    roarRadius: 70,
-    roarStun: 5,
-    roarCd: 12,
-    stoneDur: 8,
-    stoneCd: 20,
-    stoneMult: 2.5,
-    slamRadius: 14,
-    slamDmg: 80,
-    hitDrain: 3,
+  // Dev formlarının sayıları data/titans.ts içindedir; burada yalnızca ortak olanlar var.
+  titan: { hitDrain: 3 },
+  // Yakalama: devler oyuncuyu eliyle tutup ağzına götürür; oyuncu kurtulma barını doldurarak sıyrılır.
+  grab: {
+    minHeight: 7,
+    eatBase: 2.9,
+    eatPerM: 0.05,
+    squeeze: 5,
+    biteBase: 45,
+    bitePerM: 3,
+    slashGain: 18,
+    burstGain: 45,
+    burstGas: 12,
+    decay: 12,
   },
   spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
   crate: { count: 46, respawn: 240, reach: 3.6 },

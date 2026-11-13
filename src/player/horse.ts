@@ -2,11 +2,17 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { lerp, turnToward } from '../core/rng';
+import { GEO, Rig } from '../enemies/humanoid';
 
 const H = CFG.horse;
-const BOX = new THREE.BoxGeometry(1, 1, 1);
 
 export type HorseMode = 'idle' | 'coming' | 'ridden';
+
+interface Leg {
+  upper: THREE.Group;
+  lower: THREE.Group;
+  offset: number;
+}
 
 export class Horse {
   readonly group = new THREE.Group();
@@ -15,35 +21,73 @@ export class Horse {
   yaw = 0;
   speed = 0;
   mode: HorseMode = 'idle';
-  private readonly legs: THREE.Group[] = [];
+  private readonly legs: Leg[] = [];
+  private readonly neck = new THREE.Group();
+  private readonly tail: THREE.Mesh;
+  private readonly body = new THREE.Group();
   private phase = 0;
 
   constructor(game: Game, x: number, z: number) {
-    const coat = new THREE.MeshLambertMaterial({ color: 0x4a3324 });
-    const dark = new THREE.MeshLambertMaterial({ color: 0x1e1612 });
-    const saddle = new THREE.MeshLambertMaterial({ color: 0x5a1f24 });
-    const add = (parent: THREE.Object3D, mat: THREE.Material, sx: number, sy: number, sz: number, x0: number, y0: number, z0: number) => {
-      const m = new THREE.Mesh(BOX, mat);
-      m.scale.set(sx, sy, sz);
-      m.position.set(x0, y0, z0);
-      parent.add(m);
-      return m;
-    };
-    add(this.group, coat, 0.78, 0.75, 2.0, 0, 1.35, 0);
-    add(this.group, saddle, 0.82, 0.12, 0.7, 0, 1.76, -0.05);
-    const neck = add(this.group, coat, 0.32, 0.9, 0.4, 0, 1.95, 0.95);
-    neck.rotation.x = 0.5;
-    add(this.group, coat, 0.3, 0.34, 0.7, 0, 2.35, 1.4);
-    add(this.group, dark, 0.1, 0.6, 0.12, 0, 2.05, 0.75);
-    const tail = add(this.group, dark, 0.14, 0.8, 0.14, 0, 1.2, -1.0);
-    tail.rotation.x = -0.35;
-    for (const [lx, lz] of [[-0.28, 0.78], [0.28, 0.78], [-0.28, -0.78], [0.28, -0.78]]) {
-      const g = new THREE.Group();
-      g.position.set(lx, 1.05, lz);
-      add(g, coat, 0.16, 1.05, 0.18, 0, -0.52, 0);
-      this.group.add(g);
-      this.legs.push(g);
+    const rig = new Rig(0.014);
+    const coat = rig.toon(0x7a5238);
+    const belly = rig.toon(0x8d6447);
+    const dark = rig.toon(0x231914);
+    const saddle = rig.toon(0x5a3b26);
+    const cloth = rig.toon(0x7a2230);
+    const b = this.body;
+    this.group.add(b);
+
+    // Gövde: yatay kapsül, göğüs ve sağrı dolgun.
+    const barrel = rig.part(b, GEO.capsule, coat, 0.37, 0.45, 0.4, 0, 1.36, 0);
+    barrel.rotation.x = Math.PI / 2;
+    rig.part(b, GEO.sphere, coat, 0.37, 0.43, 0.42, 0, 1.4, 0.66);
+    rig.part(b, GEO.sphere, coat, 0.38, 0.44, 0.46, 0, 1.42, -0.68);
+    rig.part(b, GEO.sphere, belly, 0.33, 0.3, 0.7, 0, 1.2, 0, false);
+
+    // Boyun ve baş
+    this.neck.position.set(0, 1.62, 0.82);
+    b.add(this.neck);
+    const neck = rig.part(this.neck, GEO.capsule, coat, 0.19, 0.2, 0.25, 0, 0.3, 0.2);
+    neck.rotation.x = 0.62;
+    const mane = rig.part(this.neck, GEO.box, dark, 0.07, 0.78, 0.13, 0, 0.36, 0.04, false);
+    mane.rotation.x = 0.62;
+    const head = rig.part(this.neck, GEO.capsule, coat, 0.13, 0.15, 0.15, 0, 0.72, 0.62);
+    head.rotation.x = 1.95;
+    rig.part(this.neck, GEO.sphere, belly, 0.105, 0.1, 0.12, 0, 0.58, 0.86, false); // burun
+    for (const s of [-1, 1]) {
+      const ear = rig.part(this.neck, GEO.cone, coat, 0.04, 0.13, 0.03, s * 0.08, 0.96, 0.42, false);
+      ear.rotation.z = -s * 0.25;
+      rig.part(this.neck, GEO.sphere, dark, 0.02, 0.026, 0.012, s * 0.115, 0.78, 0.62, false); // göz
     }
+    rig.part(this.neck, GEO.box, dark, 0.06, 0.2, 0.1, 0, 0.9, 0.36, false); // perçem
+
+    // Kuyruk
+    this.tail = rig.part(b, GEO.capsule, dark, 0.075, 0.2, 0.075, 0, 1.2, -1.14);
+    this.tail.rotation.x = -0.4;
+
+    // Eyer ve örtü
+    rig.part(b, GEO.box, cloth, 0.8, 0.05, 0.86, 0, 1.775, -0.05, false);
+    rig.part(b, GEO.sphere, saddle, 0.3, 0.07, 0.34, 0, 1.83, -0.05);
+    rig.part(b, GEO.sphere, saddle, 0.2, 0.09, 0.07, 0, 1.9, -0.36, false);
+
+    // Bacaklar: üst + alt eklem, toynak
+    const mkLeg = (lx: number, lz: number, offset: number) => {
+      const upper = new THREE.Group();
+      upper.position.set(lx, 1.12, lz);
+      b.add(upper);
+      rig.part(upper, GEO.capsule, coat, 0.095, 0.145, 0.11, 0, -0.29, 0);
+      const lower = new THREE.Group();
+      lower.position.set(0, -0.58, 0);
+      upper.add(lower);
+      rig.part(lower, GEO.capsule, coat, 0.058, 0.125, 0.062, 0, -0.25, 0);
+      rig.part(lower, GEO.box, dark, 0.13, 0.09, 0.16, 0, -0.495, 0.012);
+      this.legs.push({ upper, lower, offset });
+    };
+    mkLeg(-0.22, 0.7, 0);
+    mkLeg(0.22, 0.7, Math.PI);
+    mkLeg(-0.22, -0.72, Math.PI * 0.9);
+    mkLeg(0.22, -0.72, Math.PI * 1.9);
+
     this.pos = this.group.position;
     this.pos.set(x, 0, z);
     game.scene.add(this.group);
@@ -85,7 +129,7 @@ export class Horse {
     }
     this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
     this.vel.set(Math.sin(this.yaw) * this.speed, 0, Math.cos(this.yaw) * this.speed);
-    this.phase += this.speed * dt * 0.75;
+    this.phase += this.speed * dt * 0.7;
   }
 
   update(dt: number, game: Game) {
@@ -108,10 +152,18 @@ export class Horse {
       this.vel.set(0, 0, 0);
     }
     this.group.rotation.y = this.yaw;
-    const amp = Math.min(0.9, this.speed / 18);
-    for (let i = 0; i < 4; i++) {
-      this.legs[i].rotation.x = Math.sin(this.phase + (i === 0 || i === 3 ? 0 : Math.PI)) * amp;
+
+    // Dörtnal: bacak geriye giderken alt eklem kırılır, gövde hafifçe yaylanır.
+    const amp = Math.min(0.95, this.speed / 17);
+    for (const l of this.legs) {
+      const s = Math.sin(this.phase + l.offset);
+      l.upper.rotation.x = s * amp;
+      l.lower.rotation.x = Math.max(0, Math.sin(this.phase + l.offset + 1.1)) * amp * 1.3;
     }
-    this.group.position.y += Math.abs(Math.sin(this.phase)) * amp * 0.18;
+    const bob = Math.sin(this.phase * 2) * amp;
+    this.body.position.y = Math.abs(bob) * 0.1;
+    this.body.rotation.x = bob * 0.035;
+    this.neck.rotation.x = 0.1 * amp + bob * 0.06;
+    this.tail.rotation.x = -0.4 - amp * 0.7 + Math.sin(this.phase * 1.3) * 0.1;
   }
 }

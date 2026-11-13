@@ -1,60 +1,103 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
+import type { Giant } from '../enemies/giant';
 import type { Player } from './player';
-import { CFG } from '../data/config';
 import { lerp } from '../core/rng';
-import { buildHumanoid, type Humanoid } from '../enemies/humanoid';
+import { TITANS, type Ability, type TitanDef, type TitanId } from '../data/titans';
+import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
 
-const T = CFG.titan;
 const v = new THREE.Vector3();
+const BOULDER_G = 40;
 
-/** Öfke Devi: oyuncunun ilk dev formu. Yumruk, kükreme, taş yumruk, sıçrama ezmesi. */
+interface Body {
+  model: Humanoid;
+  armBase: THREE.Color;
+}
+
+/**
+ * Oyuncunun dev formları. Hangi formda olunduğu `def` ile belirlenir;
+ * yumruk, iki güç (Q/E) ve sıçrayıp ezme, formun verisindeki sayılarla çalışır.
+ */
 export class TitanForm {
-  readonly body: Humanoid;
+  def: TitanDef = TITANS.ofke;
   punchT = -1;
-  roarCd = 0;
-  stoneT = 0;
-  stoneCd = 0;
+  /** Q ve E güçlerinin bekleme süreleri. */
+  qCd = 0;
+  eCd = 0;
+  /** Güçlendirme (taş yumruk) kalan süresi. */
+  buffT = 0;
+  /** Atılım sürüyorsa kalan süre; oyuncu bu sırada ileri savrulur. */
+  rushT = 0;
+  rushSpeed = 0;
   jumped = false;
+  private buffMult = 1;
+  private rush: Extract<Ability, { kind: 'rush' }> | null = null;
+  private readonly rushHit = new Set<Giant>();
+  private slamCd = 0;
   private punchDone = false;
   private punchArm = 1;
   private phase = 0;
   private warnT = 0;
-  private readonly armBase = new THREE.Color(0x7a5b4e);
+  private readonly bodies = new Map<TitanId, Body>();
   private readonly armStone = new THREE.Color(0xb9d3e6);
+  private readonly boulder: THREE.Mesh;
+  private readonly boulderVel = new THREE.Vector3();
+  private boulderAb: Extract<Ability, { kind: 'throw' }> | null = null;
 
   constructor(private readonly game: Game) {
-    this.body = buildHumanoid(
-      T.height,
-      { skin: 0x7a5b4e, torso: 0x6a4d44, legs: 0x5e443d, hair: 0x1a1412, nape: 0x7a5b4e, eye: 0xff7a1a, glow: 0xff7a1a },
-      { bulk: 1.15, head: 0.95, arm: 1.1, cracks: true },
-    );
-    this.body.root.visible = false;
-    game.scene.add(this.body.root);
+    const geo = new THREE.DodecahedronGeometry(2.4, 0);
+    this.boulder = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0x77736a, flatShading: true }));
+    this.boulder.castShadow = true;
+    this.boulder.visible = false;
+    game.scene.add(this.boulder);
   }
 
+  /** Formun modeli ilk dönüşümde kurulur, sonra saklanır. */
+  private ensureBody(id: TitanId) {
+    let b = this.bodies.get(id);
+    if (!b) {
+      const d = TITANS[id];
+      const model = buildHumanoid(d.height, d.palette, d.opts);
+      model.root.visible = false;
+      this.game.scene.add(model.root);
+      b = { model, armBase: model.armMat.color.clone() };
+      this.bodies.set(id, b);
+    }
+    return b;
+  }
+
+  get body() {
+    return this.ensureBody(this.def.id).model;
+  }
+
+  /** Güçlendirme açık mı (yumruklar zırh kırar). */
   get stone() {
-    return this.stoneT > 0;
+    return this.buffT > 0;
   }
 
-  enter() {
-    this.body.root.visible = true;
+  enter(id: TitanId) {
+    this.def = TITANS[id];
+    this.ensureBody(id).model.root.visible = true;
     this.punchT = -1;
-    this.roarCd = 0;
-    this.stoneT = 0;
-    this.stoneCd = 0;
+    this.qCd = 0;
+    this.eCd = 0;
+    this.buffT = 0;
+    this.rushT = 0;
+    this.slamCd = 0;
     this.jumped = false;
     this.setStone(false);
   }
 
   exit() {
-    this.body.root.visible = false;
     this.setStone(false);
+    this.rushT = 0;
+    for (const b of this.bodies.values()) b.model.root.visible = false;
   }
 
   private setStone(on: boolean) {
-    this.body.armMat.color.copy(on ? this.armStone : this.armBase);
-    this.body.armMat.emissive.setHex(on ? 0x2a4458 : 0x000000);
+    const b = this.ensureBody(this.def.id);
+    b.model.armMat.color.copy(on ? this.armStone : b.armBase);
+    b.model.armMat.emissive.setHex(on ? 0x2a4458 : 0x000000);
   }
 
   /** Güç bedelini bardan öder; yetmiyorsa uyarır. */
@@ -67,8 +110,35 @@ export class TitanForm {
     return false;
   }
 
+  /** Bir dairenin içindeki canlı devlere vurur; vurulan sayısını döner. */
+  private hitArea(p: Player, x: number, z: number, radius: number, dmg: number, armorBreak: boolean, stun = 0, once?: Set<Giant>) {
+    const g = this.game;
+    let n = 0;
+    for (const gi of g.giants) {
+      if (!gi.alive || once?.has(gi)) continue;
+      if (Math.hypot(gi.pos.x - x, gi.pos.z - z) > radius + gi.radius) continue;
+      once?.add(gi);
+      gi.titanHit(dmg, g, armorBreak, p.pos);
+      if (stun > 0 && gi.alive) gi.stun(gi.type.kind === 'boss' ? stun * 0.5 : stun);
+      v.set(gi.pos.x, gi.pos.y + Math.min(gi.h, this.def.height) * 0.7, gi.pos.z);
+      g.particles.burst(v, 22, 18, 0.8, armorBreak ? 0xbfe0ff : this.def.color, 2);
+      n++;
+    }
+    return n;
+  }
+
+  private ring(p: Player, radius: number, y: number, color: number) {
+    const g = this.game;
+    const n = Math.round(40 + radius);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      g.particles.emit(p.pos.x, p.pos.y + y, p.pos.z, Math.sin(a) * radius * 1.1, 3, Math.cos(a) * radius * 1.1, 1.1, color);
+    }
+  }
+
   punch(p: Player) {
-    if (this.punchT >= 0 || !this.pay(T.cost.punch)) return;
+    const pn = this.def.punch;
+    if (this.punchT >= 0 || this.rushT > 0 || !this.pay(pn.cost)) return;
     this.punchT = 0;
     this.punchDone = false;
     this.punchArm *= -1;
@@ -76,89 +146,157 @@ export class TitanForm {
     this.game.audio.swing();
   }
 
-  roar(p: Player) {
-    if (this.roarCd > 0 || !this.pay(T.cost.roar)) return;
-    this.roarCd = T.roarCd;
+  /** Q ya da E gücünü kullanır. */
+  cast(slot: 'q' | 'e', p: Player) {
+    const ab = this.def[slot];
+    const cd = slot === 'q' ? this.qCd : this.eCd;
+    if (cd > 0 || this.rushT > 0 || !this.pay(ab.cost)) return;
+    if (slot === 'q') this.qCd = ab.cd;
+    else this.eCd = ab.cd;
     const g = this.game;
-    for (const gi of g.giants) {
-      if (!gi.alive) continue;
-      if (Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < T.roarRadius) gi.stun(gi.type.kind === 'boss' ? T.roarStun * 0.5 : T.roarStun);
+    const H = this.def.height;
+    switch (ab.kind) {
+      case 'stun': {
+        for (const gi of g.giants) {
+          if (gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < ab.radius) gi.stun(gi.type.kind === 'boss' ? ab.stun * 0.5 : ab.stun);
+        }
+        g.audio.roar();
+        g.shakeCam(1);
+        this.ring(p, ab.radius * 0.8, H * 0.85, this.def.color);
+        g.hud.toast(`${ab.name.toLocaleUpperCase('tr')} — devler sersemledi`);
+        break;
+      }
+      case 'buff':
+        this.buffT = ab.dur;
+        this.buffMult = ab.mult;
+        this.setStone(true);
+        g.audio.clang();
+        g.hud.toast(`${ab.name.toLocaleUpperCase('tr')} — zırh kırılır`);
+        break;
+      case 'rush':
+        this.rush = ab;
+        this.rushT = ab.time;
+        this.rushSpeed = ab.speed;
+        this.rushHit.clear();
+        p.faceYaw = g.aimYaw();
+        g.audio.gas();
+        g.audio.swing();
+        break;
+      case 'burst':
+        this.hitArea(p, p.pos.x, p.pos.z, ab.radius, ab.dmg * this.mult, ab.armorBreak || this.stone, ab.stun);
+        g.audio.stomp();
+        g.shakeCam(1.1);
+        this.ring(p, ab.radius, 1, this.def.color);
+        this.ring(p, ab.radius * 0.6, 0.6, 0xa39a86);
+        break;
+      case 'throw': {
+        // Kaya, elden nişan alınan noktaya balistik bir yay çizer.
+        const b = this.boulder;
+        b.position.set(p.pos.x + Math.sin(p.faceYaw) * 3, p.pos.y + H * 0.85, p.pos.z + Math.cos(p.faceYaw) * 3);
+        const aim = g.aimPoint;
+        let dx = aim.x - p.pos.x;
+        let dz = aim.z - p.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const range = Math.min(240, Math.max(25, d));
+        dx = (dx / d) * range;
+        dz = (dz / d) * range;
+        const tx = p.pos.x + dx;
+        const tz = p.pos.z + dz;
+        const ty = g.world.heightAt(tx, tz);
+        const T = Math.max(0.6, range / ab.speed);
+        this.boulderVel.set((tx - b.position.x) / T, (ty - b.position.y) / T + 0.5 * BOULDER_G * T, (tz - b.position.z) / T);
+        b.visible = true;
+        this.boulderAb = ab;
+        p.faceYaw = Math.atan2(dx, dz);
+        this.punchT = 0;
+        this.punchDone = true; // yalnızca fırlatma animasyonu; yumruk hasarı yok
+        this.punchArm = 1;
+        g.audio.swing();
+        break;
+      }
     }
-    g.audio.roar();
-    g.shakeCam(1);
-    for (let i = 0; i < 70; i++) {
-      const a = (i / 70) * Math.PI * 2;
-      g.particles.emit(p.pos.x, p.pos.y + T.height * 0.85, p.pos.z, Math.sin(a) * 60, 2, Math.cos(a) * 60, 1.1, 0xffa040);
-    }
-    g.hud.toast('KÜKREME — devler sersemledi');
   }
 
-  hardenFists() {
-    if (this.stoneCd > 0 || !this.pay(T.cost.stone)) return;
-    this.stoneCd = T.stoneCd;
-    this.stoneT = T.stoneDur;
-    this.setStone(true);
-    this.game.audio.clang();
-    this.game.hud.toast('TAŞ YUMRUK — zırh kırılır');
+  private get mult() {
+    return this.stone ? this.buffMult : 1;
   }
 
-  /** Sıçrayıştan inerken çağrılır; barı yetiyorsa çevreyi ezer. */
+  /** Sıçrayıştan inerken (ya da zıplayamayan formda Space ile) çevreyi ezer. */
   slam(p: Player) {
     const g = this.game;
-    if (!g.meter.spend(T.cost.slam)) return;
-    const dmg = T.slamDmg * (this.stone ? T.stoneMult : 1);
-    for (const gi of g.giants) {
-      if (gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < T.slamRadius + gi.radius) gi.titanHit(dmg, g, this.stone, p.pos);
-    }
+    const s = this.def.slam;
+    if (this.slamCd > 0 || !g.meter.spend(s.cost)) return;
+    this.slamCd = 1.2;
+    this.hitArea(p, p.pos.x, p.pos.z, s.radius, s.dmg * this.mult, this.stone || this.def.punch.armorBreak);
     g.audio.stomp();
     g.shakeCam(1);
-    for (let i = 0; i < 50; i++) {
-      const a = Math.random() * 6.28;
-      g.particles.emit(p.pos.x, p.pos.y + 0.5, p.pos.z, Math.sin(a) * 30, 5, Math.cos(a) * 30, 1.2, 0x9a8f7a);
-    }
+    this.ring(p, s.radius * 0.7, 0.5, 0x9a8f7a);
   }
 
   update(dt: number, p: Player) {
     const g = this.game;
-    if (this.roarCd > 0) this.roarCd -= dt;
-    if (this.stoneCd > 0) this.stoneCd -= dt;
+    const d = this.def;
+    if (this.qCd > 0) this.qCd -= dt;
+    if (this.eCd > 0) this.eCd -= dt;
+    if (this.slamCd > 0) this.slamCd -= dt;
     if (this.warnT > 0) this.warnT -= dt;
-    if (this.stoneT > 0) {
-      this.stoneT -= dt;
-      if (this.stoneT <= 0) this.setStone(false);
+    if (this.buffT > 0) {
+      this.buffT -= dt;
+      if (this.buffT <= 0) this.setStone(false);
+    }
+    if (this.rushT > 0 && this.rush) {
+      this.rushT -= dt;
+      const hits = this.hitArea(p, p.pos.x, p.pos.z, this.rush.hitRadius, this.rush.dmg * this.mult, this.rush.armorBreak || this.stone, 0, this.rushHit);
+      if (hits > 0) {
+        g.audio.hit();
+        g.shakeCam(0.7);
+      }
+      g.particles.emit(p.pos.x, p.pos.y + 1, p.pos.z, 0, 4, 0, 0.7, 0xa39a86);
     }
     if (this.punchT >= 0) {
       this.punchT += dt;
-      if (!this.punchDone && this.punchT >= T.punchTime * 0.45) {
+      if (!this.punchDone && this.punchT >= d.punch.time * 0.45) {
         this.punchDone = true;
-        const cx = p.pos.x + Math.sin(p.faceYaw) * 6;
-        const cz = p.pos.z + Math.cos(p.faceYaw) * 6;
-        const dmg = T.punchDmg * (this.stone ? T.stoneMult : 1);
-        let any = false;
-        for (const gi of g.giants) {
-          if (!gi.alive) continue;
-          if (Math.hypot(gi.pos.x - cx, gi.pos.z - cz) < T.punchRange + gi.radius) {
-            gi.titanHit(dmg, g, this.stone, p.pos);
-            any = true;
-            v.set(gi.pos.x, gi.pos.y + Math.min(gi.h * 0.7, T.height * 0.7), gi.pos.z);
-            g.particles.burst(v, 25, 18, 0.8, this.stone ? 0xbfe0ff : 0xff9a40, 2);
-          }
-        }
-        if (any) {
+        const cx = p.pos.x + Math.sin(p.faceYaw) * d.punch.reach;
+        const cz = p.pos.z + Math.cos(p.faceYaw) * d.punch.reach;
+        if (this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult, d.punch.armorBreak || this.stone) > 0) {
           g.audio.hit();
           g.shakeCam(0.6);
         }
       }
-      if (this.punchT >= T.punchTime) this.punchT = -1;
+      if (this.punchT >= d.punch.time) this.punchT = -1;
     }
+    this.updateBoulder(dt, p);
+  }
+
+  private updateBoulder(dt: number, p: Player) {
+    const b = this.boulder;
+    const ab = this.boulderAb;
+    if (!b.visible || !ab) return;
+    const g = this.game;
+    this.boulderVel.y -= BOULDER_G * dt;
+    b.position.addScaledVector(this.boulderVel, dt);
+    b.rotation.x += dt * 5;
+    b.rotation.z += dt * 3;
+    if (b.position.y > g.world.heightAt(b.position.x, b.position.z) + 1) return;
+    // Çarpma: geniş alan hasarı; kaya her zırhı kırar.
+    b.visible = false;
+    this.boulderAb = null;
+    this.hitArea(p, b.position.x, b.position.z, ab.radius, ab.dmg, true);
+    g.audio.stomp();
+    const dist = Math.hypot(b.position.x - p.pos.x, b.position.z - p.pos.z);
+    g.shakeCam(Math.max(0.2, 1 - dist / 200));
+    g.particles.burst(b.position, 70, 26, 1.4, 0xa39a86, 3, 3);
+    g.particles.burst(b.position, 30, 16, 0.9, this.def.color, 2);
   }
 
   animate(dt: number, p: Player, moving: boolean) {
     const b = this.body;
+    const d = this.def;
     b.root.position.copy(p.pos);
     b.root.rotation.y = p.faceYaw;
     const hs = Math.hypot(p.vel.x, p.vel.z);
-    if (moving && p.onGround) this.phase += (hs * dt) / (T.height * 0.2);
+    if (moving && p.onGround) this.phase += (hs * dt) / (d.height * 0.2);
     const swing = moving && p.onGround ? Math.sin(this.phase) * 0.7 : 0;
     let aL = -swing * 0.6;
     let aR = swing * 0.6;
@@ -170,12 +308,20 @@ export class TitanForm {
       lL = lR = 0.4;
       tilt = 0.25;
     }
+    if (this.rushT > 0) {
+      // Atılım: omuz önde, kollar geride.
+      tilt = 0.55;
+      aL = aR = 0.9;
+    }
+    let punchElbow: number | undefined;
     if (this.punchT >= 0) {
-      const t = this.punchT / T.punchTime;
+      const t = this.punchT / d.punch.time;
       const a = t < 0.45 ? lerp(0.9, -1.6, t / 0.45) : lerp(-1.6, -0.6, (t - 0.45) / 0.55);
       if (this.punchArm > 0) aR = a;
       else aL = a;
       tilt = 0.25;
+      // Kol önce bükülür, vuruş anında açılır.
+      punchElbow = t < 0.3 ? -1.7 : -0.15;
     }
     const k = 1 - Math.exp(-dt * 18);
     b.armL.rotation.x = lerp(b.armL.rotation.x, aL, k);
@@ -183,5 +329,6 @@ export class TitanForm {
     b.legL.rotation.x = lerp(b.legL.rotation.x, lL, k);
     b.legR.rotation.x = lerp(b.legR.rotation.x, lR, k);
     b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, 1 - Math.exp(-dt * 8));
+    autoBend(b, k, { elbowL: this.punchArm > 0 ? undefined : punchElbow, elbowR: this.punchArm > 0 ? punchElbow : undefined });
   }
 }

@@ -1,5 +1,6 @@
 import type { Game } from '../game';
 import { CFG } from '../data/config';
+import { hex, TITAN_IDS, TITANS } from '../data/titans';
 import { xpToNext } from '../systems/progression';
 import { FREE_HUNT } from '../systems/quests';
 
@@ -31,6 +32,12 @@ export class Hud {
       <div class="crosshair" data-id="cross"></div>
       <div class="hint" data-id="hint"></div>
       <div class="toasts" data-id="toasts"></div>
+      <div class="grab" data-id="grab">
+        <div class="grabTitle">YAKALANDIN!</div>
+        <div class="grabRow"><span class="label">KURTULMA</span><div class="bar esc"><i data-id="escape"></i></div></div>
+        <div class="grabRow"><span class="label">AĞZA</span><div class="bar eat"><i data-id="eat"></i></div></div>
+        <div class="grabKeys" data-id="grabKeys"></div>
+      </div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
       <div class="bl">
         <div class="row"><span class="label">CAN</span><div class="bar hp"><i data-id="hp"></i></div></div>
@@ -120,30 +127,41 @@ export class Hud {
 
     const titan = p.mode === 'titan';
     this.width('titan', m.ratio);
-    this.text('needles', `ÖZ İĞNESİ × ${m.needles}`);
-    this.text('titanLabel', titan ? `ÖFKE DEVİ · kalan bar ${Math.max(0, Math.ceil(m.value))}` : `DEV BARI · ${Math.floor(m.value)}/${m.max}`);
+    // İğne envanteri: eldeki türler renkli çiplerle, seçili olan çerçeveli.
+    const owned = TITAN_IDS.filter((id) => m.needles[id] > 0);
+    this.html(
+      'needles',
+      owned.length === 0
+        ? 'İĞNE YOK'
+        : owned
+            .map((id) => `<span class="nd ${id === m.selected ? 'sel' : ''}" style="--c:${hex(TITANS[id].color)}">${TITANS[id].name.replace(' Devi', '')} ×${m.needles[id]}</span>`)
+            .join('') + (owned.length > 1 && !titan ? '<kbd>Tab</kbd>' : ''),
+    );
+    const sel = TITANS[m.selected];
+    const formName = (titan ? p.titan.def.name : sel.name).toLocaleUpperCase('tr');
+    this.text('titanLabel', titan ? `${formName} · kalan bar ${Math.max(0, Math.ceil(m.value))}` : `DEV BARI · ${Math.floor(m.value)}/${m.max}`);
     const bc = this.el.titan.parentElement!.parentElement!;
     bc.classList.toggle('ready', m.canTransform());
     bc.classList.toggle('active', titan);
     const cd = (v: number) => (v > 0 ? ` <b>${Math.ceil(v)}</b>` : '');
     if (titan) {
       const t = p.titan;
-      const c = CFG.titan.cost;
+      const d = t.def;
       // Her gücün yanında harcadığı bar; yetmiyorsa soluk görünür.
       const pw = (key: string, name: string, cost: number, extra = '') =>
         `<span class="${m.value >= cost ? '' : 'off'}"><kbd>${key}</kbd> ${name} <i>−${cost}</i>${extra}</span>`;
       this.html(
         'titanInfo',
-        pw('Sol tık', 'Yumruk', c.punch) +
-          pw('Q', 'Kükreme', c.roar, cd(t.roarCd)) +
-          pw('E', 'Taş Yumruk', c.stone, t.stone ? ' <b>AKTİF</b>' : cd(t.stoneCd)) +
-          pw('Space', 'Ezme', c.slam) +
+        pw('Sol tık', d.punch.name, d.punch.cost) +
+          pw('Q', d.q.name, d.q.cost, d.q.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.qCd)) +
+          pw('E', d.e.name, d.e.cost, d.e.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.eCd)) +
+          pw('Space', d.slam.name, d.slam.cost) +
           '<span><kbd>T</kbd> Çık</span>',
       );
     } else if (m.canTransform()) {
-      this.html('titanInfo', '<kbd>T</kbd> ÖFKE DEVİ’NE DÖNÜŞ — bar ne kadar doluysa o kadar güç');
+      this.html('titanInfo', `<kbd>T</kbd> ${formName}’NE DÖNÜŞ — bar ne kadar doluysa o kadar güç`);
     } else if (m.charged) {
-      this.html('titanInfo', 'Bar yeterli — dönüşmek için bir Öz İğnesi bul');
+      this.html('titanInfo', 'Bar yeterli — dönüşmek için renkli ışıklı bir kutudan iğne bul');
     } else {
       this.html('titanInfo', 'Dev öldürdükçe dolar · yarıya gelince dönüşebilirsin');
     }
@@ -156,10 +174,27 @@ export class Hud {
 
     // Nişangâh imleci izler.
     const cross = this.el.cross;
-    cross.style.transform = `translate(${g.input.mouseX - 9}px, ${g.input.mouseY - 9}px)`;
+    const cx = g.input.locked ? window.innerWidth / 2 : g.input.mouseX;
+    const cy = g.input.locked ? window.innerHeight / 2 : g.input.mouseY;
+    cross.style.transform = `translate(${cx - 9}px, ${cy - 9}px)`;
     cross.classList.toggle('titan', titan);
     cross.classList.toggle('ok', g.aim !== null);
     cross.classList.toggle('giant', g.aim?.giant != null);
+
+    // Yakalanma göstergesi: kurtulma barı ve devin ağzına kalan mesafe.
+    const by = p.grabbedBy;
+    this.el.grab.style.display = by ? 'block' : 'none';
+    if (by) {
+      this.width('escape', p.escape / 100);
+      this.width('eat', by.grabProgress);
+      const canBurst = p.gas >= CFG.grab.burstGas;
+      this.html(
+        'grabKeys',
+        `<span><kbd>Sol tık</kbd> seri bas: parmakları kes</span>` +
+          `<span class="${canBurst ? '' : 'off'}"><kbd>Space</kbd> gaz patlaması <i>−${CFG.grab.burstGas} gaz</i></span>` +
+          (m.canTransform() ? `<span><kbd>T</kbd> elinde deve dönüş</span>` : ''),
+      );
+    }
 
     const boss = g.spawner.boss;
     const showBoss = !!boss && boss.alive && Math.hypot(boss.pos.x - p.pos.x, boss.pos.z - p.pos.z) < CFG.world.walls[1].r * 0.3;

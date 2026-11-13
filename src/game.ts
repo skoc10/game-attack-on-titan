@@ -9,6 +9,9 @@ import { World } from './world/world';
 import { Crates, type Crate } from './world/crates';
 import { Spawner } from './world/spawner';
 import { Stations } from './world/stations';
+import { TITAN_IDS, TITANS } from './data/titans';
+import { Grass } from './world/grass';
+import { SUN_DIR } from './world/terrain';
 import { zoneName } from './world/walls';
 import { Player } from './player/player';
 import { Horse } from './player/horse';
@@ -28,7 +31,7 @@ const look = new THREE.Vector3();
 export class Game {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(70, 1, 0.3, 4500);
+  readonly camera = new THREE.PerspectiveCamera(70, 1, 0.5, 8000);
   readonly input: Input;
   readonly audio = new GameAudio();
   readonly meter = new TitanMeter();
@@ -38,6 +41,9 @@ export class Game {
   readonly horse: Horse;
   readonly crates: Crates;
   readonly stations: Stations;
+  readonly grass: Grass;
+  private readonly sun: THREE.DirectionalLight;
+  private skyTime = 0;
   readonly spawner = new Spawner();
   readonly quests: QuestLog;
   readonly hud: Hud;
@@ -66,6 +72,10 @@ export class Game {
   private yawPending = 0;
   private pitchPending = 0;
   private lowGasWarned = false;
+  /** Son karenin süresi (girdi zamanlamaları için). */
+  frameDt = 0;
+  private wasLocked = false;
+  private lockHintT = -1;
   private last = 0;
   private frameNo = 0;
   private slowT = 0;
@@ -78,13 +88,26 @@ export class Game {
     this.debug = new URLSearchParams(location.search).has('debug');
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    const fogColor = new THREE.Color(0x8f9aa3);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const fogColor = new THREE.Color(0xbfd0de);
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor, 120, 1900);
-    this.scene.add(new THREE.HemisphereLight(0xc4d2e0, 0x3b3a2c, 1.25));
-    const sun = new THREE.DirectionalLight(0xffe2b8, 1.5);
-    sun.position.set(0.5, 0.8, 0.35);
-    this.scene.add(sun);
+    this.scene.fog = new THREE.Fog(fogColor, 160, 2200);
+    this.scene.add(new THREE.HemisphereLight(0xd4e4f4, 0x6a6048, 1.15));
+    // Güneş: gölge haritası oyuncuyu izleyen ~220 m'lik bir alanı kapsar.
+    this.sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    const sc = this.sun.shadow.camera;
+    sc.left = sc.bottom = -110;
+    sc.right = sc.top = 110;
+    sc.near = 20;
+    sc.far = 700;
+    this.sun.shadow.bias = -0.0005;
+    this.sun.shadow.normalBias = 0.5;
+    this.scene.add(this.sun, this.sun.target);
 
     this.input = new Input(canvas);
     this.save = loadSave();
@@ -94,6 +117,7 @@ export class Game {
     this.horse = new Horse(this, CFG.player.spawn.x + 4, CFG.player.spawn.z + 2);
     this.crates = new Crates(this.scene, this.world.villages);
     this.stations = new Stations(this.scene, this.world);
+    this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
@@ -120,6 +144,15 @@ export class Game {
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
+    canvas.addEventListener('mousedown', () => {
+      if (this.running && !this.input.locked) this.input.requestLock();
+    });
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === canvas;
+      // Esc fare kilidini açar: oyunu duraklat.
+      if (!locked && this.wasLocked && this.running) this.pause();
+      this.wasLocked = locked;
+    });
     this.hud.setVisible(false);
     if (this.debug) (window as unknown as { __game: Game }).__game = this;
     requestAnimationFrame((t) => this.frame(t));
@@ -151,6 +184,8 @@ export class Game {
     this.menu.hide();
     this.hud.setVisible(true);
     this.renderer.domElement.classList.add('playing');
+    this.input.requestLock();
+    if (this.lockHintT < 0) this.lockHintT = 1.2;
     this.last = performance.now();
   }
 
@@ -159,6 +194,7 @@ export class Game {
     this.hud.setVisible(false);
     this.menu.show();
     this.renderer.domElement.classList.remove('playing');
+    if (document.pointerLockElement) document.exitPointerLock();
   }
 
   setClass(id: ClassId) {
@@ -177,7 +213,7 @@ export class Game {
     this.save = newSave();
     this.loadoutDirty = true;
     this.meter.value = 0;
-    this.meter.needles = 0;
+    this.meter.clearNeedles();
     if (!this.spawner.boss) this.spawner.spawnBoss(this);
   }
 
@@ -197,7 +233,9 @@ export class Game {
   /** İmleç ışınını araziyle kesiştirir: yürüme hedefi ve nişan yönü buradan gelir. */
   private updateCursor() {
     const inp = this.input;
-    this.cursor.set((inp.mouseX / window.innerWidth) * 2 - 1, -(inp.mouseY / window.innerHeight) * 2 + 1);
+    // Fare kilitliyken nişan ekranın ortasıdır.
+    if (inp.locked) this.cursor.set(0, 0);
+    else this.cursor.set((inp.mouseX / window.innerWidth) * 2 - 1, -(inp.mouseY / window.innerHeight) * 2 + 1);
     this.cursorRay.setFromCamera(this.cursor, this.camera);
     const o = this.cursorRay.ray.origin;
     const d = this.cursorRay.ray.direction;
@@ -268,10 +306,15 @@ export class Game {
   onCrateOpened(c: Crate) {
     const p = this.player;
     this.audio.pickup();
+    let color = 0xffd070;
     if (c.content === 'needle') {
-      this.meter.needles += 1;
+      const def = TITANS[c.form];
+      const first = this.meter.needles[c.form] === 0;
+      this.meter.addNeedle(c.form);
       this.stats.needlesFound += 1;
-      this.hud.toast('Öz İğnesi bulundu');
+      color = def.color;
+      this.hud.toast(`${def.needle} bulundu → ${def.name}`);
+      if (first && this.meter.totalNeedles > 1) this.hud.toast('Tab ile hangi deve dönüşeceğini seç');
     } else if (c.content === 'gas') {
       p.gas = p.maxGas;
       this.hud.toast('Gaz tüpleri dolduruldu');
@@ -280,7 +323,7 @@ export class Game {
       this.hud.toast('Yeni kılıçlar takıldı');
     }
     target.set(c.x, c.y + 1, c.z);
-    this.particles.burst(target, 30, 8, 1, 0xffd070, 1, 4);
+    this.particles.burst(target, 30, 8, 1, color, 1, 4);
     this.grantXp(10);
   }
 
@@ -289,13 +332,14 @@ export class Game {
     this.stats.transforms += 1;
     this.audio.transform();
     this.hud.flash('#fff6c8', 0.95, 0.7);
-    this.hud.banner('ÖFKE DEVİ', 'Yumrukla, kükre, ez.');
+    const def = this.player.titan.def;
+    this.hud.banner(def.name.toLocaleUpperCase('tr'), def.tagline);
     this.shakeCam(1.2);
     this.bolt.position.set(p.x, p.y + 250, p.z);
     this.bolt.visible = true;
     this.boltT = 0.35;
     target.set(p.x, p.y + 8, p.z);
-    this.particles.burst(target, 160, 40, 1.6, 0xffc060, 8, 6);
+    this.particles.burst(target, 160, 40, 1.6, def.color, 8, 6);
     for (const g of this.giants) {
       if (g.alive && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 32) g.stun(2);
     }
@@ -305,6 +349,20 @@ export class Game {
     this.audio.hurt();
     this.hud.flash('#8a0f0f', 0.5, 0.45);
     this.shakeCam(0.7);
+  }
+
+  onPlayerGrabbed(g: Giant) {
+    this.audio.hurt();
+    this.hud.flash('#8a0f0f', 0.45, 0.5);
+    this.shakeCam(0.8);
+    this.hud.banner('YAKALANDIN', `${g.type.name} seni ağzına götürüyor — kurtul!`);
+  }
+
+  onBrokeFree(at: THREE.Vector3) {
+    this.audio.hit();
+    this.shakeCam(0.5);
+    this.particles.burst(at, 30, 14, 0.8, 0xff5a4a, 1.5);
+    this.hud.toast('Kurtuldun!');
   }
 
   onPlayerDied() {
@@ -317,8 +375,25 @@ export class Game {
     this.last = now;
     if (this.running) this.update(dt);
     else this.idleCamera(dt);
+    this.updateEnvironment(dt);
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /** Gökyüzü, güneş gölgesi ve otlar oyuncuyu/kamerayı izler. */
+  private updateEnvironment(dt: number) {
+    const p = this.player.pos;
+    this.skyTime += dt;
+    this.world.sky.position.copy(this.camera.position);
+    (this.world.sky.material as THREE.ShaderMaterial).uniforms.time.value = this.skyTime;
+    // Gölge haritası titremesin diye merkez birkaç metrelik adımlarla kayar.
+    const cx = Math.round(p.x / 6) * 6;
+    const cz = Math.round(p.z / 6) * 6;
+    const cy = Math.round(p.y / 6) * 6;
+    this.sun.target.position.set(cx, cy, cz);
+    this.sun.position.set(cx + SUN_DIR.x * 350, cy + SUN_DIR.y * 350, cz + SUN_DIR.z * 350);
+    this.sun.target.updateMatrixWorld();
+    this.grass.update(p.x, p.z);
   }
 
   private idleCamera(dt: number) {
@@ -332,6 +407,7 @@ export class Game {
   update(dt: number) {
     const inp = this.input;
     this.frameNo += 1;
+    this.frameDt = dt;
     // Kamera: tekerlek sağa/sola çevirir (Shift ile yukarı/aşağı), orta tuşla sürükleme ve ok tuşları da çalışır.
     this.yawPending += inp.wheelYaw;
     this.pitchPending += inp.wheelPitch;
@@ -344,8 +420,27 @@ export class Game {
     this.pitchPending -= pitchStep;
     const keyTurn = (inp.down('ArrowLeft') ? 1 : 0) - (inp.down('ArrowRight') ? 1 : 0);
     const keyPitch = (inp.down('ArrowUp') ? 1 : 0) - (inp.down('ArrowDown') ? 1 : 0);
-    this.camYaw += -yawStep * 0.0024 - inp.dragDX * 0.005 + keyTurn * 1.8 * dt;
-    this.camPitch = clamp(this.camPitch - pitchStep * 0.0016 - inp.dragDY * 0.004 + keyPitch * 1.2 * dt, -1.1, 1.2);
+    // Fareyle yönlendirme: kilitliyken fare hareketi doğrudan çevirir; serbest imleçte
+    // imleç ekranın ortasından ne kadar yana kayarsa kamera o yöne o kadar hızlı döner.
+    let mouseYaw = 0;
+    let mousePitch = 0;
+    if (inp.locked) {
+      mouseYaw = -inp.mouseDX * 0.0024;
+      mousePitch = -inp.mouseDY * 0.0022;
+    } else if (inp.inside) {
+      const nx = (inp.mouseX / window.innerWidth) * 2 - 1;
+      const over = Math.abs(nx) - CFG.camera.deadZone;
+      if (over > 0) mouseYaw = -Math.sign(nx) * Math.pow(over / (1 - CFG.camera.deadZone), 1.4) * CFG.camera.edgeTurn * dt;
+    }
+    this.camYaw += mouseYaw - yawStep * 0.0024 - inp.dragDX * 0.005 + keyTurn * 1.8 * dt;
+    this.camPitch = clamp(this.camPitch + mousePitch - pitchStep * 0.0016 - inp.dragDY * 0.004 + keyPitch * 1.2 * dt, -1.1, 1.2);
+    if (this.lockHintT > 0) {
+      this.lockHintT -= dt;
+      if (this.lockHintT <= 0) {
+        this.lockHintT = 0;
+        this.hud.toast(inp.locked ? 'Fareyi hareket ettirerek yönünü değiştir' : 'Dönmek için imleci ekranın sağına ya da soluna götür');
+      }
+    }
 
     if (inp.pressed('KeyP') || inp.pressed('Escape')) {
       inp.endFrame();
@@ -404,9 +499,9 @@ export class Game {
   private updateCamera(dt: number) {
     const p = this.player;
     const speed = p.vel.length();
-    const want = p.mode === 'titan' ? 30 : p.mode === 'mounted' ? 9.5 : 6.5 + Math.min(4, speed * 0.07);
+    const want = p.mode === 'titan' ? p.titan.def.camDist : p.mode === 'mounted' ? 9.5 : 6.5 + Math.min(4, speed * 0.07);
     this.camDist = lerp(this.camDist, want, 1 - Math.exp(-dt * 4));
-    const off = p.mode === 'titan' ? CFG.titan.height * 0.85 : p.mode === 'mounted' ? 2.3 : 1.7;
+    const off = p.mode === 'titan' ? p.titan.def.height * 0.85 : p.mode === 'mounted' ? 2.3 : 1.7;
     target.set(p.pos.x, p.pos.y + off, p.pos.z);
     this.lookDir(look);
     const cam = this.camera;
@@ -446,7 +541,7 @@ export class Game {
     const inp = this.input;
     const p = this.player;
     if (inp.pressed('Digit1')) this.meter.value = this.meter.max;
-    if (inp.pressed('Digit2')) this.meter.needles += 1;
+    if (inp.pressed('Digit2')) for (const id of TITAN_IDS) this.meter.addNeedle(id);
     if (inp.pressed('Digit3')) {
       p.pos.set(0, 0, CFG.world.walls[1].r - 260);
       p.vel.set(0, 0, 0);

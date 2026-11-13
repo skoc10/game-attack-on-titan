@@ -59,6 +59,7 @@ export class Stations {
         const valve = new THREE.Mesh(boxGeo, dark);
         valve.scale.set(0.18, 0.3, 0.18);
         valve.position.set(sx * 0.95, 3.0, 0);
+        t.castShadow = true;
         g.add(t, cap, valve);
       }
       const rail = new THREE.Mesh(boxGeo, dark);

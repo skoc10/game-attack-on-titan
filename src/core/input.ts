@@ -1,6 +1,7 @@
 /**
- * Klavye + serbest fare imleci. İmleç kilitlenmez:
- * sol tık kanca/vuruş, sağ tık yürüme hedefi, tekerlek kamerayı döndürür.
+ * Klavye + fare. Tarayıcı izin verirse fare kilitlenir ve fare hareketi
+ * kamerayı çevirir; izin vermezse imleç serbest kalır ve imlecin ekran
+ * ortasından uzaklığı kamerayı döndürür.
  */
 export class Input {
   readonly keys = new Set<string>();
@@ -16,8 +17,14 @@ export class Input {
   /** Orta tuş basılıyken sürükleme miktarı. */
   dragDX = 0;
   dragDY = 0;
+  /** Fare kilitliyken biriken hareket. */
+  mouseDX = 0;
+  mouseDY = 0;
+  locked = false;
+  /** İmleç pencerenin içinde mi (serbest imleçle dönüş için). */
+  inside = true;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       if (!e.repeat) this.keyPressed.add(e.code);
@@ -41,7 +48,18 @@ export class Input {
       if (e.button < 3) this.btn[e.button] = false;
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('pointerlockchange', () => {
+      this.locked = document.pointerLockElement === this.canvas;
+    });
+    document.addEventListener('mouseleave', () => (this.inside = false));
+    document.addEventListener('mouseenter', () => (this.inside = true));
     window.addEventListener('mousemove', (e) => {
+      this.inside = true;
+      if (this.locked) {
+        this.mouseDX += e.movementX;
+        this.mouseDY += e.movementY;
+        return;
+      }
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
       if (this.btn[1]) {
@@ -82,9 +100,20 @@ export class Input {
     this.btn[b] = down;
     if (down) this.btnPressed[b] = true;
   }
+  /** Fareyi kilitlemeyi dener; tarayıcı reddederse oyun serbest imleçle sürer. */
+  requestLock() {
+    try {
+      const p = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch {
+      /* kilit yok: serbest imleç */
+    }
+  }
   endFrame() {
     this.keyPressed.clear();
     this.btnPressed.fill(false);
+    this.mouseDX = 0;
+    this.mouseDY = 0;
     this.dragDX = 0;
     this.dragDY = 0;
   }

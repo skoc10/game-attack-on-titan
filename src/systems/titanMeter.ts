@@ -1,14 +1,18 @@
 import { CFG, type MeterKind } from '../data/config';
+import { TITAN_IDS, type TitanId } from '../data/titans';
 
 /**
- * Dev barı + Öz İğnesi. Saf mantık, sahneye dokunmaz.
+ * Dev barı + iğneler. Saf mantık, sahneye dokunmaz.
+ * Her iğne türü ayrı bir dev formuna dönüştürür; oyuncu elindekilerden birini seçer.
  * Bar en az yarıya kadar doluysa dönüşülebilir; dev formunda bar bir güç
  * kaynağıdır: zamanla azalır ve her güç kendi bedeli kadar bar harcar.
  */
 export class TitanMeter {
   value = 0;
-  needles = 0;
   active = false;
+  readonly needles: Record<TitanId, number> = { ofke: 0, firtina: 0, kaya: 0, zirve: 0 };
+  /** T'ye basınca dönüşülecek form. */
+  selected: TitanId = 'ofke';
 
   constructor(
     readonly max: number = CFG.meter.max,
@@ -22,6 +26,33 @@ export class TitanMeter {
   get charged() {
     return this.value >= this.minToTransform;
   }
+  get totalNeedles() {
+    return TITAN_IDS.reduce((n, id) => n + this.needles[id], 0);
+  }
+
+  /** İğne ekler; seçili türden yoksa yeni gelen tür seçilir. */
+  addNeedle(id: TitanId, count = 1) {
+    this.needles[id] += count;
+    if (this.needles[this.selected] <= 0) this.selected = id;
+  }
+
+  /** Elde iğnesi olan bir sonraki forma geçer; seçili formu döner. */
+  cycle() {
+    const start = TITAN_IDS.indexOf(this.selected);
+    for (let i = 1; i <= TITAN_IDS.length; i++) {
+      const id = TITAN_IDS[(start + i) % TITAN_IDS.length];
+      if (this.needles[id] > 0) {
+        this.selected = id;
+        break;
+      }
+    }
+    return this.selected;
+  }
+
+  clearNeedles() {
+    for (const id of TITAN_IDS) this.needles[id] = 0;
+    this.selected = 'ofke';
+  }
 
   /** Dev öldürünce barı doldurur. Dev formundayken bar dolmaz. */
   addKill(kind: MeterKind, gainMult = 1) {
@@ -30,13 +61,13 @@ export class TitanMeter {
   }
 
   canTransform() {
-    return !this.active && this.charged && this.needles > 0;
+    return !this.active && this.charged && this.needles[this.selected] > 0;
   }
 
-  /** Bir iğne harcar; mevcut bar dev formunun güç havuzu olur. */
+  /** Seçili türden bir iğne harcar; mevcut bar dev formunun güç havuzu olur. */
   transform() {
     if (!this.canTransform()) return false;
-    this.needles -= 1;
+    this.needles[this.selected] -= 1;
     this.active = true;
     return true;
   }
@@ -64,10 +95,11 @@ export class TitanMeter {
     if (this.active) this.value -= amount;
   }
 
-  /** Formu bitirir; artan bar insan formuna taşınır. */
+  /** Formu bitirir; artan bar insan formuna taşınır. Seçili türden iğne kalmadıysa elde olana geçer. */
   end() {
     this.active = false;
     this.value = Math.max(0, this.value);
+    if (this.needles[this.selected] <= 0) this.cycle();
   }
 
   /** HUD için 0..1 doluluk. */

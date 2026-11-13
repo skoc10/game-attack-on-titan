@@ -201,6 +201,57 @@ kbd {
   opacity: 0;
   transform: translateY(-8px);
 }
+#hud .grab {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  transform: translateX(-50%);
+  width: min(430px, 60vw);
+  background: var(--panel);
+  border: 1px solid var(--blood);
+  padding: 10px 14px 12px;
+  display: none;
+  text-align: center;
+}
+#hud .grabTitle {
+  letter-spacing: 0.26em;
+  font-size: 18px;
+  color: #ff7a6a;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+#hud .grabRow {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  margin-top: 8px;
+  text-align: left;
+}
+#hud .bar.esc {
+  height: 14px;
+}
+#hud .bar.esc i {
+  background: linear-gradient(90deg, #6fae5a, #c9f08a);
+  transition: width 0.06s linear;
+}
+#hud .bar.eat i {
+  background: var(--blood);
+}
+#hud .grabKeys {
+  margin-top: 10px;
+  font-size: 13px;
+}
+#hud .grabKeys span {
+  margin: 0 6px;
+  white-space: nowrap;
+}
+#hud .grabKeys span.off {
+  opacity: 0.4;
+}
+#hud .grabKeys i {
+  font-style: normal;
+  color: #a8d8ee;
+  font-size: 12px;
+}
 #hud .banner {
   position: absolute;
   left: 0;
@@ -269,6 +320,22 @@ kbd {
   font-size: 12px;
   letter-spacing: 0.1em;
   color: var(--gold);
+}
+#hud .needles .nd {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--c);
+  letter-spacing: 0.04em;
+}
+#hud .needles .nd.sel {
+  border-color: var(--c);
+  background: rgba(0, 0, 0, 0.45);
+}
+#hud .needles kbd {
+  margin-left: 6px;
 }
 #hud .bar.titan {
   height: 16px;

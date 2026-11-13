@@ -11,7 +11,10 @@ export interface GiantType {
   turn: number;
   hpBase: number;
   hpPerM: number;
-  legHp: number;
+  /** Yere düşürmek için gereken bacak kesiği sayısı. */
+  legCuts: number;
+  /** Öldürmek için gereken temiz ense kesiği sayısı. */
+  napeCuts: number;
   aggro: number;
   dmg: number;
   armored: boolean;
@@ -34,7 +37,8 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     turn: 1.8,
     hpBase: 60,
     hpPerM: 4,
-    legHp: 45,
+    legCuts: 1,
+    napeCuts: 1,
     aggro: 130,
     dmg: 14,
     armored: false,
@@ -55,7 +59,8 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     turn: 3.6,
     hpBase: 95,
     hpPerM: 0,
-    legHp: 40,
+    legCuts: 1,
+    napeCuts: 1,
     aggro: 170,
     dmg: 16,
     armored: false,
@@ -76,7 +81,8 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     turn: 2.6,
     hpBase: 110,
     hpPerM: 0,
-    legHp: 55,
+    legCuts: 1,
+    napeCuts: 1,
     aggro: 160,
     dmg: 20,
     armored: false,
@@ -97,7 +103,8 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     turn: 1.6,
     hpBase: 150,
     hpPerM: 0,
-    legHp: 90,
+    legCuts: 2,
+    napeCuts: 1,
     aggro: 140,
     dmg: 24,
     armored: true,
@@ -118,7 +125,8 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     turn: 1.1,
     hpBase: 900,
     hpPerM: 0,
-    legHp: 260,
+    legCuts: 4,
+    napeCuts: 3,
     aggro: 260,
     dmg: 34,
     armored: true,

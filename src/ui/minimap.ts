@@ -1,5 +1,7 @@
 import type { Game } from '../game';
 import { CFG } from '../data/config';
+import { hex } from '../data/titans';
+import { crateColor } from '../world/crates';
 
 const VIEW = 380; // metre cinsinden görüş yarıçapı
 
@@ -68,7 +70,7 @@ export class Minimap {
       const d = Math.hypot(cr.x - p.x, cr.z - p.z);
       if (d > VIEW || (!seeAll && d > 150)) continue;
       const [x, y] = map(cr.x, cr.z);
-      c.fillStyle = cr.content === 'needle' ? '#ffc247' : cr.content === 'gas' ? '#9fd8ff' : '#dfe3ea';
+      c.fillStyle = hex(crateColor(cr));
       c.fillRect(x - 2.5, y - 2.5, 5, 5);
     }
 

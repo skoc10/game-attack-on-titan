@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CFG } from '../data/config';
-import { swordDamage } from './combat';
+import { TITAN_IDS, TITANS, rollTitan } from '../data/titans';
+import { GIANT_TYPES } from '../enemies/giantTypes';
 import { TitanMeter } from './titanMeter';
 import { addXp, buyUpgrade, classUnlocked, MAX_UPGRADE, newSave, sanitizeSave, xpToNext } from './progression';
 
@@ -18,39 +19,67 @@ describe('TitanMeter', () => {
 
   it('bar yarıya gelince iğneyle dönüşülür; dolu olması gerekmez', () => {
     const m = new TitanMeter();
-    m.needles = 1;
+    m.addNeedle('ofke');
     expect(m.canTransform()).toBe(false); // bar boş
     m.value = m.max * 0.5 - 1;
     expect(m.canTransform()).toBe(false); // yarının altında
     m.value = m.max * 0.5;
-    m.needles = 0;
+    m.needles.ofke = 0;
     expect(m.canTransform()).toBe(false); // iğne yok
     expect(m.transform()).toBe(false);
-    m.needles = 2;
+    m.addNeedle('ofke', 2);
     expect(m.transform()).toBe(true);
-    expect(m.needles).toBe(1);
+    expect(m.needles.ofke).toBe(1);
     expect(m.active).toBe(true);
     expect(m.value).toBe(m.max * 0.5); // biriken bar güç havuzu olur
   });
 
+  it('her iğne türü ayrı sayılır; dönüşüm yalnızca seçili türü harcar', () => {
+    const m = new TitanMeter();
+    m.value = m.max;
+    m.addNeedle('kaya');
+    expect(m.selected).toBe('kaya'); // elde başka iğne yokken yeni gelen seçilir
+    m.addNeedle('firtina', 2);
+    expect(m.selected).toBe('kaya'); // seçim kendiliğinden değişmez
+    expect(m.totalNeedles).toBe(3);
+    expect(m.transform()).toBe(true);
+    expect(m.needles).toEqual({ ofke: 0, firtina: 2, kaya: 0, zirve: 0 });
+    m.end();
+    expect(m.selected).toBe('firtina'); // seçili tür bitince elde olana geçilir
+  });
+
+  it('Tab yalnızca eldeki iğne türleri arasında dolaşır', () => {
+    const m = new TitanMeter();
+    expect(m.cycle()).toBe('ofke'); // hiç iğne yok: değişmez
+    m.addNeedle('ofke');
+    m.addNeedle('zirve');
+    expect(m.cycle()).toBe('zirve'); // firtina ve kaya atlanır
+    expect(m.cycle()).toBe('ofke');
+    m.needles.zirve = 0;
+    expect(m.cycle()).toBe('ofke'); // tek tür kaldı
+    m.clearNeedles();
+    expect(m.totalNeedles).toBe(0);
+  });
+
   it('güçler bar harcar; yetmeyen güç kullanılamaz', () => {
     const m = new TitanMeter();
+    const { q, e, punch } = TITANS.ofke;
     expect(m.spend(3)).toBe(false); // dev formunda değil
     m.value = 60;
-    m.needles = 1;
+    m.addNeedle('ofke');
     m.transform();
-    expect(m.spend(CFG.titan.cost.stone)).toBe(true);
-    expect(m.value).toBe(60 - CFG.titan.cost.stone);
-    expect(m.spend(CFG.titan.cost.roar)).toBe(true);
-    expect(m.spend(CFG.titan.cost.stone)).toBe(false); // 20 kaldı, 25 gerek
+    expect(m.spend(e.cost)).toBe(true);
+    expect(m.value).toBe(60 - e.cost);
+    expect(m.spend(q.cost)).toBe(true);
+    expect(m.spend(e.cost)).toBe(false); // 20 kaldı, 25 gerek
     expect(m.value).toBe(20);
-    expect(m.spend(CFG.titan.cost.punch)).toBe(true);
+    expect(m.spend(punch.cost)).toBe(true);
   });
 
   it('dev formunda bar dolmaz, zamanla azalır ve bitince form sona erer', () => {
     const m = new TitanMeter();
     m.value = m.max;
-    m.needles = 1;
+    m.addNeedle('ofke');
     m.transform();
     m.addKill('boss');
     expect(m.value).toBe(m.max);
@@ -67,7 +96,7 @@ describe('TitanMeter', () => {
   it('formdan erken çıkınca artan bar korunur', () => {
     const m = new TitanMeter();
     m.value = 80;
-    m.needles = 1;
+    m.addNeedle('ofke');
     m.transform();
     m.spend(15);
     m.end();
@@ -82,20 +111,37 @@ describe('TitanMeter', () => {
   });
 });
 
-describe('swordDamage', () => {
-  it('hızla artar', () => {
-    const slow = swordDamage(40, 0, 1, true);
-    const fast = swordDamage(40, 28, 1, true);
-    expect(slow).toBeCloseTo(16);
-    expect(fast).toBeCloseTo(96);
-    expect(fast).toBeGreaterThan(slow);
+describe('dev formları', () => {
+  it('kutu zarı her türü ağırlığına göre verir', () => {
+    expect(rollTitan(0)).toBe('ofke');
+    expect(rollTitan(0.999)).toBe('zirve');
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 1000; i++) {
+      const id = rollTitan((i + 0.5) / 1000);
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    for (const id of TITAN_IDS) expect(counts[id]).toBe(Math.round(TITANS[id].weight * 10));
   });
-  it('körelmiş kılıç hasarı dörtte bire düşürür, hız 50 ile sınırlanır', () => {
-    expect(swordDamage(40, 14, 1, false)).toBeCloseTo(swordDamage(40, 14, 1, true) / 4);
-    expect(swordDamage(40, 500, 1, true)).toBe(swordDamage(40, 50, 1, true));
+
+  it('her formun güçleri en az yarım barla kullanılabilir', () => {
+    for (const id of TITAN_IDS) {
+      const d = TITANS[id];
+      const half = CFG.meter.max * CFG.meter.minRatio;
+      for (const cost of [d.punch.cost, d.q.cost, d.e.cost, d.slam.cost]) {
+        expect(cost).toBeGreaterThan(0);
+        expect(cost).toBeLessThanOrEqual(half);
+      }
+      expect(d.drain).toBeGreaterThan(0);
+    }
   });
-  it('sınıf ve bonus çarpanları uygulanır', () => {
-    expect(swordDamage(40, 14, 1.35, true, 3)).toBeCloseTo(40 * 1.4 * 1.35 * 3);
+});
+
+describe('dev türleri', () => {
+  it('sıradan ve elit devler tek ense kesiğiyle ölür; yalnızca bölüm sonu devi fazlasını ister', () => {
+    for (const t of Object.values(GIANT_TYPES)) {
+      expect(t.napeCuts).toBe(t.kind === 'boss' ? 3 : 1);
+      expect(t.legCuts).toBeGreaterThanOrEqual(1);
+    }
   });
 });
 

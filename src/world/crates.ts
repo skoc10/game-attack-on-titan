@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { mulberry32 } from '../core/rng';
+import { rollTitan, TITANS, type TitanId } from '../data/titans';
 import { heightAt } from './terrain';
 
 export type CrateContent = 'needle' | 'gas' | 'blade';
@@ -11,6 +12,8 @@ export interface Crate {
   y: number;
   z: number;
   content: CrateContent;
+  /** İğne kutusuysa hangi dev formunun iğnesi. */
+  form: TitanId;
   opened: boolean;
   timer: number;
   group: THREE.Group;
@@ -18,9 +21,12 @@ export interface Crate {
   beam: THREE.Mesh;
 }
 
-const BEAM_COLOR: Record<CrateContent, number> = { needle: 0xffc247, gas: 0x9fd8ff, blade: 0xdfe3ea };
+/** İğne kutularının ışığı dev formunun rengindedir; gaz beyaz, kılıç gri. */
+export function crateColor(c: { content: CrateContent; form: TitanId }) {
+  return c.content === 'needle' ? TITANS[c.form].color : c.content === 'gas' ? 0xffffff : 0xaab2bd;
+}
 
-/** Haritaya dağılmış ikmal kutuları. İçlerinden Öz İğnesi, gaz veya kılıç çıkar. */
+/** Haritaya dağılmış ikmal kutuları. İçlerinden dev iğnesi (dört türden biri), gaz veya kılıç çıkar. */
 export class Crates {
   readonly list: Crate[] = [];
 
@@ -33,13 +39,14 @@ export class Crates {
     const bandGeo = new THREE.BoxGeometry(0.16, 1.14, 1.14);
     const beamGeo = new THREE.CylinderGeometry(0.45, 0.45, 70, 6, 1, true);
 
-    const add = (x: number, z: number, content: CrateContent) => {
+    const add = (x: number, z: number, content: CrateContent, form: TitanId = 'ofke') => {
       const y = heightAt(x, z);
       const group = new THREE.Group();
       group.position.set(x, y, z);
       group.rotation.y = rng() * 6.28;
       const body = new THREE.Mesh(boxGeo, wood);
       body.position.y = 0.55;
+      body.castShadow = true;
       const lid = new THREE.Mesh(lidGeo, band);
       lid.position.y = 1.2;
       group.add(body, lid);
@@ -51,7 +58,7 @@ export class Crates {
       const beam = new THREE.Mesh(
         beamGeo,
         new THREE.MeshBasicMaterial({
-          color: BEAM_COLOR[content],
+          color: crateColor({ content, form }),
           transparent: true,
           opacity: 0.22,
           depthWrite: false,
@@ -62,12 +69,16 @@ export class Crates {
       beam.position.y = 36;
       group.add(beam);
       scene.add(group);
-      this.list.push({ x, y, z, content, opened: false, timer: 0, group, lid, beam });
+      this.list.push({ x, y, z, content, form, opened: false, timer: 0, group, lid, beam });
     };
 
-    const roll = (): CrateContent => {
+    // Rastgele kutu: içerik ve (iğneyse) hangi formun iğnesi olduğu.
+    const addRandom = (x: number, z: number) => {
       const r = rng();
-      return r < 0.55 ? 'needle' : r < 0.8 ? 'gas' : 'blade';
+      // Doruk İğnesi (en büyük dev) asıl olarak Demir Sur'un ötesinde bulunur.
+      const deep = Math.hypot(x, z) > CFG.world.walls[1].r && rng() < 0.3;
+      const form = deep ? 'zirve' : rollTitan(rng());
+      add(x, z, r < 0.58 ? 'needle' : r < 0.82 ? 'gas' : 'blade', form);
     };
     const valid = (x: number, z: number) => {
       const r = Math.hypot(x, z);
@@ -75,14 +86,15 @@ export class Crates {
     };
 
     // İlk kutular kapının hemen dışında: oyuncu döngüyü erken öğrensin.
-    add(16, 392, 'needle');
+    add(16, 392, 'needle', 'ofke');
     add(-20, 560, 'gas');
-    add(22, 760, 'needle');
+    add(22, 760, 'needle', 'firtina');
+    add(-26, 900, 'needle', 'kaya');
     for (const v of villages) {
       if (this.list.length >= CFG.crate.count - 10) break;
       const x = v.x + (rng() - 0.5) * 30;
       const z = v.z + (rng() - 0.5) * 30;
-      if (valid(x, z)) add(x, z, roll());
+      if (valid(x, z)) addRandom(x, z);
     }
     let guard = 0;
     while (this.list.length < CFG.crate.count && guard++ < 500) {
@@ -90,7 +102,7 @@ export class Crates {
       const rr = 380 + rng() * 1900;
       const x = Math.sin(a) * rr;
       const z = Math.cos(a) * rr;
-      if (valid(x, z)) add(x, z, roll());
+      if (valid(x, z)) addRandom(x, z);
     }
   }
 
