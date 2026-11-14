@@ -2,6 +2,8 @@
 
 Tarayıcıda çalışan, üçüncü şahıs 3D dev avı oyunu. İnsanlık iç içe üç surun ardına sığınmış; sen kanca teçhizatınla surların dışına çıkıp devleri ensesinden avlıyorsun. Özgün bir dünya: tüm isimler, karakterler ve modeller bu proje için yapıldı. Modeller ve dokular kodla üretilir, harici asset yok: karakterler çizgi film gölgelendirmeli ve konturlu, eklemli (dirsek/diz) anime tarzı figürlerdir; ortamda güneş gölgeleri, taş ve cephe dokuları, çatılı evler, çimen, bulutlu gökyüzü ve ufukta dağlar bulunur.
 
+**Tarayıcıda oyna:** <https://skoc10.github.io/game-attack-on-titan/>
+
 ## Çalıştırma
 
 ```bash
@@ -13,6 +15,8 @@ npm run dev
 ```
 
 Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer komutlar: `npm run build` (tip kontrolü + derleme), `npm test` (birim testleri).
+
+`main` dalına giden her değişiklik [`.github/workflows/pages.yml`](.github/workflows/pages.yml) ile derlenip GitHub Pages'te yayınlanır.
 
 ## Oynanış
 
