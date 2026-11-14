@@ -97,6 +97,17 @@ export class Minimap {
       c.fill();
     }
 
+    // Sur içindeki kişiler
+    for (const n of g.npcs.list) {
+      if (Math.hypot(n.x - p.x, n.z - p.z) > VIEW) continue;
+      const [x, y] = map(n.x, n.z);
+      c.fillStyle = n.def.shop ? '#2ee6a6' : '#ffe07a';
+      c.fillRect(x - 2.5, y - 2.5, 5, 5);
+      c.strokeStyle = '#1a1612';
+      c.lineWidth = 1;
+      c.strokeRect(x - 2.5, y - 2.5, 5, 5);
+    }
+
     // At
     const [hx, hy] = map(g.horse.pos.x, g.horse.pos.z);
     c.fillStyle = '#8fd18a';

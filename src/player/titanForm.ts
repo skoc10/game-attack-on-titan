@@ -5,8 +5,10 @@ import type { Player } from './player';
 import { lerp } from '../core/rng';
 import { FORMS, type Ability, type FormId, type TitanDef } from '../data/titans';
 import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
+import { animateCollapse, newCollapse, resetPose, type Collapse } from '../enemies/collapse';
 
 const v = new THREE.Vector3();
+const look = new THREE.Vector3();
 const BOULDER_G = 40;
 
 interface Body {
@@ -40,6 +42,8 @@ export class TitanForm {
   private warnT = 0;
   private readonly bodies = new Map<FormId, Body>();
   private readonly armStone = new THREE.Color(0xb9d3e6);
+  /** Terk edilen dev gövdesi: oyuncu çıktıktan sonra yıkılır ve buharlaşır. */
+  private husk: { body: Body; t: number; fall: Collapse; height: number } | null = null;
   private readonly boulder: THREE.Mesh;
   private readonly boulderVel = new THREE.Vector3();
   private boulderAb: Extract<Ability, { kind: 'throw' }> | null = null;
@@ -76,6 +80,7 @@ export class TitanForm {
   }
 
   enter(id: FormId) {
+    if (this.husk) this.clearHusk(); // eski gövde hâlâ yerdeyse kaldır
     this.def = FORMS[id];
     this.ensureBody(id).model.root.visible = true;
     this.punchT = -1;
@@ -88,10 +93,58 @@ export class TitanForm {
     this.setStone(false);
   }
 
+  /** Formdan çıkış: gövde olduğu yerde kalır ve ölen bir dev gibi yıkılır. */
   exit() {
     this.setStone(false);
     this.rushT = 0;
-    for (const b of this.bodies.values()) b.model.root.visible = false;
+    const body = this.ensureBody(this.def.id);
+    for (const b of this.bodies.values()) b.model.root.visible = b === body;
+    for (const m of body.model.mats) m.transparent = true;
+    this.husk = { body, t: 0, fall: newCollapse(1), height: this.def.height };
+  }
+
+  private clearHusk() {
+    const h = this.husk;
+    if (!h) return;
+    h.body.model.root.visible = false;
+    for (const m of h.body.model.mats) {
+      m.opacity = 1;
+      m.transparent = false;
+    }
+    resetPose(h.body.model);
+    this.husk = null;
+  }
+
+  /** Boş gövdenin yıkılışı; her karede çağrılır. */
+  tickHusk(dt: number) {
+    const h = this.husk;
+    if (!h) return;
+    const g = this.game;
+    h.t += dt;
+    const m = h.body.model;
+    const r = animateCollapse(m, h.t, dt, h.height, h.fall);
+    const pos = m.root.position;
+    const yaw = m.root.rotation.y;
+    if (r.kneeHit || r.impactHit) {
+      const force = r.impactHit ? 1 : 0.4;
+      g.audio.stomp((h.height / 16) * force);
+      g.shakeCam(Math.min(1.3, h.height / 12) * force);
+      for (let i = 0; i < 40 * force; i++) {
+        const along = Math.random() * h.height * (r.impactHit ? 0.95 : 0.2);
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const sp = 6 + Math.random() * (6 + h.height * 0.6);
+        g.particles.emit(pos.x + Math.sin(yaw) * along, pos.y + 0.6, pos.z + Math.cos(yaw) * along, Math.cos(yaw) * side * sp, 2 + Math.random() * 3, -Math.sin(yaw) * side * sp, 1.3, 0xa39a86);
+      }
+    }
+    // Buhar: önce enseden, yere serilince tüm gövdeden.
+    const along = r.since > 0 ? Math.random() * h.height * 0.9 : 0;
+    const y = r.since > 0 ? pos.y + h.height * 0.08 : m.nape.getWorldPosition(v).y;
+    g.particles.emit(pos.x + Math.sin(yaw) * along + (Math.random() - 0.5) * 3, y, pos.z + Math.cos(yaw) * along + (Math.random() - 0.5) * 3, 0, 3 + h.height * 0.12, 0, 2, 0xd0d0d0, 8);
+    if (r.since > 1.2) {
+      const o = Math.max(0, 1 - (r.since - 1.2) / 2.2);
+      for (const mat of m.mats) mat.opacity = o;
+      if (o <= 0) this.clearHusk();
+    }
   }
 
   private setStone(on: boolean) {
@@ -189,6 +242,33 @@ export class TitanForm {
         this.ring(p, ab.radius, 1, this.def.color);
         this.ring(p, ab.radius * 0.6, 0.6, 0xa39a86);
         break;
+      case 'beam': {
+        // Ağızdan çıkan ışın: bakılan yönde uzun, dar bir hattaki her deve vurur.
+        p.faceYaw = g.aimYaw();
+        const sx = Math.sin(p.faceYaw);
+        const sz = Math.cos(p.faceYaw);
+        for (const gi of [...g.giants]) {
+          if (!gi.alive) continue;
+          const rx = gi.pos.x - p.pos.x;
+          const rz = gi.pos.z - p.pos.z;
+          const along = rx * sx + rz * sz;
+          if (along < 0 || along > ab.length + gi.radius) continue;
+          if (Math.abs(rx * sz - rz * sx) > ab.width / 2 + gi.radius) continue;
+          gi.titanHit(ab.dmg * this.mult, g, ab.armorBreak || this.stone, p.pos);
+        }
+        const y = p.pos.y + H * 0.82;
+        for (let i = 0; i < 90; i++) {
+          const d = 3 + (i / 90) * ab.length;
+          g.particles.emit(p.pos.x + sx * d, y - d * 0.02 + (Math.random() - 0.5) * 2, p.pos.z + sz * d, sx * 30, (Math.random() - 0.5) * 6, sz * 30, 0.5 + Math.random() * 0.4, i % 3 === 0 ? 0xffffff : this.def.color);
+        }
+        v.set(p.pos.x + sx * 8, y, p.pos.z + sz * 8);
+        look.set(sx, 0, sz);
+        g.slashes.spawn(v, look, 7, this.def.color, Math.PI / 2, 0.45);
+        g.audio.beam();
+        g.shakeCam(0.9);
+        g.hud.flash('#ffffff', 0.18, 0.3);
+        break;
+      }
       case 'throw': {
         // Kaya, elden nişan alınan noktaya balistik bir yay çizer.
         const b = this.boulder;

@@ -1,7 +1,7 @@
 import type { HumanoidOpts, Palette } from '../enemies/humanoid';
 
-export type TitanId = 'ofke' | 'firtina' | 'kaya' | 'zirve';
-export const TITAN_IDS: TitanId[] = ['ofke', 'firtina', 'kaya', 'zirve'];
+export type TitanId = 'ofke' | 'firtina' | 'kaya' | 'zirve' | 'isin' | 'buz';
+export const TITAN_IDS: TitanId[] = ['ofke', 'firtina', 'kaya', 'zirve', 'isin', 'buz'];
 /** Karakterlere özgü formlar: iğneyle değil, o karakterin kendi gücüyle (bar dolunca) açılır. */
 export type InnateId = 'golge' | 'ors' | 'simsek' | 'mancinik' | 'safak';
 export const INNATE_IDS: InnateId[] = ['golge', 'ors', 'simsek', 'mancinik', 'safak'];
@@ -17,6 +17,8 @@ export type Ability =
   | { kind: 'rush'; name: string; cost: number; cd: number; speed: number; time: number; dmg: number; hitRadius: number; armorBreak: boolean }
   /** Çevresine anlık hasar verir, ayakta kalanı sersemletir. */
   | { kind: 'burst'; name: string; cost: number; cd: number; radius: number; dmg: number; stun: number; armorBreak: boolean }
+  /** Baktığı yönde uzun, dar bir hat boyunca her şeyi yakar. */
+  | { kind: 'beam'; name: string; cost: number; cd: number; dmg: number; length: number; width: number; armorBreak: boolean }
   /** Nişan alınan yere kaya fırlatır. */
   | { kind: 'throw'; name: string; cost: number; cd: number; dmg: number; radius: number; speed: number };
 
@@ -71,7 +73,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'stun', name: 'Kükreme', cost: 15, cd: 12, radius: 70, stun: 5 },
     e: { kind: 'buff', name: 'Taş Yumruk', cost: 25, cd: 20, dur: 8, mult: 2.5 },
     slam: { name: 'Ezme', cost: 10, radius: 14, dmg: 80 },
-    weight: 46,
+    weight: 38,
     palette: { skin: 0x9a7362, top: 0x8a6557, legs: 0x7a584c, hair: 0x1a1412, hairStyle: 'spiky', eye: 0xff7a1a, glow: 0xff7a1a },
     opts: { style: 'titan', outline: 0.0028, bulk: 1.15, head: 0.95, arm: 1.1, cracks: true },
   },
@@ -95,7 +97,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'rush', name: 'Atılım', cost: 10, cd: 3, speed: 80, time: 0.38, dmg: 150, hitRadius: 5, armorBreak: false },
     e: { kind: 'burst', name: 'Girdap', cost: 16, cd: 6, radius: 13, dmg: 170, stun: 1.5, armorBreak: false },
     slam: { name: 'Dalış', cost: 8, radius: 12, dmg: 110 },
-    weight: 22,
+    weight: 18,
     palette: { skin: 0xb4c0cc, top: 0x9fb0c0, legs: 0x8a9cae, hair: 0xe8eef4, hairStyle: 'long', eye: 0x58c8ff, glow: 0x58c8ff },
     opts: { style: 'titan', outline: 0.0034, bulk: 0.84, head: 1, arm: 1.2, cracks: true },
   },
@@ -119,7 +121,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'rush', name: 'Koç Hücumu', cost: 18, cd: 8, speed: 36, time: 1.4, dmg: 260, hitRadius: 6.5, armorBreak: true },
     e: { kind: 'burst', name: 'Deprem', cost: 22, cd: 12, radius: 28, dmg: 120, stun: 4, armorBreak: true },
     slam: { name: 'Ezme', cost: 10, radius: 16, dmg: 110 },
-    weight: 20,
+    weight: 16,
     palette: { skin: 0x86837a, top: 0x767469, legs: 0x6a685e, eye: 0x8fdc6a, glow: 0x8fdc6a },
     opts: { style: 'titan', outline: 0.0026, bulk: 1.42, head: 0.85, arm: 1.05, armor: true, plateColor: 0x5d6156, cracks: true },
   },
@@ -143,9 +145,57 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'throw', name: 'Kaya Fırlat', cost: 14, cd: 4, dmg: 260, radius: 13, speed: 75 },
     e: { kind: 'burst', name: 'Sarsıntı', cost: 25, cd: 16, radius: 46, dmg: 60, stun: 6, armorBreak: false },
     slam: { name: 'Tepinme', cost: 10, radius: 20, dmg: 100 },
-    weight: 12,
+    weight: 10,
     palette: { skin: 0x8f8497, top: 0x7f7488, legs: 0x6f6578, hair: 0x221a2a, hairStyle: 'long', eye: 0xb07cff, glow: 0xb07cff },
     opts: { style: 'titan', outline: 0.002, bulk: 1.25, head: 0.8, arm: 1.15, cracks: true },
+  },
+  // Uzaktan vuran form: ağzından çıkan ışın hattındaki her şeyi deler.
+  isin: {
+    id: 'isin',
+    name: 'Işın Devi',
+    needle: 'Işık İğnesi',
+    tagline: 'Hizaya sok, yak.',
+    color: 0xff4fe0,
+    height: 16,
+    radius: 2.8,
+    speed: 13,
+    sprint: 19,
+    jump: 22,
+    gravity: 44,
+    drain: 1.9,
+    armor: 0.9,
+    camDist: 32,
+    punch: { name: 'Kıvılcım', dmg: 120, range: 8, reach: 6, time: 0.45, cost: 3, armorBreak: false },
+    q: { kind: 'beam', name: 'Işın', cost: 16, cd: 5, dmg: 280, length: 120, width: 8, armorBreak: true },
+    e: { kind: 'stun', name: 'Kör Eden Işık', cost: 14, cd: 12, radius: 60, stun: 4.5 },
+    slam: { name: 'Ezme', cost: 10, radius: 14, dmg: 90 },
+    weight: 9,
+    palette: { skin: 0xc9b4cc, top: 0xb8a2bc, legs: 0xa690aa, hair: 0xffd8f6, hairStyle: 'spiky', eye: 0xff4fe0, glow: 0xff4fe0 },
+    opts: { style: 'titan', outline: 0.0028, bulk: 1, head: 1, arm: 1.05, cracks: true },
+  },
+  // Buz zırhlı form: geniş bir alanı uzun süre dondurur, donmuş zırhı koçbaşı gibi kırar.
+  buz: {
+    id: 'buz',
+    name: 'Buz Devi',
+    needle: 'Kırağı İğnesi',
+    tagline: 'Dondur, sonra kır.',
+    color: 0x3f6bff,
+    height: 14,
+    radius: 2.5,
+    speed: 14,
+    sprint: 20,
+    jump: 24,
+    gravity: 44,
+    drain: 1.5,
+    armor: 0.7,
+    camDist: 29,
+    punch: { name: 'Buz Pençesi', dmg: 115, range: 7.5, reach: 5.5, time: 0.45, cost: 3, armorBreak: false },
+    q: { kind: 'burst', name: 'Ayaz', cost: 15, cd: 9, radius: 42, dmg: 45, stun: 7, armorBreak: false },
+    e: { kind: 'rush', name: 'Buz Kırıcı', cost: 14, cd: 6, speed: 60, time: 0.6, dmg: 220, hitRadius: 5.5, armorBreak: true },
+    slam: { name: 'Kırağı', cost: 9, radius: 15, dmg: 100 },
+    weight: 9,
+    palette: { skin: 0xa8c0e0, top: 0x98b0d2, legs: 0x869fc4, hair: 0xe8f4ff, hairStyle: 'spiky', eye: 0x3f6bff, glow: 0x7fa8ff },
+    opts: { style: 'titan', outline: 0.003, bulk: 1.12, head: 0.92, arm: 1.08, armor: true, plateColor: 0xd4e8ff, cracks: true },
   },
 };
 

@@ -1,5 +1,7 @@
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
+import { NPC_IDS, NPCS, type NpcId } from '../data/npcs';
+import { newContractState, type ContractState } from './contracts';
 import { clampProgress, type StoryProgress } from './storyRules';
 
 export type GameMode = 'story' | 'free';
@@ -26,6 +28,8 @@ export interface SaveData {
   /** Sahip olunan karakterler ve seçili olan. */
   chars: CharId[];
   char: CharId;
+  /** Sur içindeki görev verenlerle sözleşme durumu. */
+  contracts: Record<NpcId, ContractState>;
 }
 
 export const MAX_UPGRADE = 5;
@@ -55,6 +59,7 @@ export function newSave(): SaveData {
     coins: 0,
     chars: ['aras'],
     char: 'aras',
+    contracts: { nuran: newContractState(), kagan: newContractState(), behram: newContractState() },
   };
 }
 
@@ -85,6 +90,11 @@ export function buyUpgrade(s: SaveData, id: UpgradeId) {
 /** Kazanılan XP'nin yarısı kadar av puanı verilir. */
 export function coinsFor(xp: number) {
   return Math.max(0, Math.round(xp / 2));
+}
+
+/** Öldürme serisinin av puanı çarpanı: seri uzadıkça artar, üst sınırda durur. */
+export function streakMult(streak: number, step = 0.25, max = 3) {
+  return Math.min(max, 1 + Math.max(0, streak - 1) * step);
 }
 
 export function ownsChar(s: SaveData, id: CharId) {
@@ -135,6 +145,16 @@ export function sanitizeSave(raw: unknown): SaveData {
   const owned = Array.isArray(r.chars) ? r.chars : [];
   d.chars = CHAR_IDS.filter((id) => id === 'aras' || owned.includes(id));
   if (typeof r.char === 'string' && d.chars.includes(r.char as CharId)) d.char = r.char as CharId;
+  const cs = (r.contracts ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  for (const id of NPC_IDS) {
+    const c = cs[id];
+    if (!c || typeof c !== 'object') continue;
+    const index = num(c.index, 0, 0, 9999);
+    const list = NPCS[id].contracts;
+    const active = c.active === true && list.length > 0;
+    const goal = list.length > 0 ? list[index % list.length].goal : 0;
+    d.contracts[id] = { index, active, progress: active ? num(c.progress, 0, 0, Math.max(0, goal - 1)) : 0 };
+  }
   if (typeof r.cls === 'string' && r.cls in CLASS_UNLOCK && classUnlocked(d, r.cls as ClassId)) d.cls = r.cls as ClassId;
   return d;
 }

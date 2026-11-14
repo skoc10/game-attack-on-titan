@@ -11,10 +11,10 @@ function pickKind(r: number, game: Game): GiantKind {
   const x = Math.random();
   const table: [GiantKind, number][] =
     r < CFG.world.walls[1].r
-      ? [['normal', 0.78], ['runner', 0.12], ['leaper', 0.1]]
+      ? [['normal', 0.66], ['runner', 0.1], ['leaper', 0.08], ['crawler', 0.07], ['screamer', 0.05], ['thrower', 0.04]]
       : r < CFG.world.walls[2].r
-        ? [['normal', 0.5], ['runner', 0.18], ['leaper', 0.16], ['armored', 0.16]]
-        : [['normal', 0.35], ['runner', 0.2], ['leaper', 0.2], ['armored', 0.25]];
+        ? [['normal', 0.4], ['runner', 0.13], ['leaper', 0.12], ['armored', 0.13], ['crawler', 0.08], ['thrower', 0.08], ['screamer', 0.06]]
+        : [['normal', 0.27], ['runner', 0.14], ['leaper', 0.14], ['armored', 0.19], ['crawler', 0.09], ['thrower', 0.1], ['screamer', 0.07]];
   let acc = 0;
   for (const [k, w] of table) {
     acc += w;

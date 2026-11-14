@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import type { Giant, NapeResult } from '../enemies/giant';
 import { CFG } from '../data/config';
-import { clamp, lerp, turnToward } from '../core/rng';
+import { angDiff, clamp, lerp, turnToward } from '../core/rng';
 import { CHARACTERS, type CharDef } from '../data/characters';
+import { crateLabel } from '../world/crates';
 import { FORMS } from '../data/titans';
 import { autoBend, buildHumanoid, disposeHumanoid, GEO, Rig, type Humanoid } from '../enemies/humanoid';
 import { CLASSES, type ClassDef } from './classes';
@@ -32,6 +33,9 @@ export class Player {
   maxGas = 100;
   blades = 20;
   maxBlades = 20;
+  /** Patlar mızrak sayısı. */
+  spears: number = CFG.spear.start;
+  maxSpears: number = CFG.spear.max;
   cls: ClassDef = CLASSES.nefer;
   dead = false;
   abilityCd = 0;
@@ -50,6 +54,10 @@ export class Player {
   private attackCd = 0;
   private spinT = 0;
   private readonly swingHit = new Set<Giant>();
+  private wasGround = true;
+  private lastVy = 0;
+  private landT = 0;
+  private bobY = 0;
   private invuln = 0;
   private deadT = 0;
   private phase = 0;
@@ -89,7 +97,7 @@ export class Player {
     this.body = buildHumanoid(
       1.8,
       { skin: L.skin, top: L.top, sleeve: L.top, legs: 0x3b3835, boots: 0x5a3b26, hair: L.hair, hairStyle: L.hairStyle, eye: L.eye },
-      { style: 'human', outline: 0.0048, head: 1.12 },
+      { style: 'human', outline: 0.0048, head: 1.03 },
     );
     this.cloak = new THREE.Group();
     const b = this.body;
@@ -138,6 +146,7 @@ export class Player {
     this.maxHp = Math.round(this.cls.hp * ch.hp);
     this.maxGas = CFG.gas.max * this.cls.gas * ch.gas * (1 + 0.15 * s.upgrades.gas);
     this.maxBlades = Math.round(CFG.blade.max * ch.blades * (1 + 0.2 * s.upgrades.blade));
+    this.spears = Math.max(this.spears, CFG.spear.start);
     this.hp = this.maxHp;
     this.gas = this.maxGas;
     this.blades = this.maxBlades;
@@ -170,6 +179,11 @@ export class Player {
     const g = this.game;
     const inp = g.input;
     if (this.dead) return;
+    // Koza: içindeyken yalnızca erken kırılabilir; devin elindeyken de kurulabilir.
+    if (g.cocoon.active || (this.mode !== 'titan' && inp.pressed('KeyC'))) {
+      if (inp.pressed('KeyC')) g.cocoon.toggle(g);
+      if (g.cocoon.active) return;
+    }
     if (this.grabbedBy) {
       this.struggle();
       return;
@@ -214,6 +228,7 @@ export class Player {
     if (inp.pressed('KeyF')) g.horse.call(g);
     if (inp.pressed('KeyE')) this.interact();
     if (inp.pressed('KeyR')) this.useAbility();
+    if (inp.pressed('KeyQ')) g.spears.fire(g);
     // Sol tık: imlecin altında tutunacak yer varsa kanca atar; yakında dev varsa (ya da kanca atılamadıysa) kılıç savurur.
     if (inp.mousePressed(0)) {
       let hooked = false;
@@ -244,7 +259,7 @@ export class Player {
 
   // ---------------------------------------------------------------- yakalanma
   canBeGrabbed() {
-    return !this.dead && this.mode !== 'titan' && this.invuln <= 0 && this.grabbedBy === null;
+    return !this.dead && this.mode !== 'titan' && this.invuln <= 0 && this.grabbedBy === null && !this.game.cocoon.active;
   }
 
   /** Bir dev oyuncuyu eline aldı. */
@@ -357,12 +372,22 @@ export class Player {
     return false;
   }
 
+  /** Koza kırıldı: kısa süre dokunulmaz, hafifçe sıçrar. */
+  shieldBreak() {
+    this.invuln = Math.max(this.invuln, 1.2);
+    if (!this.dead) {
+      this.vel.y = 7;
+      this.onGround = false;
+    }
+  }
+
   private interact() {
     const g = this.game;
     if (this.mode === 'mounted') {
       this.dismount(false);
       return;
     }
+    if (g.npcs.tryOpen()) return;
     const crate = g.crates.nearest(this.pos, CFG.crate.reach);
     if (crate) {
       g.crates.open(crate, g);
@@ -375,7 +400,10 @@ export class Player {
   interactHint() {
     if (this.mode === 'titan' || this.dead) return '';
     if (this.mode === 'mounted') return 'E — Attan in';
-    if (this.game.crates.nearest(this.pos, CFG.crate.reach)) return 'E — Kutuyu aç';
+    const npc = this.game.npcs.near(this.pos);
+    if (npc) return `E — ${npc.name} ile konuş`;
+    const crate = this.game.crates.nearest(this.pos, CFG.crate.reach);
+    if (crate) return `E — ${crateLabel(crate)}nı aç`;
     if (this.pos.distanceTo(this.game.horse.pos) < 4.5) return 'E — Ata bin';
     return '';
   }
@@ -501,7 +529,7 @@ export class Player {
 
   // ---------------------------------------------------------------- hasar
   takeHit(dmg: number, from: THREE.Vector3, knock: number) {
-    if (this.dead || this.invuln > 0 || this.grabbedBy) return;
+    if (this.dead || this.invuln > 0 || this.grabbedBy || this.game.cocoon.active) return;
     const g = this.game;
     if (this.mode === 'titan') {
       g.meter.hit(CFG.titan.hitDrain * (dmg / 30) * this.titan.def.armor);
@@ -543,6 +571,7 @@ export class Player {
     this.hp = this.maxHp;
     this.gas = this.maxGas;
     this.blades = this.maxBlades;
+    this.spears = Math.max(this.spears, CFG.spear.start);
     this.invuln = 2;
     g.meter.value = Math.floor(g.meter.value * 0.5);
     g.horse.pos.set(P.spawn.x + 4, 0, P.spawn.z);
@@ -575,8 +604,7 @@ export class Player {
           if (r === 'dull') this.dullToast();
           else if (r !== 'none') {
             this.useBlade();
-            g.audio.hit();
-            g.particles.burst(tmp, 14, 9, 0.6, 0xff6a5a, 1);
+            g.legFx(tmp, gi, r === 'down');
             if (r === 'down') g.hud.toast(`${gi.type.name} yere düştü — ensesine tek vuruş yeter!`);
             else g.hud.toast(`${gi.type.name} sendeledi — bacağına bir daha vur`);
           }
@@ -666,6 +694,12 @@ export class Player {
       }
     }
     this.wishDir(wish);
+    if (g.cocoon.active) {
+      // Kozanın içinde kıpırdanamaz; havadaysa olduğu yere düşer.
+      wish.set(0, 0, 0);
+      this.vel.x = 0;
+      this.vel.z = 0;
+    }
     const shift = g.input.down('ShiftLeft') || g.input.down('ShiftRight');
     // Fareyle uzak bir hedefe gidiliyorsa kendiliğinden koşar.
     const mt = this.moveTarget;
@@ -817,6 +851,7 @@ export class Player {
   // ---------------------------------------------------------------- görsel
   animate(dt: number) {
     const g = this.game;
+    this.titan.tickHusk(dt);
     this.grapple.updateLine(this);
     const hs = Math.hypot(this.vel.x, this.vel.z);
     const moving = hs > 0.5;
@@ -829,12 +864,31 @@ export class Player {
 
     const b = this.body;
     b.root.visible = !this.eaten && !(this.invuln > 0 && !this.dead && Math.floor(this.invuln * 14) % 2 === 0);
+    const now = performance.now() * 0.001;
     let aL = 0;
     let aR = 0;
     let lL = 0;
     let lR = 0;
-    let tilt = 0;
+    let tilt = 0; // öne eğilme
+    let twist = 0; // gövdenin kendi ekseninde dönmesi
+    let bank = 0; // yana yatma
     let spread = 0;
+    let outL = 0; // kolların yana açılması
+    let outR = 0;
+    let bob = 0;
+    let headYaw = 0;
+    let headPitch = 0;
+    let elbowL: number | undefined;
+    let elbowR: number | undefined;
+    let kneeL: number | undefined;
+    let kneeR: number | undefined;
+    const air = !this.onGround || this.grapple.active;
+
+    // İniş: yere sert basınca dizler bir an çöker.
+    if (this.onGround && !this.wasGround) this.landT = Math.min(0.32, Math.abs(this.lastVy) / 45);
+    this.wasGround = this.onGround;
+    if (!this.onGround) this.lastVy = this.vel.y;
+    if (this.landT > 0) this.landT -= dt;
 
     if (this.mode === 'mounted') {
       b.root.position.set(this.pos.x, g.horse.pos.y + 1.0, this.pos.z);
@@ -842,6 +896,12 @@ export class Player {
       spread = 0.45;
       aL = aR = -0.7;
       tilt = Math.min(0.3, hs / 90);
+      kneeL = kneeR = 1.25;
+      // Atın adımıyla eyerde hafifçe yaylanır.
+      if (hs > 2) {
+        bob = Math.abs(Math.sin(now * 11)) * 0.05;
+        twist = Math.sin(now * 5.5) * 0.05;
+      }
     } else {
       b.root.position.copy(this.pos);
       if (this.grabbedBy) this.phase += dt * 16;
@@ -854,31 +914,101 @@ export class Player {
         lL = Math.sin(this.phase) * 0.7;
         lR = -lL;
         aL = aR = -0.4;
-      } else if (this.onGround && !this.grapple.active) {
+        twist = Math.sin(this.phase * 1.3) * 0.35;
+      } else if (!air) {
         this.phase += hs * dt * 1.9;
-        const s = moving ? Math.sin(this.phase) * 0.8 : 0;
-        lL = s;
-        lR = -s;
-        aL = -s * 0.6;
-        aR = s * 0.6;
+        const run = Math.min(1, hs / P.sprint);
+        if (moving) {
+          // Koşu: kollar bacaklara ters sallanır, dirsekler kırık, gövde öne eğik ve her adımda omuzdan döner.
+          const sn = Math.sin(this.phase);
+          lL = sn * (0.55 + 0.4 * run);
+          lR = -lL;
+          aL = -sn * (0.45 + 0.5 * run);
+          aR = -aL;
+          elbowL = -(0.4 + 0.9 * run) - Math.max(0, -aL) * 0.45;
+          elbowR = -(0.4 + 0.9 * run) - Math.max(0, -aR) * 0.45;
+          tilt = 0.06 + 0.2 * run;
+          twist = -sn * (0.07 + 0.18 * run);
+          bank = Math.cos(this.phase) * 0.045;
+          bob = Math.abs(Math.cos(this.phase)) * 0.05 * (0.4 + run);
+        } else {
+          // Dururken: nefes alır, ağırlığını bir bacaktan öbürüne aktarır.
+          const br = Math.sin(now * 1.7);
+          aL = 0.05 + br * 0.03;
+          aR = 0.05 - br * 0.02;
+          outL = outR = 0.07 + br * 0.015;
+          bank = Math.sin(now * 0.55) * 0.028;
+          twist = Math.sin(now * 0.37) * 0.04;
+          tilt = 0.02 + br * 0.012;
+          bob = br * 0.006;
+          lL = 0.04;
+          lR = -0.05;
+        }
       } else {
+        // Havada: gövde hıza yatar, dönüşlerde yana yatar, bacaklar geride süzülür.
         tilt = Math.min(1.1, this.vel.length() / 36);
-        lL = 0.5;
-        lR = 0.2;
-        aL = aR = 0.7;
+        const lat = -this.vel.x * Math.cos(this.faceYaw) + this.vel.z * Math.sin(this.faceYaw);
+        bank = clamp(lat * 0.05, -0.6, 0.6);
+        lL = 0.55 + Math.sin(now * 5) * 0.08;
+        lR = 0.15 + Math.cos(now * 4.3) * 0.08;
+        kneeL = 0.9;
+        kneeR = 0.45;
+        if (this.grapple.active) {
+          // Bir kol kancanın teline uzanır, öbürü dengede.
+          aL = -2.3;
+          aR = 0.8;
+          outR = 0.35;
+          elbowL = -0.25;
+          twist = 0.25;
+        } else if (this.vel.y < -6) {
+          aL = aR = -1.1;
+          outL = outR = 0.9;
+          kneeL = kneeR = 0.6;
+        } else {
+          aL = aR = 0.7;
+          outL = outR = 0.35;
+        }
       }
     }
-    if (this.dead) tilt = -1.5;
+    if (this.landT > 0 && !air) {
+      const u = this.landT / 0.32;
+      kneeL = kneeR = 0.3 + 1.3 * u;
+      lL = lR = -0.55 * u;
+      tilt += 0.35 * u;
+      bob -= 0.22 * u;
+      outL = outR = 0.5 * u;
+    }
+    // Baş nişan alınan yere bakar; gövde öne yatıkken bile ileriyi görür.
+    if (!this.dead && !this.grabbedBy) {
+      headYaw = clamp(angDiff(g.aimYaw(), this.faceYaw), -1.1, 1.1);
+      headPitch = clamp(-g.camPitch * 0.5 - tilt * 0.55, -0.9, 0.5);
+    }
+    if (this.dead) {
+      tilt = -1.5;
+      outL = 0.9;
+      outR = 0.6;
+      bank = 0.15;
+      twist = 0;
+    }
     if (this.swingT >= 0) {
+      // Vuruş: gövde omuzdan döner, kollar düz.
       const t = this.swingT / CFG.sword.duration;
       aL = aR = lerp(-2.7, 0.6, Math.min(1, t * 1.3));
+      twist = lerp(-0.65, 0.7, Math.min(1, t * 1.3));
+      tilt += 0.15;
+      elbowL = elbowR = -0.1;
     } else if (this.spinT > 0) {
       aL = aR = -1.57;
       spread = 1.2;
+      elbowL = elbowR = -0.1;
     } else if (this.heavyT > 0) {
       aR = -2.9;
+      twist = -0.4;
     }
-    const k = 1 - Math.exp(-dt * 22);
+    const k = 1 - Math.exp(-dt * 20);
+    const ks = 1 - Math.exp(-dt * 9);
+    this.bobY = lerp(this.bobY, bob, k);
+    b.root.position.y += this.bobY;
     b.root.rotation.y = this.faceYaw;
     b.armL.rotation.x = lerp(b.armL.rotation.x, aL, k);
     b.armR.rotation.x = lerp(b.armR.rotation.x, aR, k);
@@ -886,17 +1016,15 @@ export class Player {
     b.legR.rotation.x = lerp(b.legR.rotation.x, lR, k);
     b.legL.rotation.z = lerp(b.legL.rotation.z, -spread * (this.mode === 'mounted' ? 1 : 0), k);
     b.legR.rotation.z = lerp(b.legR.rotation.z, spread * (this.mode === 'mounted' ? 1 : 0), k);
-    b.armL.rotation.z = lerp(b.armL.rotation.z, this.spinT > 0 ? -spread : 0, k);
-    b.armR.rotation.z = lerp(b.armR.rotation.z, this.spinT > 0 ? spread : 0, k);
-    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, 1 - Math.exp(-dt * 8));
-    // Vuruşta kollar düz; ata binerken dizler bükülü.
-    const straight = this.swingT >= 0 || this.spinT > 0;
-    autoBend(b, k, {
-      elbowL: straight ? -0.1 : undefined,
-      elbowR: straight ? -0.1 : undefined,
-      kneeL: this.mode === 'mounted' ? 1.25 : undefined,
-      kneeR: this.mode === 'mounted' ? 1.25 : undefined,
-    });
+    b.armL.rotation.z = lerp(b.armL.rotation.z, this.spinT > 0 ? -spread : -outL, k);
+    b.armR.rotation.z = lerp(b.armR.rotation.z, this.spinT > 0 ? spread : outR, k);
+    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, ks);
+    b.tilt.rotation.y = lerp(b.tilt.rotation.y, twist, k);
+    b.tilt.rotation.z = lerp(b.tilt.rotation.z, bank, ks);
+    // Baş, gövdenin dönüşünü dengeleyerek hedefe bakar.
+    b.head.rotation.y = lerp(b.head.rotation.y, headYaw - twist * 0.8, ks);
+    b.head.rotation.x = lerp(b.head.rotation.x, headPitch, ks);
+    autoBend(b, k, { elbowL, elbowR, kneeL, kneeR });
     const flap = 0.1 + Math.min(1.25, this.vel.length() / 20) + Math.sin(performance.now() * 0.012) * 0.05 * Math.min(1, hs / 4);
     this.cloak.rotation.x = lerp(this.cloak.rotation.x, flap - tilt * 0.4, 1 - Math.exp(-dt * 7));
   }

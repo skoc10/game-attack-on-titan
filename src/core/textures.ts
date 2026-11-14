@@ -33,7 +33,8 @@ function speckle(g: CanvasRenderingContext2D, rng: Rng, w: number, h: number, n:
 let toonRamp: THREE.DataTexture | null = null;
 export function toonGradient() {
   if (toonRamp) return toonRamp;
-  const steps = [105, 165, 225, 255];
+  // Altı basamak: gövdelerin hacmi okunur, ama çizgi film görünümü korunur.
+  const steps = [78, 118, 158, 196, 228, 255];
   const data = new Uint8Array(steps.length * 4);
   steps.forEach((v, i) => data.set([v, v, v, 255], i * 4));
   toonRamp = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);

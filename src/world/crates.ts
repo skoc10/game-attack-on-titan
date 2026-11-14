@@ -5,7 +5,7 @@ import { mulberry32 } from '../core/rng';
 import { rollTitan, TITANS, type TitanId } from '../data/titans';
 import { heightAt } from './terrain';
 
-export type CrateContent = 'needle' | 'gas' | 'blade';
+export type CrateContent = 'needle' | 'gas' | 'blade' | 'spear' | 'medic' | 'coin';
 
 export interface Crate {
   x: number;
@@ -21,12 +21,44 @@ export interface Crate {
   beam: THREE.Mesh;
 }
 
-/** İğne kutularının ışığı dev formunun rengindedir; gaz beyaz, kılıç gri. */
+const CRATE_COLORS: Record<Exclude<CrateContent, 'needle'>, number> = {
+  gas: 0xffffff,
+  blade: 0x8f9aa8,
+  spear: 0xffee33,
+  medic: 0xff7fa0,
+  coin: 0x2ee6a6,
+};
+const CRATE_NAMES: Record<Exclude<CrateContent, 'needle'>, string> = {
+  gas: 'Gaz sandığı',
+  blade: 'Kılıç sandığı',
+  spear: 'Mızrak sandığı',
+  medic: 'Sargı sandığı',
+  coin: 'Ganimet sandığı',
+};
+
+/** Her sandık türünün kendi ışık rengi vardır; iğne sandıklarınınki dev formunun rengidir. */
 export function crateColor(c: { content: CrateContent; form: TitanId }) {
-  return c.content === 'needle' ? TITANS[c.form].color : c.content === 'gas' ? 0xffffff : 0xaab2bd;
+  return c.content === 'needle' ? TITANS[c.form].color : CRATE_COLORS[c.content];
 }
 
-/** Haritaya dağılmış ikmal kutuları. İçlerinden dev iğnesi (dört türden biri), gaz veya kılıç çıkar. */
+export function crateLabel(c: { content: CrateContent; form: TitanId }) {
+  return c.content === 'needle' ? `${TITANS[c.form].needle} sandığı` : CRATE_NAMES[c.content];
+}
+
+/** 0..1 arası bir zarla sandığın içeriğini seçer. Köy sandıklarından daha çok mızrak çıkar. */
+export function rollContent(roll: number, village = false): CrateContent {
+  const table: [CrateContent, number][] = village
+    ? [['spear', 0.45], ['needle', 0.25], ['medic', 0.12], ['gas', 0.08], ['blade', 0.05], ['coin', 0.05]]
+    : [['needle', 0.4], ['blade', 0.15], ['spear', 0.14], ['gas', 0.13], ['medic', 0.09], ['coin', 0.09]];
+  let acc = 0;
+  for (const [c, w] of table) {
+    acc += w;
+    if (roll < acc) return c;
+  }
+  return 'needle';
+}
+
+/** Haritaya dağılmış ikmal sandıkları. İçlerinden dev iğnesi, gaz, kılıç, patlar mızrak, sargı ya da av puanı çıkar. */
 export class Crates {
   readonly list: Crate[] = [];
 
@@ -73,12 +105,12 @@ export class Crates {
     };
 
     // Rastgele kutu: içerik ve (iğneyse) hangi formun iğnesi olduğu.
-    const addRandom = (x: number, z: number) => {
+    const addRandom = (x: number, z: number, village = false) => {
       const r = rng();
       // Doruk İğnesi (en büyük dev) asıl olarak Demir Sur'un ötesinde bulunur.
       const deep = Math.hypot(x, z) > CFG.world.walls[1].r && rng() < 0.3;
       const form = deep ? 'zirve' : rollTitan(rng());
-      add(x, z, r < 0.58 ? 'needle' : r < 0.82 ? 'gas' : 'blade', form);
+      add(x, z, rollContent(r, village), form);
     };
     const valid = (x: number, z: number) => {
       const r = Math.hypot(x, z);
@@ -88,6 +120,7 @@ export class Crates {
     // İlk kutular kapının hemen dışında: oyuncu döngüyü erken öğrensin.
     add(16, 392, 'needle', 'ofke');
     add(-20, 560, 'gas');
+    add(18, 470, 'spear');
     add(22, 760, 'needle', 'firtina');
     add(-26, 900, 'needle', 'kaya');
     add(-30, CFG.world.walls[1].r + 150, 'needle', 'zirve');
@@ -95,10 +128,10 @@ export class Crates {
     add(26, CFG.world.walls[2].r + 110, 'needle', 'ofke');
     add(-34, CFG.world.walls[2].r + 220, 'needle', 'kaya');
     for (const v of villages) {
-      if (this.list.length >= CFG.crate.count - 10) break;
+      if (this.list.length >= CFG.crate.count - 14) break;
       const x = v.x + (rng() - 0.5) * 30;
       const z = v.z + (rng() - 0.5) * 30;
-      if (valid(x, z)) addRandom(x, z);
+      if (valid(x, z)) addRandom(x, z, true);
     }
     let guard = 0;
     while (this.list.length < CFG.crate.count && guard++ < 500) {

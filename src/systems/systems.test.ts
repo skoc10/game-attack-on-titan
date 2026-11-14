@@ -43,7 +43,7 @@ describe('TitanMeter', () => {
     expect(m.selected).toBe('kaya'); // seçim kendiliğinden değişmez
     expect(m.totalNeedles).toBe(3);
     expect(m.transform()).toBe(true);
-    expect(m.needles).toEqual({ ofke: 0, firtina: 2, kaya: 0, zirve: 0 });
+    expect(m.needles).toEqual({ ofke: 0, firtina: 2, kaya: 0, zirve: 0, isin: 0, buz: 0 });
     m.end();
     expect(m.selected).toBe('firtina'); // seçili tür bitince elde olana geçilir
   });
@@ -54,7 +54,7 @@ describe('TitanMeter', () => {
     m.addNeedle('ofke');
     m.addNeedle('zirve');
     expect(m.cycle()).toBe('zirve'); // firtina ve kaya atlanır
-    expect(m.cycle()).toBe('ofke');
+    expect(m.cycle()).toBe('ofke'); // ışın ve buz da atlanır
     m.needles.zirve = 0;
     expect(m.cycle()).toBe('ofke'); // tek tür kaldı
     m.clearNeedles();
@@ -114,7 +114,7 @@ describe('TitanMeter', () => {
 describe('dev formları', () => {
   it('kutu zarı her türü ağırlığına göre verir', () => {
     expect(rollTitan(0)).toBe('ofke');
-    expect(rollTitan(0.999)).toBe('zirve');
+    expect(rollTitan(0.999)).toBe('buz');
     const counts: Record<string, number> = {};
     for (let i = 0; i < 1000; i++) {
       const id = rollTitan((i + 0.5) / 1000);

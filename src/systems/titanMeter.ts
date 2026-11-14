@@ -11,7 +11,7 @@ import { TITAN_IDS, type FormId, type InnateId, type TitanId } from '../data/tit
 export class TitanMeter {
   value = 0;
   active = false;
-  readonly needles: Record<TitanId, number> = { ofke: 0, firtina: 0, kaya: 0, zirve: 0 };
+  readonly needles: Record<TitanId, number> = { ofke: 0, firtina: 0, kaya: 0, zirve: 0, isin: 0, buz: 0 };
   /** T'ye basınca dönüşülecek form. */
   selected: FormId = 'ofke';
   /** Seçili karakterin kendi formu (yoksa null). */

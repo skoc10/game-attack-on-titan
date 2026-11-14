@@ -96,6 +96,68 @@ Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kada
 
 Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun için dev barının **tamamen dolması** gerekir (iğneyle dönüşüm yarım barda olur). İğne de taşıyorsan `Tab` ile iğne formları ve kendi formun arasında geçersin; HUD'da kendi formun ★ ile gösterilir.
 
+## Patlar mızrak, sandıklar ve yeni devler
+
+**Patlar mızrak** teçhizata takılı patlayıcı bir kargıdır; `Q` ile nişan alınan yere fırlatılır (en çok 6 tane taşınır, 2 taneyle başlanır).
+
+- Patlama **enseye yakınsa** devi öldürür; zırhı da deler, bölüm sonu devlerinde iki kesik sayılır.
+- **Gövdeye yakınsa** devi yere serer (bölüm sonu devlerini sendeletir).
+- Patlamaya 6,5 metreden yakınsan sen de hasar alırsın; fırlatırken hafif bir geri tepme olur.
+- Mızrak **sarı ışıklı sandıklardan** çıkar; köylerdeki sandıkların yarıya yakını mızrak sandığıdır.
+
+**Sandık renkleri:** her içeriğin kendi ışığı vardır. Sandığa yaklaşınca ne olduğu yazıyla da görünür.
+
+| Işık | İçerik |
+| --- | --- |
+| Turuncu, açık mavi, yeşil, mor, pembe-mor, koyu mavi | Dev iğneleri: Kor, Rüzgâr, Taş, Doruk, Işık, Kırağı |
+| Sarı | Patlar mızrak (+2) |
+| Beyaz | Gaz |
+| Gri | Kılıç |
+| Gül pembesi | Sargı (canın %60'ı) |
+| Zümrüt yeşili | Ganimet (60 av puanı) |
+
+**Yeni iğne formları:** Işın Devi (16 m; ağzından çıkan ışın 120 metrelik hattaki her şeyi deler, zırh kırar) ve Buz Devi (14 m, buz zırhlı; geniş alanı 7 saniye dondurur, koçbaşı hücumu zırh kırar).
+
+**Yeni düşman devler:**
+
+| Tür | Davranış |
+| --- | --- |
+| Sürüngen | Dört ayak üstünde, çok hızlı koşar. Ensesi alçaktadır; yerden bile vurulabilir. |
+| Taşçı | Menzile girince durur ve kaya fırlatır. Kayanın düşeceği yer kırmızı halkayla önceden görünür. |
+| Çığırtkan | Seni görünce çığlık atar: yakındaki devler üstüne yürür, çevrede üç yeni dev belirir. Önce onu sustur. |
+
+**Öldürme serisi:** 9 saniye içinde gelen her yeni öldürme seriyi uzatır; seri uzadıkça av puanı çarpanı artar (her öldürmede +0,25, en çok ×3).
+
+**Görünüm:** insan ve dev modellerine yüz ayrıntıları (göz kapağı, kirpik, burun, dudak, dişler), el parmakları, eklemler, giysi dikişleri ve çizme eklendi. Devlerin göğüs, karın ve sırt kasları belirgin; dört ayrı yüz tipi var. Gölgelendirme altı basamaklı.
+
+## Sur içindeki kişiler, sözleşmeler ve koza
+
+**Sur içindeki kişiler** kapıya giden yolun kenarında, tezgâhlarının başında durur; yanlarına gidip `E` ile konuşulur. Pencere açıkken rakam tuşları seçim yapar, `E` ya da `Esc` kapatır. Haritada satıcı yeşil, görev verenler sarı kareyle görünür.
+
+| Kişi | Ne yapar |
+| --- | --- |
+| Levazımcı Nuran | Av puanına eşya satar: patlar mızrak ×2 (45), sargı (25), kılıç takımı (15), gaz (10), Kor İğnesi (120), rastgele mühürlü iğne (160) |
+| Avcıbaşı Kağan | Av sözleşmeleri: belirli sayıda ya da türde dev, dalış kesiği, kesip geçme, öldürme serisi |
+| Usta Behram | Teçhizat denemeleri: mızrakla öldürme, sandık açma, dev formunda av |
+
+- Her görev verenden aynı anda bir sözleşme alınır; etkin sözleşmeler sol üstte ilerlemeleriyle listelenir.
+- Sözleşme tamamlanınca ödül (av puanı, mızrak ya da iğne) kendiliğinden verilir; geri dönmek gerekmez. Sıradaki sözleşme için kişiyle yeniden konuşulur, liste bitince baştan döner.
+
+**Billur koza** (`C`): kendini 6 saniyeliğine sert bir kabuğa kapatırsın. İçindeyken hasar almaz, yakalanmaz, devler seni görmez ve yavaşça iyileşirsin; kıpırdayamazsın. Devin elindeyken kurarsan parmaklarını açtırır. Süre dolunca ya da `C` ile erken kırınca kabuk parçalanır ve 16 metre içindeki devleri sersemletir. Sonra 25 saniye yeniden kurulamaz.
+
+**Vuruş biçimleri:** ekranda kısa bir yazıyla bildirilir ve kendi efekti vardır.
+
+| Biçim | Ne zaman | Efekt |
+| --- | --- | --- |
+| Kesip geçtin | Yatayda hızla geçerken ense kesiği | Çapraz iki iz (X), yol boyunca beyaz iz |
+| Dalış kesiği | Ensenin üstünden hızla alçalırken | Dikey ve yatay iz (artı), aşağı fışkıran kan, yerde toz halkası |
+| Son darbe | Yerdeki devin ensesine | Kasılma, buhar sütunu |
+| Bacak kesiği | Ayak bileğine | Yere paralel iz, yana saçılan kan ve toz; dev düşerse "Diz çöktü" |
+
+**Yıkılış:** ayakta ölen dev önce sendeler, dizlerinin üstüne çöker, sonra gövdesi öne devrilir; yerde seker, kolları ve bacakları dağınık kalır, hafifçe yana yatar. Önden yumruk yiyen dev sırtüstü düşer. Dev formundan çıktığında terk ettiğin gövde de aynı biçimde yıkılıp buharlaşır.
+
+**Karakter hareketleri:** koşarken dirsekler kırılır, gövde öne eğilir ve her adımda omuzdan döner; dururken nefes alıp ağırlık aktarır; havada dönüşlere yatar, inişte dizleri çöker; baş nişan alınan yere bakar.
+
 ## Efektler ve sesler
 
 - **Kesip geçme:** öldürücü ense kesiğinde çapraz iki kılıç izi parlar, kan gidiş yönüne fışkırır ve zaman kısa süre yavaşlar. Ne kadar hızlı geçersen iz o kadar büyür; yüksek hızda yol boyunca beyaz bir iz ve kısa bir parlama eklenir. Dev formundaki öldürmelerde formun renginde tek büyük darbe izi çıkar.
