@@ -14,9 +14,11 @@ const CONTROLS: [string, string][] = [
   ['Yakalanınca', 'Sol tık seri: kes · Space: gazla sıyrıl'],
   ['Shift', 'Koş · havada gaz itişi'],
   ['Space', 'Zıpla · kancadan fırla'],
-  ['E', 'Kutu aç · ata bin/in'],
+  ['E', 'Kutu aç · ata bin/in · konuş'],
   ['F', 'Atı çağır'],
   ['R', 'Sınıf yeteneği'],
+  ['Q', 'Patlar mızrak fırlat (dev formunda: güç)'],
+  ['C', 'Billur koza: 6 sn dokunulmaz ol'],
   ['Tab', 'Dönüşülecek devi seç (iğne türü)'],
   ['T', 'Deve dönüş (bar yarı + iğne)'],
   ['W A S D', 'Klavyeyle hareket (isteğe bağlı)'],
@@ -177,7 +179,10 @@ export class Menu {
               <li>Gaz kendiliğinden dolmaz: <b>mavi bayraklı ikmal noktalarında</b> doldur.</li>
               <li>Büyük devler seni <b>yakalayıp ağzına götürür</b>: sol tıkla kes ya da Space ile sıyrıl.</li>
               <li>Enseye <b>tek temiz kesik</b> devi devirir.</li>
-              <li>Renkli ışıklı kutulardan <b>dev iğnesi</b> topla: her renk başka bir dev.</li>
+              <li>Renkli ışıklı sandıklardan <b>dev iğnesi</b> topla: her renk başka bir dev. Sarı ışık <b>patlar mızrak</b>, pembe sargı, yeşil ganimet.</li>
+              <li>Sur içinde <b>Levazımcı Nuran</b> av puanına eşya satar; <b>Kağan</b> ve <b>Behram</b> ödüllü sözleşme verir (<kbd>E</kbd> ile konuş).</li>
+              <li>Sıkışınca <kbd>C</kbd> ile <b>billur kozaya</b> gir: devler sana dokunamaz, kırılınca çevreyi sersemletir.</li>
+              <li><kbd>Q</kbd> ile <b>patlar mızrak</b> at: enseye yakın patlarsa zırhlıyı bile öldürür, gövdeye yakın patlarsa devi yere serer.</li>
               <li>Dev barı yarıyı geçince <kbd>T</kbd> ile deve dönüş; her güç bar harcar.</li>
               <li>Her dev <b>av puanı</b> düşürür; puanla yeni karakter al. ★ işaretli karakterler bar <b>dolunca iğnesiz</b> kendi devine dönüşür.</li>
             </ol>

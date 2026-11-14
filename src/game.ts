@@ -4,11 +4,16 @@ import { Input } from './core/input';
 import { GameAudio } from './core/audio';
 import { Particles } from './core/particles';
 import { SlashFx } from './core/slashfx';
+import { Spears } from './player/spears';
+import { Boulders } from './enemies/boulders';
+import { Cocoon } from './player/cocoon';
+import { Npcs } from './world/npcs';
+import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { clamp, lerp } from './core/rng';
 import { World } from './world/world';
-import { Crates, type Crate } from './world/crates';
+import { crateColor, Crates, type Crate } from './world/crates';
 import { Spawner } from './world/spawner';
 import { Stations } from './world/stations';
 import { TITAN_IDS, TITANS } from './data/titans';
@@ -20,7 +25,7 @@ import { Horse } from './player/horse';
 import type { AimHit } from './player/grapple';
 import type { Giant } from './enemies/giant';
 import { TitanMeter } from './systems/titanMeter';
-import { addXp, buyChar, classUnlocked, CLASS_UNLOCK, coinsFor, newSave, ownsChar, selectChar, type ClassId, type GameMode, type SaveData } from './systems/progression';
+import { addXp, buyChar, classUnlocked, CLASS_UNLOCK, coinsFor, newSave, ownsChar, selectChar, streakMult, type ClassId, type GameMode, type SaveData } from './systems/progression';
 import { CHARACTERS, type CharId } from './data/characters';
 import { Story } from './systems/story';
 import type { StoryEvent } from './systems/storyRules';
@@ -44,6 +49,15 @@ export class Game {
   readonly world: World;
   readonly particles: Particles;
   readonly slashes: SlashFx;
+  readonly spears: Spears;
+  readonly boulders: Boulders;
+  readonly cocoon: Cocoon;
+  readonly npcs: Npcs;
+  /** Patlama sürerken yapılan öldürmeler mızrağa yazılır (kesik izi çizilmez). */
+  killBy: 'spear' | null = null;
+  /** Öldürme serisi ve bitmesine kalan süre. */
+  streak = 0;
+  streakT = 0;
   readonly player: Player;
   readonly horse: Horse;
   readonly crates: Crates;
@@ -124,6 +138,9 @@ export class Game {
     this.world = new World(this.scene, fogColor);
     this.particles = new Particles(this.scene);
     this.slashes = new SlashFx(this.scene);
+    this.spears = new Spears(this.scene);
+    this.boulders = new Boulders(this.scene);
+    this.cocoon = new Cocoon(this.scene);
     this.player = new Player(this);
     this.horse = new Horse(this, CFG.player.spawn.x + 4, CFG.player.spawn.z + 2);
     this.crates = new Crates(this.scene, this.world.villages);
@@ -131,6 +148,7 @@ export class Game {
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
     this.story = new Story(this);
+    this.npcs = new Npcs(this);
     this.scene.add(buildBeacon());
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
@@ -379,16 +397,22 @@ export class Game {
     this.save.kills += 1;
     this.meter.addKill(g.type.meter, (1 + 0.15 * this.save.upgrades.meter) * CHARACTERS[this.save.char].meter);
     this.audio.kill(g.type.kind === 'boss');
-    this.killFx(g, source);
-    const coins = coinsFor(g.type.xp);
+    const style = this.killFx(g, source);
+    // Seri: süre dolmadan gelen her öldürme av puanı çarpanını büyütür.
+    this.streak = this.streakT > 0 ? this.streak + 1 : 1;
+    this.streakT = CFG.streak.window;
+    const mult = streakMult(this.streak, CFG.streak.step, CFG.streak.maxMult);
+    const coins = Math.round(coinsFor(g.type.xp) * mult);
     this.save.coins += coins;
-    this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP · +${coins} puan`);
+    this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP · +${coins} puan${mult > 1 ? ` (seri ×${mult.toFixed(2).replace(/0$/, '')})` : ''}`);
     if (g.type.kind === 'boss') {
       this.meter.value = this.meter.max;
       if (g.tag === 'gate') this.save.bossDefeated = true;
       this.hud.banner(`${g.type.name.toLocaleUpperCase('tr')} DÜŞTÜ`, g.tag === 'gate' ? 'Demir Sur kapısı yeniden açık' : 'Dev barın doldu');
     }
     this.grantXp(g.type.xp);
+    this.npcs.emit({ type: 'kill', giant: g.type.kind, elite: g.isElite, by: this.killBy === 'spear' ? 'spear' : source, style });
+    this.npcs.emit({ type: 'streak', n: this.streak });
     const p = this.player;
     this.storyEvent({ type: 'kill', giant: g.type.kind, by: source, form: p.mode === 'titan' ? p.titan.def.id : null, tag: g.tag });
   }
@@ -397,19 +421,48 @@ export class Game {
    * Öldürme efekti. Kılıçla: ensede çapraz iki kesik izi, gidiş yönüne fışkıran kan ve buhar;
    * hızla içinden geçildiyse iz uzar, zaman daha çok yavaşlar. Dev formunda: tek büyük darbe izi.
    */
-  private killFx(g: Giant, source: 'blade' | 'titan') {
+  private killFx(g: Giant, source: 'blade' | 'titan'): KillStyle | null {
     const p = this.player;
     const at = g.napeWorld(target);
     const speed = p.vel.length();
     if (speed > 3) look.copy(p.vel).divideScalar(speed);
     else look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
     const lying = g.state === 'dead' && g.wasLying;
+    if (this.killBy === 'spear') {
+      // Patlamanın kendi efekti var; yalnızca ensede bir alev patlaması eklenir.
+      this.particles.burst(at, 50, g.h + 12, 0.9, 0xffb040, g.h * 0.1);
+      this.slowT = 0.2;
+      return null;
+    }
     if (source === 'titan') {
       const col = p.titan.def.color;
       this.slashes.spawn(at, look, g.h * 0.45 + 3, col, 0.2, 0.4);
       this.particles.burst(at, 60, g.h * 1.4 + 10, 1.1, col, g.h * 0.15);
       this.shakeCam(0.6);
-      return;
+      return null;
+    }
+    const style = killStyle({ lying, above: p.pos.y + 1 - at.y, vy: p.vel.y, speed });
+    if (style === 'dive') {
+      // Dalış kesiği: yukarıdan inen dikey bir iz ile onu kesen yatay iz (artı biçimi), yerde toz halkası.
+      const size = 2.4 + g.h * 0.16;
+      this.audio.slash(1);
+      this.slashes.spawn(at, look, size * 1.25, 0xffffff, Math.PI / 2, 0.4);
+      this.slashes.spawn(at, look, size, 0xffd27a, 0, 0.46);
+      for (let i = 0; i < 60; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 6 + Math.random() * 14;
+        this.particles.emit(at.x, at.y, at.z, Math.cos(a) * sp, -4 - Math.random() * 14, Math.sin(a) * sp, 0.6 + Math.random() * 0.5, i % 3 === 0 ? 0xff4a3a : 0xc8201a, -14);
+      }
+      const gy = this.world.heightAt(g.pos.x, g.pos.z) + 0.4;
+      for (let i = 0; i < 48; i++) {
+        const a = (i / 48) * Math.PI * 2;
+        this.particles.emit(g.pos.x + Math.cos(a) * 2, gy, g.pos.z + Math.sin(a) * 2, Math.cos(a) * (14 + g.h), 1.5, Math.sin(a) * (14 + g.h), 1, 0xa39a86);
+      }
+      this.hud.flash('#ffffff', 0.28, 0.3);
+      this.hud.callout('DALIŞ KESİĞİ');
+      this.slowT = 0.45;
+      this.shakeCam(0.9);
+      return style;
     }
     const power = Math.min(1, speed / 38);
     const size = 1.8 + g.h * 0.13 + power * 2.2;
@@ -440,14 +493,50 @@ export class Game {
       }
       this.hud.flash('#ffffff', 0.12 + power * 0.14, 0.25);
     }
+    if (style === 'pass') this.hud.callout('KESİP GEÇTİN');
+    else if (style === 'ground') this.hud.callout('SON DARBE');
     this.slowT = 0.14 + power * 0.26;
     this.shakeCam(0.3 + power * 0.5);
+    return style;
+  }
+
+  /**
+   * Bacak kesiği efekti: ayak bileğinde yere paralel bir kesik izi, yana fışkıran kan ve toz.
+   * Dev yere düşüyorsa iz büyür ve yer sarsılır.
+   */
+  legFx(at: THREE.Vector3, g: Giant, down: boolean) {
+    const p = this.player;
+    const hs = Math.hypot(p.vel.x, p.vel.z);
+    if (hs > 2) look.set(p.vel.x / hs, 0, p.vel.z / hs);
+    else look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
+    const size = 1.5 + g.h * 0.1 + (down ? 1 : 0);
+    this.audio.slash(down ? 0.6 : 0.25);
+    this.audio.hit();
+    this.slashes.spawn(at, look, size, 0xffffff, 0.08, 0.28);
+    this.slashes.spawn(at, look, size * 0.85, 0xff7a6a, -0.2, 0.34);
+    // Kan, kesiğin iki yanına alçaktan saçılır.
+    const n = down ? 44 : 22;
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 === 0 ? 1 : -1;
+      const sp = 5 + Math.random() * 11;
+      this.particles.emit(at.x, at.y + 0.4, at.z, look.x * sp * 0.6 + look.z * side * sp * 0.7, 1 + Math.random() * 5, look.z * sp * 0.6 - look.x * side * sp * 0.7, 0.45 + Math.random() * 0.5, i % 3 === 0 ? 0xff4a3a : 0xc8201a, -14);
+    }
+    const gy = this.world.heightAt(at.x, at.z) + 0.3;
+    for (let i = 0; i < (down ? 30 : 12); i++) {
+      const a = Math.random() * Math.PI * 2;
+      this.particles.emit(at.x, gy, at.z, Math.cos(a) * 7, 1.5, Math.sin(a) * 7, 0.9, 0xa39a86);
+    }
+    if (down) {
+      this.hud.callout('DİZ ÇÖKTÜ');
+      this.slowT = Math.max(this.slowT, 0.18);
+      this.shakeCam(0.6);
+    } else this.shakeCam(0.25);
   }
 
   onCrateOpened(c: Crate) {
     const p = this.player;
     this.audio.pickup();
-    let color = 0xffd070;
+    let color = crateColor(c);
     if (c.content === 'needle') {
       const def = TITANS[c.form];
       const first = this.meter.needles[c.form] === 0;
@@ -460,10 +549,21 @@ export class Game {
     } else if (c.content === 'gas') {
       p.gas = p.maxGas;
       this.hud.toast('Gaz tüpleri dolduruldu');
+    } else if (c.content === 'spear') {
+      const got = Math.min(CFG.spear.perCrate, p.maxSpears - p.spears);
+      p.spears += got;
+      this.hud.toast(got > 0 ? `Patlar mızrak +${got} — Q ile fırlat` : 'Mızrak kılıfın dolu');
+    } else if (c.content === 'medic') {
+      p.hp = Math.min(p.maxHp, p.hp + p.maxHp * CFG.crate.medicHeal);
+      this.hud.toast('Yaraların sarıldı');
+    } else if (c.content === 'coin') {
+      this.grantCoins(CFG.crate.coins);
+      this.hud.toast(`Ganimet: +${CFG.crate.coins} av puanı`);
     } else {
       p.blades = p.maxBlades;
       this.hud.toast('Yeni kılıçlar takıldı');
     }
+    this.npcs.emit({ type: 'crate', content: c.content });
     target.set(c.x, c.y + 1, c.z);
     this.particles.burst(target, 30, 8, 1, color, 1, 4);
     this.grantXp(10);
@@ -486,6 +586,27 @@ export class Game {
       if (g.alive && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 32) g.stun(2);
     }
     this.storyEvent({ type: 'transform', form: def.id });
+  }
+
+  /** Çığırtkan avını gördü: yakındaki devler uyanır, çevrede yenileri belirir. */
+  onScream(g: Giant) {
+    this.hud.banner('ÇIĞLIK', 'Çığırtkan sürüyü çağırıyor — önce onu sustur');
+    this.shakeCam(0.5);
+    for (const o of this.giants) {
+      if (o !== g && Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) < 170) o.alert();
+    }
+    let made = 0;
+    for (let tries = 0; tries < 16 && made < 3; tries++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 45 + Math.random() * 40;
+      const x = g.pos.x + Math.sin(a) * d;
+      const z = g.pos.z + Math.cos(a) * d;
+      const r = Math.hypot(x, z);
+      if (r < CFG.world.walls[0].r + 50 || CFG.world.walls.some((w) => Math.abs(r - w.r) < 24)) continue;
+      if (this.world.solidAt(x, this.world.heightAt(x, z) + 2, z, 3)) continue;
+      this.spawner.spawn(made === 2 ? 'runner' : 'normal', x, z, this).alert();
+      made++;
+    }
   }
 
   onPlayerHurt() {
@@ -604,12 +725,15 @@ export class Game {
       }
     }
 
-    if (inp.pressed('KeyP') || inp.pressed('Escape')) {
+    // Biriyle konuşurken tuşlar pencereye gider: oyuncu girdisi ve duraklatma o karede işlenmez.
+    const talking = this.npcs.open !== null;
+    if (talking) this.npcs.keys();
+    else if (inp.pressed('KeyP') || inp.pressed('Escape')) {
       inp.endFrame();
       this.pause();
       return;
     }
-    if (this.debug) this.debugKeys();
+    if (this.debug && !talking) this.debugKeys();
 
     let sdt = dt;
     if (this.slowT > 0) {
@@ -618,7 +742,7 @@ export class Game {
     }
 
     this.updateCursor();
-    this.player.handleInput();
+    if (!talking) this.player.handleInput();
     const steps = Math.max(1, Math.ceil(sdt / (1 / 90)));
     const h = sdt / steps;
     for (let i = 0; i < steps; i++) this.player.step(h);
@@ -638,6 +762,14 @@ export class Game {
     this.player.animate(sdt);
     this.particles.update(sdt);
     this.slashes.update(sdt);
+    this.spears.update(sdt, this);
+    this.boulders.update(sdt, this);
+    this.cocoon.update(sdt, this);
+    this.npcs.update(sdt);
+    if (this.streakT > 0) {
+      this.streakT -= dt;
+      if (this.streakT <= 0) this.streak = 0;
+    }
     this.updateAudio(dt);
     if (this.save.mode === 'story') this.story.update(dt);
     else this.quests.update();
@@ -721,5 +853,6 @@ export class Game {
     }
     if (inp.pressed('Digit5')) this.grantXp(200);
     if (inp.pressed('Digit6')) this.grantCoins(500);
+    if (inp.pressed('Digit7')) p.spears = p.maxSpears;
   }
 }

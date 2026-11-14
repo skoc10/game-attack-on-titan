@@ -1,6 +1,6 @@
 import type { MeterKind } from '../data/config';
 
-export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'boss';
+export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'crawler' | 'thrower' | 'screamer' | 'boss';
 
 export interface GiantType {
   kind: GiantKind;
@@ -25,6 +25,12 @@ export interface GiantType {
   arm: number;
   skins: number[];
   downTime: number;
+  /** Dört ayak üstünde sürünür: ensesi alçaktadır ama çok hızlıdır. */
+  crawl?: boolean;
+  /** Uzaktan kaya fırlatır. */
+  thrower?: boolean;
+  /** Avını görünce çığlık atıp başka devleri çağırır. */
+  screamer?: boolean;
 }
 
 export const GIANT_TYPES: Record<GiantKind, GiantType> = {
@@ -115,6 +121,75 @@ export const GIANT_TYPES: Record<GiantKind, GiantType> = {
     arm: 1,
     skins: [0xa98f7e, 0x9d8474],
     downTime: 7,
+  },
+  crawler: {
+    kind: 'crawler',
+    name: 'Sürüngen',
+    minH: 8,
+    maxH: 12,
+    speed: 11,
+    turn: 3.2,
+    hpBase: 100,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 160,
+    dmg: 18,
+    armored: false,
+    meter: 'elite',
+    xp: 45,
+    bulk: [0.85, 1],
+    head: [1.05, 1.25],
+    arm: 0.95,
+    skins: [0x8d9482, 0x7f8a78],
+    downTime: 5,
+    crawl: true,
+  },
+  thrower: {
+    kind: 'thrower',
+    name: 'Taşçı',
+    minH: 12,
+    maxH: 16,
+    speed: 3.4,
+    turn: 1.7,
+    hpBase: 140,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 200,
+    dmg: 22,
+    armored: false,
+    meter: 'elite',
+    xp: 55,
+    bulk: [1.05, 1.2],
+    head: [0.85, 0.95],
+    arm: 1.35,
+    skins: [0xa8876a, 0x9a7a5e],
+    downTime: 6,
+    thrower: true,
+  },
+  screamer: {
+    kind: 'screamer',
+    name: 'Çığırtkan',
+    minH: 8,
+    maxH: 11,
+    speed: 5.2,
+    turn: 2.4,
+    hpBase: 100,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 190,
+    dmg: 16,
+    armored: false,
+    meter: 'elite',
+    xp: 50,
+    bulk: [0.8, 0.92],
+    head: [1.25, 1.4],
+    arm: 1.1,
+    skins: [0xe6d6cf, 0xdccac4],
+    downTime: 5,
+    screamer: true,
   },
   boss: {
     kind: 'boss',

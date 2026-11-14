@@ -1,7 +1,7 @@
 import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { FORMS, hex, TITAN_IDS, TITANS } from '../data/titans';
-import { xpToNext } from '../systems/progression';
+import { streakMult, xpToNext } from '../systems/progression';
 import { FREE_HUNT } from '../systems/quests';
 import { SPEAKERS, withHero } from '../data/story';
 
@@ -16,6 +16,7 @@ export class Hud {
   private flashTimer = 0;
   private bannerTimer = 0;
   private cardTimer = 0;
+  private calloutTimer = 0;
   private last: Record<string, string> = {};
 
   constructor(private readonly game: Game) {
@@ -26,6 +27,7 @@ export class Hud {
         <div class="quest"><span class="label">GÖREV</span><div data-id="quest"></div></div>
         <div class="lvl"><span data-id="lvl"></span><div class="bar xp"><i data-id="xp"></i></div></div>
         <div class="zone" data-id="zone"></div>
+        <div class="contracts" data-id="contracts"></div>
       </div>
       <div class="tc" data-id="bossWrap">
         <div class="bossName" data-id="bossName"></div>
@@ -42,6 +44,10 @@ export class Hud {
         <div class="grabRow"><span class="label">AĞZA</span><div class="bar eat"><i data-id="eat"></i></div></div>
         <div class="grabKeys" data-id="grabKeys"></div>
       </div>
+      <div class="callout" data-id="callout"></div>
+      <div class="cocoon" data-id="cocoon"><span class="label">BİLLUR KOZA</span><b data-id="cocoonT"></b><div class="bar"><i data-id="cocoonBar"></i></div><small><kbd>C</kbd> erken kır</small></div>
+      <div class="npc" data-id="npc"></div>
+      <div class="streak" data-id="streak"><b data-id="streakN"></b><small data-id="streakM"></small><div class="bar"><i data-id="streakT"></i></div></div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
       <div class="chapter" data-id="chapter"><small data-id="chapterLabel"></small><div data-id="chapterTitle"></div><p data-id="chapterSub"></p></div>
       <div class="dialog" data-id="dialog"><b data-id="dialogWho"></b><span data-id="dialogText"></span><kbd>Enter</kbd></div>
@@ -49,6 +55,7 @@ export class Hud {
         <div class="row"><span class="label">CAN</span><div class="bar hp"><i data-id="hp"></i></div></div>
         <div class="row"><span class="label">GAZ</span><div class="bar gas"><i data-id="gas"></i></div></div>
         <div class="row"><span class="label">KILIÇ</span><div class="bar blade"><i data-id="blade"></i></div></div>
+        <div class="row"><span class="label">MIZRAK</span><div class="spears" data-id="spears"></div></div>
         <div class="ability" data-id="ability"></div>
       </div>
       <div class="bc">
@@ -102,6 +109,16 @@ export class Hud {
     this.bannerTimer = 2.6;
   }
 
+  /** Vuruş biçimini bildiren kısa yazı (nişangâhın altında parlayıp söner). */
+  callout(text: string) {
+    const el = this.el.callout;
+    el.textContent = text;
+    el.classList.remove('show');
+    void el.offsetWidth; // animasyonu baştan başlat
+    el.classList.add('show');
+    this.calloutTimer = 1.2;
+  }
+
   /** Sezon açılış kartı: ekranı kısa süre karartıp büyük başlık gösterir. */
   chapterCard(label: string, title: string, sub: string) {
     this.el.chapterLabel.textContent = label;
@@ -134,10 +151,46 @@ export class Hud {
       this.cardTimer -= dt;
       if (this.cardTimer <= 0) this.el.chapter.classList.remove('show');
     }
+    if (this.calloutTimer > 0) {
+      this.calloutTimer -= dt;
+      if (this.calloutTimer <= 0) this.el.callout.classList.remove('show');
+    }
+    // Koza: içindeyken kalan süre, dışındayken bekleme süresi yetenek satırında görünür.
+    const co = g.cocoon;
+    this.el.cocoon.classList.toggle('show', co.active);
+    if (co.active) {
+      this.text('cocoonT', `${co.t.toFixed(1)} sn`);
+      this.width('cocoonBar', co.t / CFG.cocoon.dur);
+    }
+    // Sur içindeki kişilerle konuşma penceresi.
+    const nv = g.npcs.view();
+    this.el.npc.classList.toggle('show', nv !== null);
+    if (nv) {
+      const opts = nv.options
+        .map((o) => `<li class="${o.off ? 'off' : ''}"><kbd>${o.key}</kbd><div><b>${esc(o.text)}</b><small>${esc(o.sub)}</small></div></li>`)
+        .join('');
+      this.html('npc', `<div class="npcHead"><b>${esc(nv.name)}</b><span>${esc(nv.role)}</span></div><p>“${esc(nv.greet)}”</p><ul>${opts}</ul><div class="npcNote">${esc(nv.note)}</div><div class="npcKeys"><kbd>E</kbd> / <kbd>Esc</kbd> kapat</div>`);
+    }
+    this.html(
+      'contracts',
+      g.npcs
+        .active()
+        .map((c) => `<div>◇ ${esc(c.giver)} · ${esc(c.title)} <i>${c.progress}/${c.goal}</i></div>`)
+        .join(''),
+    );
     const story = g.save.mode === 'story';
     this.width('hp', p.hp / p.maxHp);
     this.width('gas', p.gas / p.maxGas);
     this.width('blade', p.blades / p.maxBlades);
+    this.html('spears', Array.from({ length: p.maxSpears }, (_, i) => `<i class="${i < p.spears ? 'on' : ''}"></i>`).join('') + '<kbd>Q</kbd>');
+    // Öldürme serisi: sayı, av puanı çarpanı ve kalan süre.
+    const streakOn = g.streak >= 2 && g.streakT > 0;
+    this.el.streak.classList.toggle('show', streakOn);
+    if (streakOn) {
+      this.text('streakN', `SERİ ×${g.streak}`);
+      this.text('streakM', `av puanı ×${streakMult(g.streak, CFG.streak.step, CFG.streak.maxMult).toFixed(2).replace(/0$/, '')}`);
+      this.width('streakT', g.streakT / CFG.streak.window);
+    }
     this.width('xp', g.save.xp / xpToNext(g.save.level));
     this.text('lvl', `Sv ${g.save.level} · ${p.char.name} · ${p.cls.name} · ◆ ${g.save.coins}`);
     if (story) {
@@ -210,7 +263,8 @@ export class Hud {
     this.el.ability.style.display = titan ? 'none' : 'block';
     this.html(
       'ability',
-      `<kbd>R</kbd> ${p.cls.ability}${p.abilityCd > 0 ? ` <b>${Math.ceil(p.abilityCd)}</b>` : p.heavyT > 0 ? ' <b>HAZIR</b>' : ''}`,
+      `<kbd>R</kbd> ${p.cls.ability}${p.abilityCd > 0 ? ` <b>${Math.ceil(p.abilityCd)}</b>` : p.heavyT > 0 ? ' <b>HAZIR</b>' : ''}` +
+        ` &nbsp; <kbd>C</kbd> Koza${co.active ? ' <b>AÇIK</b>' : co.cd > 0 ? ` <b>${Math.ceil(co.cd)}</b>` : ''}`,
     );
 
     // Nişangâh imleci izler.

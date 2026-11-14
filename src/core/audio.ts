@@ -228,6 +228,41 @@ export class GameAudio {
   gas() {
     this.noise(0.28, 0.24, 5200, 2200, 0.8);
   }
+  /** Koza kurulurken: camsı, yükselen çınlamalar. */
+  crystal() {
+    [880, 1320, 1760, 2640].forEach((f, i) => this.tone('sine', f, f * 1.01, 0.7, 0.16, i * 0.05));
+    this.noise(0.5, 0.3, 6000, 9000, 4);
+    this.tone('triangle', 220, 440, 0.5, 0.2);
+  }
+  /** Koza kırılırken: cam şangırtısı ve tok bir patlama. */
+  shatter() {
+    this.noise(0.5, 0.9, 9000, 3000, 1.2, 0, this.bus, 'highpass');
+    for (let i = 0; i < 6; i++) this.tone('triangle', 2400 + Math.random() * 3000, 1800, 0.25, 0.12, i * 0.03);
+    this.tone('sine', 110, 40, 0.5, 0.7);
+  }
+  /** Mızrak fırlatma: basınçlı hava ve ıslık. */
+  spearFire() {
+    this.noise(0.14, 0.8, 1800, 500, 1.5);
+    this.tone('sawtooth', 300, 1400, 0.3, 0.14);
+    this.noise(0.5, 0.25, 4000, 7000, 3, 0.05);
+  }
+  /** Patlama: çatırtı, derin vuruş ve yankılanan gürleme. Uzaklaştıkça kısılır. */
+  explosion(x: number, z: number) {
+    const sp = spatial(this.listener, x, z, 70);
+    const v = Math.max(0.15, sp.gain);
+    const dest = this.out(sp.pan);
+    this.noise(0.1, v, 6000, 900, 0.6, 0, dest, 'highpass');
+    this.tone('sine', 120, 26, 0.9, v, 0, dest);
+    this.noise(1.1, v * 0.9, 700, 60, 0.6, 0.02, dest, 'lowpass');
+    this.noise(1.8, v * 0.35, 2400, 300, 0.5, 0.08, dest);
+  }
+  /** Dev formunun ışını: yükselen vızıltı ve yakıcı hışırtı. */
+  beam() {
+    this.tone('sawtooth', 180, 900, 0.5, 0.35);
+    this.tone('square', 1400, 2600, 0.6, 0.12);
+    this.noise(0.8, 0.6, 3000, 8000, 1.5);
+    this.tone('sine', 70, 40, 0.8, 0.6);
+  }
   /** Kesmeyen ya da öldürmeyen kılıç darbesi. */
   hit() {
     this.noise(0.16, 0.7, 1400, 250, 1.4);

@@ -139,9 +139,10 @@ describe('hikâye içeriği', () => {
     }
   });
 
-  it('her dev formu hikâyede en az bir kez öğretilir ve bölüm sonu devleri giderek büyür', () => {
+  it('dört miras formu hikâyede öğretilir ve bölüm sonu devleri giderek büyür', () => {
     const forms = new Set(missions.flatMap((m) => m.objectives.flatMap((o) => (o.kind === 'needle' ? [o.form] : []))));
-    for (const id of TITAN_IDS) expect(forms.has(id)).toBe(true);
+    for (const id of ['ofke', 'firtina', 'kaya', 'zirve'] as const) expect(forms.has(id)).toBe(true);
+    for (const f of forms) expect(TITAN_IDS).toContain(f);
     expect(BOSSES.gate.maxH).toBeLessThan(BOSSES.bekci.maxH);
     expect(BOSSES.bekci.maxH).toBeLessThan(BOSSES.kadim.maxH);
     expect(BOSSES.kadim.napeCuts).toBeGreaterThan(BOSSES.gate.napeCuts);

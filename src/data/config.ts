@@ -39,6 +39,12 @@ export const CFG = {
   // Gaz kendiliğinden dolmaz; yalnızca ikmal noktalarında ve gaz kutularında dolar.
   gas: { max: 100, stationRate: 55, stationReach: 5, lowRatio: 0.2 },
   blade: { max: 20 },
+  // Patlar Mızrak: teçhizattan fırlatılır, çarptığı yerde patlar. Zırhı deler; yakınında durana da zarar verir.
+  spear: { max: 6, start: 2, perCrate: 2, speed: 100, gravity: 5, range: 190, radius: 7.5, cooldown: 0.8, selfRadius: 6.5, selfDmg: 22 },
+  // Billur koza: içindeyken hasar alınmaz, devler oyuncuyu göremez; süre dolunca kırılır ve çevreyi sersemletir.
+  cocoon: { dur: 6, cooldown: 25, heal: 0.06, stunRadius: 16, stun: 2.5 },
+  // Öldürme serisi: süre dolmadan gelen her yeni öldürme av puanı çarpanını artırır.
+  streak: { window: 9, step: 0.25, maxMult: 3 },
   horse: { speed: 28, trot: 12, accel: 16, turn: 3.4, teleportDist: 170 },
   sword: { base: 40, reach: 2.7, duration: 0.38, activeFrom: 0.05, activeTo: 0.3, cooldown: 0.42 },
   // minRatio: dönüşmek için gereken en az doluluk oranı.
@@ -59,7 +65,7 @@ export const CFG = {
     decay: 12,
   },
   spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
-  crate: { count: 46, respawn: 240, reach: 3.6 },
+  crate: { count: 64, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
 } as const;
 
 export type MeterKind = 'normal' | 'elite' | 'boss';
