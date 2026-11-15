@@ -4,6 +4,7 @@ import { Input } from './core/input';
 import { GameAudio } from './core/audio';
 import { Particles } from './core/particles';
 import { SlashFx } from './core/slashfx';
+import { Shockwaves } from './core/shockwave';
 import { Spears } from './player/spears';
 import { Boulders } from './enemies/boulders';
 import { Cocoon } from './player/cocoon';
@@ -49,6 +50,7 @@ export class Game {
   readonly world: World;
   readonly particles: Particles;
   readonly slashes: SlashFx;
+  readonly rings: Shockwaves;
   readonly spears: Spears;
   readonly boulders: Boulders;
   readonly cocoon: Cocoon;
@@ -137,7 +139,8 @@ export class Game {
     this.save = loadSave();
     this.world = new World(this.scene, fogColor);
     this.particles = new Particles(this.scene);
-    this.slashes = new SlashFx(this.scene);
+    this.slashes = new SlashFx(this.scene, 16);
+    this.rings = new Shockwaves(this.scene);
     this.spears = new Spears(this.scene);
     this.boulders = new Boulders(this.scene);
     this.cocoon = new Cocoon(this.scene);
@@ -458,6 +461,7 @@ export class Game {
         const a = (i / 48) * Math.PI * 2;
         this.particles.emit(g.pos.x + Math.cos(a) * 2, gy, g.pos.z + Math.sin(a) * 2, Math.cos(a) * (14 + g.h), 1.5, Math.sin(a) * (14 + g.h), 1, 0xa39a86);
       }
+      this.rings.spawn(g.pos.x, gy, g.pos.z, 10 + g.h * 0.8, 0xffe2b0, 0.55);
       this.hud.flash('#ffffff', 0.28, 0.3);
       this.hud.callout('DALIŞ KESİĞİ');
       this.slowT = 0.45;
@@ -527,10 +531,29 @@ export class Game {
       this.particles.emit(at.x, gy, at.z, Math.cos(a) * 7, 1.5, Math.sin(a) * 7, 0.9, 0xa39a86);
     }
     if (down) {
+      this.rings.spawn(g.pos.x, gy, g.pos.z, 5 + g.h * 0.5, 0xd8cdb4, 0.5);
       this.hud.callout('DİZ ÇÖKTÜ');
       this.slowT = Math.max(this.slowT, 0.18);
       this.shakeCam(0.6);
     } else this.shakeCam(0.25);
+  }
+
+  /**
+   * Isırık efekti: üstten ve alttan kapanan iki diş izi, saçılan kıvılcım ve kan.
+   * `yaw` ısıranın baktığı yöndür; izler ona dik durur.
+   */
+  biteFx(at: THREE.Vector3, yaw: number, size: number, color: number) {
+    look.set(0, -1, 0);
+    this.slashes.spawn(at, look, size, color, -yaw, 0.22);
+    look.set(0, 1, 0);
+    this.slashes.spawn(at, look, size, color, yaw, 0.22);
+    this.particles.burst(at, 26, 9 + size * 3, 0.45, 0xfff6e4, size * 0.3, 0, 1.1);
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 4 + Math.random() * (6 + size * 2);
+      this.particles.emit(at.x, at.y, at.z, Math.cos(a) * sp, 2 + Math.random() * 7, Math.sin(a) * sp, 0.5 + Math.random() * 0.4, i % 3 === 0 ? 0xff4a3a : 0xc8201a, -16);
+    }
+    this.audio.bite(size / 3.5);
   }
 
   onCrateOpened(c: Crate) {
@@ -582,6 +605,8 @@ export class Game {
     this.boltT = 0.35;
     target.set(p.x, p.y + 8, p.z);
     this.particles.burst(target, 160, 40, 1.6, def.color, 8, 6);
+    this.rings.spawn(p.x, p.y, p.z, 34, def.color, 0.7);
+    this.rings.spawn(p.x, p.y, p.z, 20, 0xffffff, 0.45);
     for (const g of this.giants) {
       if (g.alive && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 32) g.stun(2);
     }
@@ -762,6 +787,7 @@ export class Game {
     this.player.animate(sdt);
     this.particles.update(sdt);
     this.slashes.update(sdt);
+    this.rings.update(sdt);
     this.spears.update(sdt, this);
     this.boulders.update(sdt, this);
     this.cocoon.update(sdt, this);

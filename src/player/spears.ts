@@ -165,7 +165,8 @@ export class Spears {
     blast.t = 0;
     game.particles.burst(at, 70, 34, 0.7, 0xffb040, 1.5);
     game.particles.burst(at, 40, 22, 0.5, 0xfff4c0, 1);
-    game.particles.burst(at, 50, 9, 2.2, 0x777777, 3, 5);
+    game.particles.burst(at, 50, 9, 2.2, 0x777777, 3, 5, 3.2, 2);
+    game.rings.spawn(at.x, Math.min(at.y, game.world.heightAt(at.x, at.z) + 0.2), at.z, S.radius * 2.2, 0xffc060, 0.5);
     const dist = at.distanceTo(p.pos);
     game.audio.explosion(at.x, at.z);
     game.shakeCam(Math.max(0.2, 1.3 - dist / 70));

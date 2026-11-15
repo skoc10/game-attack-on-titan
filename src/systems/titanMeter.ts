@@ -6,7 +6,7 @@ import { TITAN_IDS, type FormId, type InnateId, type TitanId } from '../data/tit
  * Her iğne türü ayrı bir dev formuna dönüştürür; oyuncu elindekilerden birini seçer.
  * Bazı karakterlerin iğne istemeyen kendi formu vardır; o forma yalnızca bar tamamen dolunca dönüşülür.
  * Bar en az yarıya kadar doluysa iğneyle dönüşülebilir; dev formunda bar bir güç
- * kaynağıdır: zamanla azalır ve her güç kendi bedeli kadar bar harcar.
+ * kaynağıdır: hareket ettikçe azalır ve her güç kendi bedeli kadar bar harcar.
  */
 export class TitanMeter {
   value = 0;
@@ -94,11 +94,19 @@ export class TitanMeter {
     return true;
   }
 
-  /** Dev formunda barı zamanla azaltır; bar bittiyse true döner. */
-  tick(dt: number, drainPerSec: number) {
+  /**
+   * Dev formunda barı azaltır; bar bittiyse true döner.
+   * Form yalnızca hareket ederken bar yakar: yerinde duran dev dinlenir, bar azalmaz.
+   */
+  tick(dt: number, drainPerSec: number, moving = true) {
     if (!this.active) return false;
-    this.value -= drainPerSec * dt;
+    if (moving) this.value -= drainPerSec * dt;
     return this.value <= 0;
+  }
+
+  /** Dev formunda bara geri kazanım (ısırarak öldürme). */
+  refund(amount: number) {
+    if (this.active) this.value = Math.min(this.max, this.value + amount);
   }
 
   canAfford(cost: number) {

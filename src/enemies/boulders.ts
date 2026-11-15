@@ -64,7 +64,8 @@ export class Boulders {
       r.mesh.visible = false;
       r.ring.visible = false;
       game.particles.burst(m, 45, 20, 1.1, 0xa39a86, 2);
-      game.particles.burst(m, 20, 8, 1.8, 0x777777, 2, 4);
+      game.particles.burst(m, 20, 8, 1.8, 0x777777, 2, 4, 3, 2);
+      game.rings.spawn(m.x, m.y, m.z, Boulders.RADIUS * 1.7, 0xd8cdb4, 0.5);
       const dist = Math.hypot(m.x - p.pos.x, m.z - p.pos.z);
       game.audio.stomp(0.9);
       game.shakeCam(Math.max(0, 1 - dist / 60));

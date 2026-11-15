@@ -50,7 +50,10 @@ export const CFG = {
   // minRatio: dönüşmek için gereken en az doluluk oranı.
   meter: { max: 100, normal: 10, elite: 25, boss: 100, minRatio: 0.5 },
   // Dev formlarının sayıları data/titans.ts içindedir; burada yalnızca ortak olanlar var.
-  titan: { hitDrain: 3 },
+  // bite: dev formunun ısırığı (F). Tek hedefe ağır, zırh delen hasar; öldürürse bar geri kazanılır.
+  titan: { hitDrain: 3, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
+  // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.
+  bite: { chance: 0.3, titanChance: 0.4, dmgMult: 1.4, windup: 0.75, lunge: 0.45, knock: 8 },
   // Yakalama: devler oyuncuyu eliyle tutup ağzına götürür; oyuncu kurtulma barını doldurarak sıyrılır.
   grab: {
     minHeight: 7,

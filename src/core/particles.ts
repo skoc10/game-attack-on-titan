@@ -10,11 +10,14 @@ export class Particles {
   private readonly life: Float32Array;
   private readonly maxLife: Float32Array;
   private readonly rise: Float32Array;
+  private readonly size: Float32Array;
+  private readonly size0: Float32Array;
+  private readonly grow: Float32Array;
   private next = 0;
   private readonly geo = new THREE.BufferGeometry();
   readonly points: THREE.Points;
 
-  constructor(scene: THREE.Scene, n = 1400) {
+  constructor(scene: THREE.Scene, n = 2400) {
     this.n = n;
     this.pos = new Float32Array(n * 3).fill(-9999);
     this.col = new Float32Array(n * 3);
@@ -23,8 +26,12 @@ export class Particles {
     this.life = new Float32Array(n);
     this.maxLife = new Float32Array(n).fill(1);
     this.rise = new Float32Array(n);
+    this.size = new Float32Array(n);
+    this.size0 = new Float32Array(n);
+    this.grow = new Float32Array(n);
     this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-    this.geo.setAttribute('color', new THREE.BufferAttribute(this.col, 3));
+    this.geo.setAttribute('tint', new THREE.BufferAttribute(this.col, 3));
+    this.geo.setAttribute('size', new THREE.BufferAttribute(this.size, 1));
     const cvs = document.createElement('canvas');
     cvs.width = cvs.height = 32;
     const ctx = cvs.getContext('2d')!;
@@ -34,23 +41,46 @@ export class Particles {
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 32, 32);
-    const mat = new THREE.PointsMaterial({
-      map: new THREE.CanvasTexture(cvs),
-      size: 1.7,
-      vertexColors: true,
+    // Her parçacığın kendi boyutu var: kıvılcımlar küçük kalır, buhar ve toz yayıldıkça büyür.
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { map: { value: new THREE.CanvasTexture(cvs) }, scale: { value: 400 } },
+      vertexShader: `
+        attribute float size;
+        attribute vec3 tint;
+        uniform float scale;
+        varying vec3 vTint;
+        void main() {
+          vTint = tint;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * scale / max(0.1, -mv.z);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        uniform sampler2D map;
+        varying vec3 vTint;
+        void main() {
+          float a = texture2D(map, gl_PointCoord).a;
+          gl_FragColor = vec4(vTint, a * 0.55);
+        }`,
       transparent: true,
-      opacity: 0.55,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      sizeAttenuation: true,
-      fog: false,
     });
     this.points = new THREE.Points(this.geo, mat);
     this.points.frustumCulled = false;
+    const buf = new THREE.Vector2();
+    // Boyut, ekran yüksekliğine göre ölçeklenir (PointsMaterial ile aynı kural).
+    this.points.onBeforeRender = (renderer) => {
+      mat.uniforms.scale.value = renderer.getDrawingBufferSize(buf).y * 0.5;
+    };
     scene.add(this.points);
   }
 
-  emit(x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: number, rise = 0) {
+  /**
+   * `rise`: dikey ivme (artı = yükselen buhar, eksi = düşen damla). `size`: başlangıç boyutu.
+   * `grow`: ömrü boyunca boyutuna eklenen kat (verilmezse yükselen parçacıklar yayılır, diğerleri hafifçe küçülür).
+   */
+  emit(x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: number, rise = 0, size = rise > 0 ? 2.1 : 1.7, grow = rise > 0 ? 1.5 : -0.35) {
     const i = this.next;
     this.next = (this.next + 1) % this.n;
     this.pos[i * 3] = x;
@@ -65,9 +95,12 @@ export class Particles {
     this.life[i] = life;
     this.maxLife[i] = life;
     this.rise[i] = rise;
+    this.size0[i] = size;
+    this.size[i] = size;
+    this.grow[i] = grow;
   }
 
-  burst(p: THREE.Vector3, count: number, speed: number, life: number, color: number, spread = 1, rise = 0) {
+  burst(p: THREE.Vector3, count: number, speed: number, life: number, color: number, spread = 1, rise = 0, size?: number, grow?: number) {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const u = Math.random() * 2 - 1;
@@ -83,6 +116,8 @@ export class Particles {
         life * (0.5 + Math.random() * 0.5),
         color,
         rise,
+        size === undefined ? undefined : size * (0.7 + Math.random() * 0.6),
+        grow,
       );
     }
   }
@@ -94,6 +129,7 @@ export class Particles {
       const j = i * 3;
       if (this.life[i] <= 0) {
         this.pos[j + 1] = -9999;
+        this.size[i] = 0;
         continue;
       }
       const damp = 1 - Math.min(1, dt * 1.8);
@@ -107,8 +143,10 @@ export class Particles {
       this.col[j] = this.base[j] * f;
       this.col[j + 1] = this.base[j + 1] * f;
       this.col[j + 2] = this.base[j + 2] * f;
+      this.size[i] = this.size0[i] * Math.max(0.2, 1 + this.grow[i] * (1 - f));
     }
     (this.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    (this.geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+    (this.geo.attributes.tint as THREE.BufferAttribute).needsUpdate = true;
+    (this.geo.attributes.size as THREE.BufferAttribute).needsUpdate = true;
   }
 }

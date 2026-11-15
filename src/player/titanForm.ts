@@ -3,6 +3,7 @@ import type { Game } from '../game';
 import type { Giant } from '../enemies/giant';
 import type { Player } from './player';
 import { lerp } from '../core/rng';
+import { CFG } from '../data/config';
 import { FORMS, type Ability, type FormId, type TitanDef } from '../data/titans';
 import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
 import { animateCollapse, newCollapse, resetPose, type Collapse } from '../enemies/collapse';
@@ -32,6 +33,12 @@ export class TitanForm {
   rushT = 0;
   rushSpeed = 0;
   jumped = false;
+  /** Isırık: süren animasyonun zamanı (yoksa -1) ve bekleme süresi. */
+  biteT = -1;
+  biteCd = 0;
+  private biteDone = false;
+  private biteVictim: Giant | null = null;
+  private ventT = 0;
   private buffMult = 1;
   private rush: Extract<Ability, { kind: 'rush' }> | null = null;
   private readonly rushHit = new Set<Giant>();
@@ -89,6 +96,8 @@ export class TitanForm {
     this.buffT = 0;
     this.rushT = 0;
     this.slamCd = 0;
+    this.biteT = -1;
+    this.biteCd = 0;
     this.jumped = false;
     this.setStone(false);
   }
@@ -129,6 +138,7 @@ export class TitanForm {
       const force = r.impactHit ? 1 : 0.4;
       g.audio.stomp((h.height / 16) * force);
       g.shakeCam(Math.min(1.3, h.height / 12) * force);
+      g.rings.spawn(pos.x + Math.sin(yaw) * h.height * (r.impactHit ? 0.45 : 0.1), pos.y, pos.z + Math.cos(yaw) * h.height * (r.impactHit ? 0.45 : 0.1), (h.height * 0.7 + 4) * (0.5 + force * 0.5), 0xd8cdb4, 0.7);
       for (let i = 0; i < 40 * force; i++) {
         const along = Math.random() * h.height * (r.impactHit ? 0.95 : 0.2);
         const side = Math.random() < 0.5 ? -1 : 1;
@@ -182,6 +192,7 @@ export class TitanForm {
 
   private ring(p: Player, radius: number, y: number, color: number) {
     const g = this.game;
+    g.rings.spawn(p.pos.x, g.world.heightAt(p.pos.x, p.pos.z), p.pos.z, radius, color, 0.45 + Math.min(0.5, radius / 90));
     const n = Math.round(40 + radius);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
@@ -191,7 +202,7 @@ export class TitanForm {
 
   punch(p: Player) {
     const pn = this.def.punch;
-    if (this.punchT >= 0 || this.rushT > 0 || !this.pay(pn.cost)) return;
+    if (this.punchT >= 0 || this.biteT >= 0 || this.rushT > 0 || !this.pay(pn.cost)) return;
     this.punchT = 0;
     this.punchDone = false;
     this.punchArm *= -1;
@@ -199,11 +210,54 @@ export class TitanForm {
     this.game.audio.swing();
   }
 
+  /** Önündeki en yakın dev: ısırığın hedefi. */
+  private biteTarget(p: Player, slack = 1) {
+    const yaw = this.game.aimYaw();
+    const reach = (this.def.height * 0.55 + 2) * slack;
+    let best: Giant | null = null;
+    let bestD = Infinity;
+    for (const gi of this.game.giants) {
+      if (!gi.alive) continue;
+      const dx = gi.pos.x - p.pos.x;
+      const dz = gi.pos.z - p.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d - gi.radius > reach || d >= bestD) continue;
+      if (d > 1 && (dx * Math.sin(yaw) + dz * Math.cos(yaw)) / d < 0.2) continue; // arkadaki ısırılmaz
+      best = gi;
+      bestD = d;
+    }
+    return best;
+  }
+
+  /**
+   * Isırık (F): önündeki deve atılıp dişlerini geçirir. Tek hedefe ağır, zırh delen hasar;
+   * hedef ölürse bir miktar bar geri kazanılır.
+   */
+  bite(p: Player) {
+    const B = CFG.titan.bite;
+    if (this.biteT >= 0 || this.punchT >= 0 || this.rushT > 0 || this.biteCd > 0) return;
+    const gi = this.biteTarget(p);
+    if (!gi) {
+      if (this.warnT <= 0) {
+        this.warnT = 1.5;
+        this.game.hud.toast('Isıracak kadar yakın dev yok');
+      }
+      return;
+    }
+    if (!this.pay(B.cost)) return;
+    this.biteT = 0;
+    this.biteDone = false;
+    this.biteCd = B.cd;
+    this.biteVictim = gi;
+    p.faceYaw = Math.atan2(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z);
+    this.game.audio.giant('growl', this.def.height, p.pos.x, p.pos.z, 1.6);
+  }
+
   /** Q ya da E gücünü kullanır. */
   cast(slot: 'q' | 'e', p: Player) {
     const ab = this.def[slot];
     const cd = slot === 'q' ? this.qCd : this.eCd;
-    if (cd > 0 || this.rushT > 0 || !this.pay(ab.cost)) return;
+    if (cd > 0 || this.rushT > 0 || this.biteT >= 0 || !this.pay(ab.cost)) return;
     if (slot === 'q') this.qCd = ab.cd;
     else this.eCd = ab.cd;
     const g = this.game;
@@ -342,9 +396,39 @@ export class TitanForm {
         if (this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult, d.punch.armorBreak || this.stone) > 0) {
           g.audio.hit();
           g.shakeCam(0.6);
+          // Yumruğun savrulduğu yönde bir darbe izi.
+          v.set(cx, p.pos.y + d.height * 0.62, cz);
+          look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
+          g.slashes.spawn(v, look, d.height * 0.2 + 1.5, this.stone ? 0xbfe0ff : d.color, this.punchArm * 0.5, 0.26);
         }
       }
       if (this.punchT >= d.punch.time) this.punchT = -1;
+    }
+    if (this.biteCd > 0) this.biteCd -= dt;
+    if (this.biteT >= 0) {
+      const B = CFG.titan.bite;
+      this.biteT += dt;
+      if (!this.biteDone && this.biteT >= B.time * 0.55) {
+        this.biteDone = true;
+        const gi = this.biteVictim;
+        this.body.head.getWorldPosition(v);
+        v.x += Math.sin(p.faceYaw) * d.height * 0.12;
+        v.z += Math.cos(p.faceYaw) * d.height * 0.12;
+        // Hedef bu arada uzaklaştıysa dişler boşa kapanır.
+        if (gi && gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) - gi.radius < (d.height * 0.55 + 2) * 1.5) {
+          g.biteFx(v, p.faceYaw, d.height * 0.16 + 1, d.color);
+          gi.titanHit(d.punch.dmg * B.dmgMult * this.mult, g, true, p.pos);
+          if (!gi.alive) {
+            g.meter.refund(B.refund);
+            g.hud.toast(`Isırık — bar +${B.refund}`);
+          }
+          g.shakeCam(0.8);
+        } else {
+          g.audio.bite(0.5);
+        }
+        this.biteVictim = null;
+      }
+      if (this.biteT >= B.time) this.biteT = -1;
     }
     this.updateBoulder(dt, p);
   }
@@ -366,7 +450,8 @@ export class TitanForm {
     g.audio.stomp();
     const dist = Math.hypot(b.position.x - p.pos.x, b.position.z - p.pos.z);
     g.shakeCam(Math.max(0.2, 1 - dist / 200));
-    g.particles.burst(b.position, 70, 26, 1.4, 0xa39a86, 3, 3);
+    g.particles.burst(b.position, 70, 26, 1.4, 0xa39a86, 3, 3, 3, 1.8);
+    g.rings.spawn(b.position.x, b.position.y, b.position.z, ab.radius * 1.5, 0xe0d4b8, 0.6);
     g.particles.burst(b.position, 30, 16, 0.9, this.def.color, 2);
   }
 
@@ -403,12 +488,52 @@ export class TitanForm {
       // Kol önce bükülür, vuruş anında açılır.
       punchElbow = t < 0.3 ? -1.7 : -0.15;
     }
+    let headX = 0;
+    let jaw = 0;
+    let tiltRate = 8;
+    const resting = !moving && p.onGround && this.punchT < 0 && this.rushT <= 0 && this.biteT < 0;
+    if (resting) {
+      // Dinlenme: derin nefes alır, omuzlar inip kalkar, ensesinden buhar sızar.
+      const br = Math.sin(performance.now() * 0.0016);
+      tilt = 0.05 + br * 0.03;
+      aL = 0.08 + br * 0.05;
+      aR = 0.08 - br * 0.03;
+      headX = 0.1 - br * 0.05;
+      jaw = 0.08 + Math.max(0, -br) * 0.12;
+      this.ventT -= dt;
+      if (this.ventT <= 0) {
+        this.ventT = 0.3;
+        b.nape.getWorldPosition(v);
+        this.game.particles.emit(v.x + (Math.random() - 0.5) * d.radius, v.y, v.z + (Math.random() - 0.5) * d.radius, 0, 1.5 + d.height * 0.05, 0, 1.8, 0x7c7c7c, 5, 1.4, 1.2);
+      }
+    }
+    if (this.biteT >= 0) {
+      // Isırık: baş geri çekilir, çene açılır; sonra gövde öne atılır ve çene kapanır.
+      const t = this.biteT / CFG.titan.bite.time;
+      tiltRate = 22;
+      if (t < 0.4) {
+        tilt = -0.18;
+        headX = -0.5;
+        jaw = 0.95;
+        aL = aR = 0.7;
+      } else {
+        tilt = 0.6;
+        headX = 0.3;
+        jaw = t < 0.55 ? 0.95 : 0;
+        aL = aR = 0.9;
+        // Atılırken bir ayak öne basar, öbürü geride kalır.
+        lL = -0.75;
+        lR = 0.45;
+      }
+    }
     const k = 1 - Math.exp(-dt * 18);
     b.armL.rotation.x = lerp(b.armL.rotation.x, aL, k);
     b.armR.rotation.x = lerp(b.armR.rotation.x, aR, k);
     b.legL.rotation.x = lerp(b.legL.rotation.x, lL, k);
     b.legR.rotation.x = lerp(b.legR.rotation.x, lR, k);
-    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, 1 - Math.exp(-dt * 8));
+    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, 1 - Math.exp(-dt * tiltRate));
+    b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
+    b.jaw.rotation.x = lerp(b.jaw.rotation.x, jaw, 1 - Math.exp(-dt * 26));
     autoBend(b, k, { elbowL: this.punchArm > 0 ? undefined : punchElbow, elbowR: this.punchArm > 0 ? punchElbow : undefined });
   }
 }
