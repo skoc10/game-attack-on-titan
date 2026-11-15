@@ -15,7 +15,7 @@ const CONTROLS: [string, string][] = [
   ['Shift', 'Koş · havada gaz itişi'],
   ['Space', 'Zıpla · kancadan fırla'],
   ['E', 'Kutu aç · ata bin/in · konuş'],
-  ['F', 'Atı çağır'],
+  ['F', 'Atı çağır (dev formunda: ısır)'],
   ['R', 'Sınıf yeteneği'],
   ['Q', 'Patlar mızrak fırlat (dev formunda: güç)'],
   ['C', 'Billur koza: 6 sn dokunulmaz ol'],
@@ -183,7 +183,8 @@ export class Menu {
               <li>Sur içinde <b>Levazımcı Nuran</b> av puanına eşya satar; <b>Kağan</b> ve <b>Behram</b> ödüllü sözleşme verir (<kbd>E</kbd> ile konuş).</li>
               <li>Sıkışınca <kbd>C</kbd> ile <b>billur kozaya</b> gir: devler sana dokunamaz, kırılınca çevreyi sersemletir.</li>
               <li><kbd>Q</kbd> ile <b>patlar mızrak</b> at: enseye yakın patlarsa zırhlıyı bile öldürür, gövdeye yakın patlarsa devi yere serer.</li>
-              <li>Dev barı yarıyı geçince <kbd>T</kbd> ile deve dönüş; her güç bar harcar.</li>
+              <li>Dev barı yarıyı geçince <kbd>T</kbd> ile deve dönüş. Bar <b>hareket ettikçe</b> yanar, yerinde durursan azalmaz; her güç bar harcar, <kbd>F</kbd> ile ısırırsın.</li>
+              <li>Devler de <b>ısırır</b>: başını geri çekip çenesini açtığını görünce yana kaç.</li>
               <li>Her dev <b>av puanı</b> düşürür; puanla yeni karakter al. ★ işaretli karakterler bar <b>dolunca iğnesiz</b> kendi devine dönüşür.</li>
             </ol>
           </section>

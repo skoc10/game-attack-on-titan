@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lerp } from '../core/rng';
 import { toonGradient } from '../core/textures';
 
-export type HairStyle = 'none' | 'short' | 'spiky' | 'long';
+export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob';
 export type BodyStyle = 'human' | 'giant' | 'titan';
 
 export interface Palette {
@@ -58,6 +58,8 @@ export interface Humanoid {
   footR: THREE.Object3D;
   handL: THREE.Object3D;
   handR: THREE.Object3D;
+  /** At kuyruğunun menteşesi (o saç biçimi yoksa null); hızla savrulması için döndürülür. */
+  hairTail: THREE.Group | null;
   mats: THREE.Material[];
   skinMat: THREE.MeshToonMaterial;
   armMat: THREE.MeshToonMaterial;
@@ -78,6 +80,19 @@ export const GEO = {
 };
 
 /**
+ * Kenar ışığı: bakış açısına teğet yüzeylerde ince, keskin kenarlı bir parlama.
+ * Figürü arka plandan ayırır ve çizgi film gölgesine hacim katar.
+ */
+function addRim(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <opaque_fragment>',
+    `float rimF = 1.0 - saturate( dot( normalize( vViewPosition ), normal ) );
+	outgoingLight += ( diffuseColor.rgb * 0.5 + vec3( 0.16 ) ) * smoothstep( 0.6, 0.74, rimF ) * 0.55;
+	#include <opaque_fragment>`,
+  );
+}
+
+/**
  * Çizgi film gölgelendirmeli, konturlu model kurucu.
  * Kontur, parçanın siyah ve içi dışına çevrilmiş hafif büyük bir kopyasıdır.
  */
@@ -92,6 +107,8 @@ export class Rig {
 
   toon(color: number) {
     const m = new THREE.MeshToonMaterial({ color, gradientMap: toonGradient() });
+    m.onBeforeCompile = addRim;
+    m.customProgramCacheKey = () => 'rim';
     this.mats.push(m);
     return m;
   }
@@ -262,6 +279,9 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     rig.part(head, GEO.sphere, skinMat, 0.0095, 0.008, 0.01, 0, 0.058, 0.0785, false);
     rig.part(head, GEO.box, inkMat, 0.012, 0.0022, 0.004, 0, 0.0515, 0.0755, false);
     const irisMat = glowMat ?? rig.toon(pal.eye);
+    // İnsanlarda kaş saç renginin koyusudur; yanaklarda hafif bir pembelik olur.
+    const browMat = !big && pal.hair !== undefined ? rig.toon(shade(pal.hair, 0.62)) : darkMat;
+    const blushMat = big ? null : rig.toon(blend(pal.skin, 0xe0705e, 0.3));
     for (const s of [-1, 1]) {
       // Gerçeğe yakın oranlarda göz: ak, iris, gözbebeği, parıltı, üst kirpik çizgisi.
       rig.part(head, GEO.sphere, glowMat ?? whiteMat, 0.0145, 0.0105, 0.005, s * 0.029, 0.084, 0.0675, false);
@@ -272,8 +292,10 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       }
       const lash = rig.part(head, GEO.box, darkMat, 0.031, 0.0036, 0.006, s * 0.029, 0.0945, 0.0685, false);
       lash.rotation.z = s * -0.08;
-      const brow = rig.part(head, GEO.box, darkMat, 0.03, 0.0055, 0.007, s * 0.03, 0.106, 0.069, false);
+      const brow = rig.part(head, GEO.box, browMat, 0.03, 0.0055, 0.007, s * 0.03, 0.106, 0.069, false);
       brow.rotation.z = s * (big ? 0.3 : -0.12);
+      if (blushMat) rig.part(head, GEO.sphere, blushMat, 0.013, 0.0075, 0.004, s * 0.042, 0.063, 0.0625, false);
+      if (!big) rig.part(head, GEO.box, skinMat, 0.03, 0.0045, 0.006, s * 0.029, 0.0985, 0.0672, false); // üst göz kapağı
       if (big) rig.part(head, GEO.sphere, skinMat, 0.016, 0.012, 0.01, s * 0.043, 0.06, 0.056, false); // elmacık kemiği
     }
     if (style === 'titan') {
@@ -287,6 +309,7 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
 
   // ---- Saç
   const hairStyle = pal.hair !== undefined ? (pal.hairStyle ?? 'short') : 'none';
+  let hairTail: THREE.Group | null = null;
   if (hairStyle !== 'none' && pal.hair !== undefined) {
     const hairMat = rig.toon(pal.hair);
     const cap = rig.part(head, GEO.cap, hairMat, 0.076, 0.088, 0.084, 0, 0.08, -0.004);
@@ -323,9 +346,32 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       }
     } else if (hairStyle === 'long') {
       rig.part(head, GEO.capsule, hairMat, 0.066, 0.044, 0.026, 0, 0.0, -0.058);
+      rig.part(head, GEO.capsule, hairMat, 0.05, 0.03, 0.02, 0, -0.07, -0.062, false); // uca doğru incelir
       for (const s of [-1, 1]) {
         const lock = rig.part(head, GEO.cone, hairMat, 0.016, 0.09, 0.014, s * 0.066, 0.03, 0.03, false);
         lock.rotation.x = Math.PI;
+      }
+    } else if (hairStyle === 'ponytail') {
+      // At kuyruğu: tepede bağ, ondan sarkan ve uca doğru incelen iki boğum. Menteşeli: koşarken savrulur.
+      const tieMat = rig.toon(shade(pal.top, 1.25));
+      rig.part(head, GEO.sphere, tieMat, 0.019, 0.016, 0.019, 0, 0.118, -0.07, false);
+      hairTail = new THREE.Group();
+      hairTail.position.set(0, 0.116, -0.076);
+      head.add(hairTail);
+      rig.part(hairTail, GEO.capsule, hairMat, 0.027, 0.03, 0.024, 0, -0.058, -0.012);
+      const tip = rig.part(hairTail, GEO.cone, hairMat, 0.024, 0.11, 0.021, 0, -0.165, -0.016, false);
+      tip.rotation.x = Math.PI;
+      for (const s of [-1, 1]) {
+        const lock = rig.part(head, GEO.cone, hairMat, 0.012, 0.07, 0.011, s * 0.067, 0.045, 0.034, false);
+        lock.rotation.x = Math.PI;
+      }
+    } else if (hairStyle === 'bob') {
+      // Küt kesim: ense hizasında biten arka perde ve çene hizasına inen yan tutamlar.
+      rig.part(head, GEO.capsule, hairMat, 0.07, 0.026, 0.03, 0, 0.034, -0.05);
+      for (const s of [-1, 1]) {
+        rig.part(head, GEO.capsule, hairMat, 0.017, 0.022, 0.034, s * 0.066, 0.046, 0.004, false);
+        const tipLock = rig.part(head, GEO.cone, hairMat, 0.015, 0.04, 0.02, s * 0.064, -0.002, 0.03, false);
+        tipLock.rotation.x = Math.PI;
       }
     }
   }
@@ -447,6 +493,7 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     footR: lR.foot,
     handL: aL.hand,
     handR: aR.hand,
+    hairTail,
     mats: rig.mats,
     skinMat,
     armMat,

@@ -231,22 +231,24 @@ export class Hud {
     this.html('needles', chips.length === 0 ? 'İĞNE YOK' : chips.join('') + (chips.length > 1 && !titan ? '<kbd>Tab</kbd>' : ''));
     const sel = FORMS[m.selected];
     const formName = (titan ? p.titan.def.name : sel.name).toLocaleUpperCase('tr');
-    this.text('titanLabel', titan ? `${formName} · kalan bar ${Math.max(0, Math.ceil(m.value))}` : `DEV BARI · ${Math.floor(m.value)}/${m.max}`);
+    this.text('titanLabel', titan ? `${formName} · kalan bar ${Math.max(0, Math.ceil(m.value))}${p.titanResting ? ' · DİNLENİYOR' : ''}` : `DEV BARI · ${Math.floor(m.value)}/${m.max}`);
     const bc = this.el.titan.parentElement!.parentElement!;
     bc.classList.toggle('ready', m.canTransform());
     bc.classList.toggle('active', titan);
+    bc.classList.toggle('resting', titan && p.titanResting);
     const cd = (v: number) => (v > 0 ? ` <b>${Math.ceil(v)}</b>` : '');
     if (titan) {
       const t = p.titan;
       const d = t.def;
       // Her gücün yanında harcadığı bar; yetmiyorsa soluk görünür.
       const pw = (key: string, name: string, cost: number, extra = '') =>
-        `<span class="${m.value >= cost ? '' : 'off'}"><kbd>${key}</kbd> ${name} <i>−${cost}</i>${extra}</span>`;
+        `<span class="${m.value >= cost ? '' : 'off'}"><kbd>${key}</kbd> ${name} <i>−${String(cost).replace('.', ',')}</i>${extra}</span>`;
       this.html(
         'titanInfo',
         pw('Sol tık', d.punch.name, d.punch.cost) +
           pw('Q', d.q.name, d.q.cost, d.q.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.qCd)) +
           pw('E', d.e.name, d.e.cost, d.e.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.eCd)) +
+          pw('F', 'Isırık', CFG.titan.bite.cost, cd(t.biteCd)) +
           pw('Space', d.slam.name, d.slam.cost) +
           '<span><kbd>T</kbd> Çık</span>',
       );

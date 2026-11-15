@@ -1068,3 +1068,17 @@ kbd {
   color: var(--dim);
   text-align: right;
 }
+
+/* Dev formu yerinde duruyor: bar yanmıyor, dolgu sakin sakin nefes alır. */
+.resting .bar.titan i {
+  animation: titanRest 2.4s ease-in-out infinite;
+}
+@keyframes titanRest {
+  0%,
+  100% {
+    filter: brightness(0.8) saturate(0.7);
+  }
+  50% {
+    filter: brightness(1.15) saturate(1);
+  }
+}

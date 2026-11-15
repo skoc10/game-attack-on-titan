@@ -6,6 +6,7 @@ import { rollVoice, type IdleVoice } from '../core/audioMath';
 import type { GiantSound } from '../core/audio';
 import { wallPush } from '../world/walls';
 import { animateCollapse, newCollapse, type Collapse } from './collapse';
+import { pickMelee } from './attacks';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
 import type { GiantType } from './giantTypes';
 
@@ -39,7 +40,9 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' = 'swipe';
+  /** Darbe alınca gövdenin bir an parlaması için kalan süre. */
+  private flashT = 0;
   private screamed = false;
   private screamT = 0;
   /** Yakalanan oyuncuyu ağza götürme süresi (sn). */
@@ -169,6 +172,20 @@ export class Giant {
     if (this.state === 'wander') this.setState('chase');
   }
 
+  /** Darbe aldı: gövde bir an parlar. */
+  private flash(dur = 0.14) {
+    this.flashT = dur;
+  }
+
+  private tickFlash(dt: number) {
+    if (this.flashT <= 0) return;
+    this.flashT -= dt;
+    const e = this.flashT > 0 ? Math.min(0.38, this.flashT * 4) : 0;
+    for (const m of this.body.mats) {
+      if (m instanceof THREE.MeshToonMaterial) m.emissive.setScalar(e);
+    }
+  }
+
   stun(seconds: number) {
     if (!this.alive || this.state === 'downed') return;
     this.stunDur = seconds;
@@ -187,6 +204,7 @@ export class Giant {
       if (this.state !== 'downed') this.stun(0.5);
       return 'dull';
     }
+    this.flash();
     this.napeCuts -= armorBreak ? 2 : 1;
     if (this.napeCuts <= 0) {
       this.die(game, 'blade');
@@ -200,6 +218,7 @@ export class Giant {
   hitLeg(bladeOk: boolean, armorBreak = false): LegResult {
     if (!this.alive || this.state === 'downed' || this.state === 'leap') return 'none';
     if (!bladeOk && !armorBreak) return 'dull';
+    this.flash();
     this.legCuts -= armorBreak ? 99 : 1;
     if (this.legCuts <= 0) {
       this.setState('downed');
@@ -217,6 +236,7 @@ export class Giant {
       d *= 0.2;
       game.audio.clang();
     }
+    this.flash(0.18);
     this.hp -= d;
     if (this.hp <= 0) {
       this.die(game, 'titan', from);
@@ -287,9 +307,25 @@ export class Giant {
       }
       return false;
     }
+    if (this.attackKind === 'bite') {
+      // Isırık: av hâlâ önünde ve ağzının yetişeceği yerdeyse dişler geçer; değilse çene boşa kapanır.
+      const front = dist > 0.01 ? (dx * Math.sin(this.yaw) + dz * Math.cos(this.yaw)) / dist : 1;
+      const hit = dist < this.reach(titan) * 1.1 && front > 0.35 && (titan || dy < this.h * 0.6);
+      this.body.head.getWorldPosition(v);
+      if (hit) {
+        if (titan) v.set(p.pos.x, Math.min(v.y, p.pos.y + p.titan.def.height * 0.7), p.pos.z);
+        else v.set(p.pos.x, p.pos.y + 1, p.pos.z);
+        game.biteFx(v, this.yaw, Math.min(5, 1.2 + this.h * 0.12), 0xfff2e2);
+        p.takeHit(dmg * CFG.bite.dmgMult, this.pos, CFG.bite.knock);
+      } else if (dist < 90) {
+        game.audio.bite(0.5);
+      }
+      return false;
+    }
     if (this.attackKind === 'stomp') {
       game.audio.stomp();
       game.shakeCam(Math.max(0, 1.2 - dist / 120));
+      game.rings.spawn(this.pos.x, this.pos.y, this.pos.z, this.h * 0.7 + 6, 0xe0d4b8, 0.6);
       for (let i = 0; i < 40; i++) {
         const a = Math.random() * 6.28;
         game.particles.emit(this.pos.x + Math.sin(a) * 6, this.pos.y + 0.5, this.pos.z + Math.cos(a) * 6, Math.sin(a) * 22, 4, Math.cos(a) * 22, 1.2, 0x9a8f7a);
@@ -304,6 +340,7 @@ export class Giant {
   update(dt: number, game: Game) {
     const b = this.body;
     this.stateT += dt;
+    this.tickFlash(dt);
     if (this.state === 'dead') {
       this.animateDeath(dt, game);
       return;
@@ -386,9 +423,9 @@ export class Giant {
           this.say('grunt');
         } else if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
           if (this.type.kind === 'boss') this.attackKind = titan || dy < 8 ? 'stomp' : 'swipe';
-          else this.attackKind = !titan && Math.random() < this.grabChance ? 'grab' : 'swipe';
+          else this.attackKind = pickMelee({ crawl: !!this.type.crawl, titan, low: dy < this.h * 0.5, grabChance: this.grabChance, grabRoll: Math.random(), biteRoll: Math.random() });
           this.setState('windup');
-          this.say('grunt');
+          this.say(this.attackKind === 'bite' ? 'growl' : 'grunt');
         } else if (this.type.kind === 'leaper' && this.leapCd <= 0 && !p.onGround && p.mode === 'foot' && dist > 12 && dist < 60) {
           const T = Math.min(1.3, Math.max(0.6, dist / 35));
           const tx = p.pos.x + p.vel.x * T * 0.6;
@@ -403,7 +440,7 @@ export class Giant {
       }
       case 'windup': {
         moveYaw = Math.atan2(dx, dz);
-        if (this.stateT > (this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : 0.75)) {
+        if (this.stateT > (this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : 0.75)) {
           this.attackCd = this.type.kind === 'boss' ? 2.4 : 1.5;
           if (!this.strike(game)) this.setState('recover');
         }
@@ -450,6 +487,7 @@ export class Giant {
         if (this.pos.y <= gy && this.vel.y < 0) {
           this.pos.y = gy;
           game.audio.stomp();
+          game.rings.spawn(this.pos.x, gy, this.pos.z, this.h * 0.6 + 4, 0xd8cdb4, 0.5);
           this.attackCd = 1;
           this.setState('recover');
         }
@@ -607,6 +645,7 @@ export class Giant {
     const dist = Math.hypot(p.x - this.pos.x, p.z - this.pos.z);
     if (dist < 160) game.audio.stomp((this.h / 16) * force);
     game.shakeCam(Math.max(0, 1.1 - dist / 90) * Math.min(1.4, this.h / 9) * force);
+    if (dist < 220) game.rings.spawn(this.pos.x + Math.sin(this.yaw) * this.h * span * 0.5 * this.fallDir, this.pos.y, this.pos.z + Math.cos(this.yaw) * this.h * span * 0.5 * this.fallDir, (this.h * 0.7 + 4) * (0.5 + force * 0.5), 0xd8cdb4, 0.55 + force * 0.25);
     const n = Math.round((30 + this.h * 2) * (0.5 + force * 0.5));
     for (let i = 0; i < n; i++) {
       const along = Math.random() * this.h * span * this.fallDir;
@@ -629,6 +668,8 @@ export class Giant {
     let elbowR: number | undefined;
     let armInR = 0;
     let jawOpen = 0;
+    let tiltRate = 6;
+    let jawRate = 0;
     const swing = this.moving ? Math.sin(this.phase) * 0.55 : 0;
     lL = swing;
     lR = -swing;
@@ -648,6 +689,18 @@ export class Giant {
         if (this.attackKind === 'stomp') {
           lR = -1.3;
           tiltX = -0.08;
+        } else if (this.attackKind === 'bite') {
+          // Isırık: önce baş geri çekilir ve çene sonuna kadar açılır, sonra gövde ava doğru atılır.
+          tiltRate = 16;
+          jawOpen = 1;
+          aL = aR = 0.6;
+          if (this.stateT < CFG.bite.lunge) {
+            tiltX = -0.14;
+            headX = -0.5;
+          } else {
+            tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
+            headX = 0.3;
+          }
         } else if (this.attackKind === 'grab') {
           // Uzanıp kapma: kol öne ve aşağı.
           aR = -1.1;
@@ -672,6 +725,14 @@ export class Giant {
       case 'recover':
         if (this.attackKind === 'swipe') aR = -0.5;
         tiltX = 0.2;
+        if (this.attackKind === 'bite' && this.stateT < 0.35) {
+          // Çene şak diye kapanır; gövde bir an eğik kalır.
+          tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
+          headX = 0.3;
+          aL = aR = 0.6;
+          tiltRate = 16;
+          jawRate = 40;
+        }
         break;
       case 'stunned':
         headX = 0.6;
@@ -709,18 +770,21 @@ export class Giant {
       if (this.state !== 'windup' && this.state !== 'recover') {
         aL = -1.15 - swing * 0.7;
         aR = -1.15 + swing * 0.7;
-      } else aL = -1.15;
+      } else {
+        aL = -1.15;
+        if (this.attackKind === 'bite') aR = -1.15; // ısırırken iki eli de yerde
+      }
     }
-    jawOpen = Math.max(jawOpen, b.jawRest);
+    if (jawRate === 0) jawOpen = Math.max(jawOpen, b.jawRest);
     const k = 1 - Math.exp(-dt * (this.state === 'recover' ? 22 : 9));
     b.armL.rotation.x = lerp(b.armL.rotation.x, aL, k);
     b.armR.rotation.x = lerp(b.armR.rotation.x, aR, k);
     b.legL.rotation.x = lerp(b.legL.rotation.x, lL, k);
     b.legR.rotation.x = lerp(b.legR.rotation.x, lR, k);
-    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tiltX, 1 - Math.exp(-dt * 6));
+    b.tilt.rotation.x = lerp(b.tilt.rotation.x, tiltX, 1 - Math.exp(-dt * tiltRate));
     b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
     b.armR.rotation.z = lerp(b.armR.rotation.z, armInR, k);
-    b.jaw.rotation.x = lerp(b.jaw.rotation.x, jawOpen, k);
+    b.jaw.rotation.x = lerp(b.jaw.rotation.x, jawOpen, jawRate > 0 ? 1 - Math.exp(-dt * jawRate) : k);
     autoBend(b, k, { elbowR, kneeL, kneeR });
   }
 

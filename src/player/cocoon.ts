@@ -71,6 +71,7 @@ export class Cocoon {
     v.set(p.pos.x, p.pos.y + 1.1, p.pos.z);
     game.particles.burst(v, 120, 26, 1.1, 0xbff4ff, 1.5);
     game.particles.burst(v, 60, 14, 0.7, 0xffffff, 1);
+    game.rings.spawn(p.pos.x, p.pos.y, p.pos.z, C.stunRadius, 0xbff4ff, 0.6);
     game.audio.shatter();
     game.shakeCam(0.7);
     let n = 0;

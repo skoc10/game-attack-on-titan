@@ -310,6 +310,15 @@ export class GameAudio {
       this.noise(2.4, 0.5, 300, 60, 0.7, 0.1, this.bus, 'lowpass');
     }
   }
+  /** Çene kapanışı: dişlerin çarpması, ezilme ve alçak bir vuruş. `size` 0.3..1.5: büyüdükçe kalınlaşır. */
+  bite(size = 1) {
+    const s = Math.max(0.3, Math.min(1.5, size));
+    this.noise(0.05, 0.9, 2800, 900, 3);
+    this.tone('square', 440 - s * 130, 90, 0.07, 0.3);
+    this.noise(0.3, 0.75 * s, 720, 110, 1, 0.03, this.bus, 'lowpass');
+    this.tone('sine', 115 - s * 30, 34, 0.38, 0.75, 0.02);
+    this.noise(0.12, 0.25, 4200, 2400, 2, 0.05);
+  }
   hurt() {
     this.tone('sawtooth', 170, 48, 0.32, 0.5);
     this.noise(0.22, 0.6, 500, 130, 1);

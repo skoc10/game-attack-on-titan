@@ -25,14 +25,14 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 3. Devler yalnızca **enseden** ölür ve keskin kılıçla **tek temiz kesik yeter**: dev sendeler, devrilir, yere çarpar ve buharlaşır. Bacağına vurursan yere düşer; yerdeki deve de tek ense kesiği yeter. Zırhlı devin ensesi yalnızca yerdeyken kesilir (bacağına iki kesik); bölüm sonu devi üç ense kesiği ister. Kılıç körelmişse kesmez.
 4. **Gaz kendiliğinden dolmaz.** Mavi bayraklı **ikmal noktalarının** yanında durunca dolar (şehirde, sur kapılarında ve köylerde var); gaz kutuları da doldurur.
 5. Renkli ışıklı **kutulardan dev iğnesi** çıkar. Dört tür iğne var, her biri başka bir deve dönüştürür; ışığın rengi türü gösterir. Gaz kutuları beyaz, kılıç kutuları gri ışıklıdır.
-6. Dev öldürdükçe **dev barı** dolar. Bar **en az yarıya** gelmişse ve iğnen varsa `T` ile dönüşürsün; birden fazla türün varsa `Tab` ile seçersin. Dev formunda bar güç kaynağındır: zamanla azalır, her güç kendi bedeli kadar bar harcar, bar bitince insana dönersin. Erken çıkarsan (`T`) artan bar sende kalır.
+6. Dev öldürdükçe **dev barı** dolar. Bar **en az yarıya** gelmişse ve iğnen varsa `T` ile dönüşürsün; birden fazla türün varsa `Tab` ile seçersin. Dev formunda bar güç kaynağındır: **yalnızca hareket ederken** azalır (yerinde durursan dev dinlenir, bar yanmaz), her güç kendi bedeli kadar bar harcar, bar bitince insana dönersin. Erken çıkarsan (`T`) artan bar sende kalır.
 
 | Dev | İğne (ışık) | Özelliği | Sol tık | `Q` | `E` | `Space` |
 |---|---|---|---|---|---|---|
-| **Öfke Devi** 15 m | Kor (turuncu) | Dengeli | Yumruk −3 | Kükreme −15: sersemletir | Taş Yumruk −25: zırh kırar | Ezme −10 |
-| **Fırtına Devi** 11 m | Rüzgâr (mavi) | Çok hızlı, yüksek sıçrar; barı çabuk yakar, darbeye dayanıksız | Pençe −2 | Atılım −10: ileri fırlar | Girdap −16: çevresini biçer | Dalış −8 |
-| **Kaya Devi** 17 m | Taş (yeşil) | Yavaş, darbelere çok dayanıklı; her vuruşu zırh kırar | Ağır Yumruk −5 | Koç Hücumu −18: yolundakini ezer | Deprem −22: geniş alanı sarsar | Ezme −10 |
-| **Zirve Devi** 26 m | Doruk (mor) | En büyüğü; çok yavaş, zıplayamaz, ağaçları ezip geçer | Süpürme −6 | Kaya Fırlat −14: nişana kaya atar | Sarsıntı −25: çok geniş alanı sersemletir | Tepinme −10 |
+| **Öfke Devi** 15 m | Kor (turuncu) | Dengeli | Yumruk −1,5 | Kükreme −15: sersemletir | Taş Yumruk −25: zırh kırar | Ezme −10 |
+| **Fırtına Devi** 11 m | Rüzgâr (mavi) | Çok hızlı, yüksek sıçrar; barı çabuk yakar, darbeye dayanıksız | Pençe −1 | Atılım −10: ileri fırlar | Girdap −16: çevresini biçer | Dalış −8 |
+| **Kaya Devi** 17 m | Taş (yeşil) | Yavaş, darbelere çok dayanıklı; her vuruşu zırh kırar | Ağır Yumruk −2,5 | Koç Hücumu −18: yolundakini ezer | Deprem −22: geniş alanı sarsar | Ezme −10 |
+| **Zirve Devi** 26 m | Doruk (mor) | En büyüğü; çok yavaş, zıplayamaz, ağaçları ezip geçer | Süpürme −3 | Kaya Fırlat −14: nişana kaya atar | Sarsıntı −25: çok geniş alanı sersemletir | Tepinme −10 |
 
 7. Büyük devler (7 m ve üzeri) seni **eliyle yakalayıp ağzına götürür**. Ağza varmadan kurtulma barını doldur: sol tıkla seri basıp parmakları kes, `Space` ile gaz patlaması yap (12 gaz) ya da barın ve iğnen yetiyorsa `T` ile elinin içinde deve dönüş. Dev ne kadar büyükse kurtulmak o kadar zor; kurtulamazsan ağır bir ısırık yersin.
 8. Demir Sur kapısındaki **Kapı Kıran**'ı yen, Kalkan Suru'nu aş.
@@ -49,7 +49,7 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `Space` | Zıpla · kancadan fırla · yakalanınca gaz patlaması | Sıçra, inişte ez |
 | `E` | Kutu aç · ata bin/in | Formun ikinci gücü |
 | `Q` | — | Formun birinci gücü |
-| `F` | Atı çağır | — |
+| `F` | Atı çağır | Isırık: önündeki devi dişle |
 | `R` | Sınıf yeteneği | — |
 | `Tab` | Dönüşülecek devi seç | — |
 | `T` | Seçili deve dönüş | İnsan formuna dön |
@@ -161,6 +161,30 @@ Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun iç
 **Yıkılış:** ayakta ölen dev önce sendeler, dizlerinin üstüne çöker, sonra gövdesi öne devrilir; yerde seker, kolları ve bacakları dağınık kalır, hafifçe yana yatar. Önden yumruk yiyen dev sırtüstü düşer. Dev formundan çıktığında terk ettiğin gövde de aynı biçimde yıkılıp buharlaşır.
 
 **Karakter hareketleri:** koşarken dirsekler kırılır, gövde öne eğilir ve her adımda omuzdan döner; dururken nefes alıp ağırlık aktarır; havada dönüşlere yatar, inişte dizleri çöker; baş nişan alınan yere bakar.
+
+## Isırık, dinlenen dev ve görsel yenilemeler
+
+**Dev formunda bar:** bar artık zamanla değil **hareketle** yanar. Yerinde duran dev dinlenir: nefes alır, ensesinden buhar sızar, HUD'da "DİNLENİYOR" yazar ve bar azalmaz. Yürümek, koşmak, sıçramak ve atılmak barı eskisi gibi yakar; darbe almak da barı düşürür. Yumrukların bedeli yarıya indi (Öfke Devi'nde 3 yerine 1,5).
+
+**Isırık (dev formunda `F`):** önündeki en yakın deve atılıp dişlerini geçirirsin. Tek hedefe yumruğun 2,6 katı, zırh delen hasar verir; 4 bar harcar, 2,5 saniyede bir kullanılır. Hedef ölürse 8 bar geri kazanırsın.
+
+**Devlerin ısırığı:** düşman devler artık yalnızca vurup yakalamaz, ısırır da. Başını geri çekip çenesini sonuna kadar açar, sonra gövdesiyle ava atılır; çenenin açıldığını görünce yana kaç. Isırık yumruktan %40 sert vurur. Sürüngenler hep ısırır; diğer devler yerdeki avı üçte bir, dev formundaki oyuncuyu beşte iki olasılıkla ısırır. Beline göre yukarıdaysan ısıramaz.
+
+**Karakter görünümü:**
+
+- Pelerin tek parça değil, omuzdan menteşeli üç parça: hızlandıkça kalkar, dalga omuzdan uca doğru ilerler, dönüşlerde yana savrulur. Astarı koyu, eteğinde açık renk bir şerit var; göğüste pirinç tokayla tutturulur.
+- Teçhizat: kalçalarda kınlar, bel hizasında kanca fırlatıcısı, uyluk kayışları, dizlikler, eldivenler, kemer tokası; kılıçların keskin ağzı parlar.
+- İki yeni saç biçimi: at kuyruğu (Defne, Ece; koşarken savrulur) ve küt kesim (İlkim). Kaşlar saç renginde, yanaklarda hafif pembelik var.
+- Tüm figürlerde (insanlar, devler, dev formları) **kenar ışığı**: siluetin kenarında ince bir parlama figürü arka plandan ayırır.
+- Dev formları ısırırken ve dinlenirken başını ve çenesini oynatır.
+
+**Efektler:**
+
+- **Şok dalgaları:** ezme, tepinme, kükreme, patlama, kaya çarpması, kozanın kırılması, dönüşüm ve devrilen gövdelerin yere çarpışı zeminde genişleyip sönen bir halka bırakır.
+- **Parçacıklar:** her parçacığın kendi boyutu var. Buhar ve toz yayıldıkça büyür, kıvılcım ve kan damlaları küçülerek söner.
+- **Darbe parlaması:** vurulan dev bir an parlar.
+- **Kılıç izi:** her savuruş havada soluk bir hilal bırakır; ağır darbede iz altın rengidir. Dev formunun yumruğu hedefe değince formun renginde bir darbe izi çıkar.
+- **Isırık:** üstten ve alttan kapanan iki diş izi, kıvılcım ve kan; kendine özgü bir çene sesi.
 
 ## Efektler ve sesler
 

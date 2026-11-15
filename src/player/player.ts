@@ -68,13 +68,19 @@ export class Player {
   moveTarget: THREE.Vector3 | null = null;
   private readonly targetBuf = new THREE.Vector3();
   private moveHold = 0;
+  /** Dev formunda yerinde duruyor mu (bar azalmaz). */
+  titanResting = false;
   /** Oyuncuyu elinde tutan dev (yoksa null) ve kurtulma barı (0..100). */
   grabbedBy: Giant | null = null;
   escape = 0;
   private burstCd = 0;
   private eaten = false;
   private cloak = new THREE.Group();
+  /** Pelerinin alt iki parçası: üsttekine menteşeli, dalga gibi kıvrılır. */
+  private cloakMid = new THREE.Group();
+  private cloakTip = new THREE.Group();
   private cloakMat!: THREE.MeshToonMaterial;
+  private swingSide = 1;
 
   constructor(private readonly game: Game) {
     this.buildBody(this.char.look);
@@ -113,19 +119,64 @@ export class Player {
       const tank = rig.part(b.tilt, GEO.capsule, iron, 0.024, 0.032, 0.024, s * 0.04, 0.55, -0.082);
       tank.rotation.z = Math.PI / 2 - s * 0.25;
     }
+    // Kanca fırlatıcısı: tüplerin arasında, bel hizasında; iki yanında makara.
+    rig.part(b.tilt, GEO.box, iron, 0.062, 0.04, 0.036, 0, 0.552, -0.088);
+    rig.part(b.tilt, GEO.box, leather, 0.02, 0.014, 0.02, 0, 0.552, -0.112, false);
+    const brass = rig.toon(0xc9a24a);
+    rig.part(b.tilt, GEO.box, brass, 0.03, 0.022, 0.012, 0, 0.535, 0.07, false); // kemer tokası
+    for (const s of [-1, 1]) {
+      // Kalçada kın: deri gövde, demir ağız ve uç; arkaya doğru eğik durur.
+      const sheath = new THREE.Group();
+      sheath.position.set(s * 0.104, 0.515, -0.012);
+      sheath.rotation.x = 0.5;
+      b.tilt.add(sheath);
+      rig.part(sheath, GEO.box, leather, 0.02, 0.2, 0.034, 0, -0.1, 0);
+      rig.part(sheath, GEO.box, iron, 0.024, 0.022, 0.038, 0, -0.008, 0, false);
+      rig.part(sheath, GEO.box, iron, 0.022, 0.02, 0.03, 0, -0.196, 0, false);
+      // Uyluk kayışı ve dizlik.
+      const leg = s < 0 ? b.legL : b.legR;
+      const shin = s < 0 ? b.shinL : b.shinR;
+      rig.part(leg, GEO.taper, leather, 0.056, 0.016, 0.056, 0, -0.1, 0, false);
+      rig.part(leg, GEO.taper, leather, 0.054, 0.016, 0.054, 0, -0.165, 0, false);
+      rig.part(shin, GEO.sphere, iron, 0.036, 0.04, 0.026, 0, -0.004, 0.034, false);
+      // Eldiven: bileği saran deri.
+      const fore = s < 0 ? b.foreL : b.foreR;
+      rig.part(fore, GEO.taper, leather, 0.035, 0.05, 0.035, 0, -0.165, 0, false);
+    }
     for (const hand of [b.handL, b.handR]) {
       rig.part(hand, GEO.box, leather, 0.014, 0.014, 0.07, 0, 0, 0.02, false); // kabza
       rig.part(hand, GEO.box, iron, 0.05, 0.012, 0.012, 0, 0, 0.058, false); // balçak
       rig.part(hand, GEO.box, steel, 0.008, 0.026, 0.5, 0, 0, 0.31, false);
+      rig.part(hand, GEO.box, rig.basic(0xffffff), 0.002, 0.004, 0.46, 0, -0.0125, 0.32, false); // keskin ağzın parıltısı
     }
-    // Pelerin omuzdan menteşeli; hızlandıkça arkada dalgalanır.
+    // Pelerin omuzdan menteşeli üç parça: hızlandıkça kalkar, alt parçalar dalga gibi kıvrılır.
     this.cloakMat = rig.toon(L.cloak);
     this.cloakMat.side = THREE.DoubleSide;
+    const liningMat = rig.toon(new THREE.Color(L.cloak).multiplyScalar(0.62).getHex());
+    liningMat.side = THREE.DoubleSide;
+    const trimMat = rig.toon(new THREE.Color(L.cloak).lerp(new THREE.Color(0xf2e6c8), 0.55).getHex());
     this.cloak.position.set(0, 0.778, -0.062);
+    this.cloakMid = new THREE.Group();
+    this.cloakTip = new THREE.Group();
     b.tilt.add(this.cloak);
-    const cloth = rig.part(this.cloak, GEO.box, this.cloakMat, 0.27, 0.44, 0.012, 0, -0.22, -0.062, false);
-    cloth.castShadow = true;
+    this.cloakMid.position.set(0, -0.15, -0.062);
+    this.cloak.add(this.cloakMid);
+    this.cloakTip.position.set(0, -0.15, 0);
+    this.cloakMid.add(this.cloakTip);
+    // Her parça bir alttakinden dar: pelerin aşağı doğru açılır.
+    const panel = (parent: THREE.Object3D, w: number, z: number) => {
+      const m = rig.part(parent, GEO.box, this.cloakMat, w, 0.156, 0.012, 0, -0.075, z, false);
+      m.castShadow = true;
+      rig.part(parent, GEO.box, liningMat, w * 0.94, 0.15, 0.004, 0, -0.075, z + 0.008, false); // astar
+    };
+    panel(this.cloak, 0.25, -0.062);
+    panel(this.cloakMid, 0.275, 0);
+    panel(this.cloakTip, 0.3, 0);
+    rig.part(this.cloakTip, GEO.box, trimMat, 0.302, 0.014, 0.014, 0, -0.14, 0, false); // etek şeridi
     rig.part(this.cloak, GEO.sphere, this.cloakMat, 0.135, 0.032, 0.085, 0, -0.008, 0.06, false);
+    // Boyunda toplanan kumaş ve göğüste pirinç toka.
+    rig.part(this.cloak, GEO.sphere, this.cloakMat, 0.066, 0.03, 0.062, 0, 0.022, 0.058, false);
+    rig.part(this.cloak, GEO.sphere, brass, 0.013, 0.013, 0.008, 0, -0.012, 0.142, false);
     this.body.root.visible = this.mode !== 'titan';
     this.game.scene.add(this.body.root);
   }
@@ -201,6 +252,7 @@ export class Player {
       if (inp.mousePressed(0)) this.titan.punch(this);
       if (inp.pressed('KeyQ')) this.titan.cast('q', this);
       if (inp.pressed('KeyE')) this.titan.cast('e', this);
+      if (inp.pressed('KeyF')) this.titan.bite(this);
       if (inp.pressed('Space') && this.onGround) {
         if (this.titan.def.jump > 0) {
           this.vel.y = this.titan.def.jump;
@@ -445,6 +497,13 @@ export class Player {
       this.swingBonus = 3; // zırh delen darbe
       this.swingReach = 1.5;
     }
+    // Kılıcın havada bıraktığı soluk iz; her vuruşta öbür yana eğilir.
+    const g = this.game;
+    const yaw = g.aimYaw();
+    this.swingSide *= -1;
+    look.set(Math.sin(yaw), 0, Math.cos(yaw));
+    tmp.set(this.pos.x + look.x * 1.5, this.pos.y + 1.15, this.pos.z + look.z * 1.5);
+    g.slashes.spawn(tmp, look, this.swingBonus >= 3 ? 2.3 : 1.5, this.swingBonus >= 3 ? 0xc8a050 : 0x7f9ab0, this.swingSide * 0.55, 0.2);
     this.game.audio.swing();
   }
 
@@ -513,6 +572,7 @@ export class Player {
     if (this.mode !== 'titan') return;
     const g = this.game;
     this.mode = 'foot';
+    this.titanResting = false;
     this.titan.exit();
     this.body.root.visible = true;
     const napeY = this.titan.def.height * 0.8;
@@ -845,7 +905,9 @@ export class Player {
       this.onGround = false;
     }
     this.titan.update(dt, this);
-    if (g.meter.tick(dt, T.drain * this.char.drain * (1 - 0.1 * g.save.upgrades.titan))) this.revert();
+    // Bar yalnızca hareket ederken yanar: yerinde duran dev dinlenir.
+    this.titanResting = this.onGround && this.titan.rushT <= 0 && Math.hypot(this.vel.x, this.vel.z) < 0.5;
+    if (g.meter.tick(dt, T.drain * this.char.drain * (1 - 0.1 * g.save.upgrades.titan), !this.titanResting)) this.revert();
   }
 
   // ---------------------------------------------------------------- görsel
@@ -1025,7 +1087,17 @@ export class Player {
     b.head.rotation.y = lerp(b.head.rotation.y, headYaw - twist * 0.8, ks);
     b.head.rotation.x = lerp(b.head.rotation.x, headPitch, ks);
     autoBend(b, k, { elbowL, elbowR, kneeL, kneeR });
-    const flap = 0.1 + Math.min(1.25, this.vel.length() / 20) + Math.sin(performance.now() * 0.012) * 0.05 * Math.min(1, hs / 4);
-    this.cloak.rotation.x = lerp(this.cloak.rotation.x, flap - tilt * 0.4, 1 - Math.exp(-dt * 7));
+    // Pelerin: hızla kalkar; dalga omuzdan uca doğru gecikerek ilerler, uçta en geniştir.
+    const sp = this.vel.length();
+    const wind = Math.min(1, sp / 14);
+    const wave = now * (6 + wind * 9);
+    const flap = 0.1 + Math.min(1.25, sp / 20) + Math.sin(wave) * 0.05 * Math.min(1, hs / 4);
+    const kc = 1 - Math.exp(-dt * 7);
+    this.cloak.rotation.x = lerp(this.cloak.rotation.x, flap - tilt * 0.4, kc);
+    this.cloakMid.rotation.x = lerp(this.cloakMid.rotation.x, -flap * 0.32 + Math.sin(wave - 1.1) * (0.06 + 0.24 * wind), kc);
+    this.cloakTip.rotation.x = lerp(this.cloakTip.rotation.x, -flap * 0.26 + Math.sin(wave - 2.3) * (0.1 + 0.34 * wind), kc);
+    this.cloak.rotation.z = lerp(this.cloak.rotation.z, -bank * 0.6 + Math.sin(wave * 0.6) * 0.04 * wind, kc);
+    // At kuyruğu da aynı rüzgârla savrulur.
+    if (b.hairTail) b.hairTail.rotation.x = lerp(b.hairTail.rotation.x, Math.min(1.3, sp / 16) + Math.sin(wave + 0.7) * 0.1 * wind - tilt * 0.3, kc);
   }
 }

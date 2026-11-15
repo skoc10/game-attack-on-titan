@@ -54,7 +54,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     price: 150,
     speed: 1.08,
     reel: 1.12,
-    look: { skin: 0xe8c4a0, hair: 0x7a3b1c, hairStyle: 'long', top: 0x2f5a4a, cloak: 0x1f6a4a, eye: 0x5a8a3a },
+    look: { skin: 0xe8c4a0, hair: 0x7a3b1c, hairStyle: 'ponytail', top: 0x2f5a4a, cloak: 0x1f6a4a, eye: 0x5a8a3a },
   },
   bora: {
     ...base,
@@ -76,7 +76,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     perk: 'Gaz kapasitesi +%40',
     price: 450,
     gas: 1.4,
-    look: { skin: 0xf0d2b8, hair: 0xd8b860, hairStyle: 'short', top: 0x3a6a8a, cloak: 0x2a7aa0, eye: 0x4a9ac0 },
+    look: { skin: 0xf0d2b8, hair: 0xd8b860, hairStyle: 'bob', top: 0x3a6a8a, cloak: 0x2a7aa0, eye: 0x4a9ac0 },
   },
   kuzey: {
     ...base,
@@ -124,7 +124,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     price: 1700,
     meter: 1.2,
     titan: 'simsek',
-    look: { skin: 0xf4dcc0, hair: 0xf2e08a, hairStyle: 'long', top: 0x5a5a8a, cloak: 0xb89a20, eye: 0xffe94a },
+    look: { skin: 0xf4dcc0, hair: 0xf2e08a, hairStyle: 'ponytail', top: 0x5a5a8a, cloak: 0xb89a20, eye: 0xffe94a },
   },
   mete: {
     ...base,
