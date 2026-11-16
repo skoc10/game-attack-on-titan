@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import type { World } from './world';
 import { CFG } from '../data/config';
+import { DISTRICTS } from './layout';
 
 export interface Station {
   x: number;
   y: number;
   z: number;
+  group: THREE.Group;
 }
 
 /** Gaz ikmal noktaları: gaz yalnızca burada (ve gaz kutularında) dolar. */
@@ -75,16 +77,20 @@ export class Stations {
       beam.position.y = 23;
       g.add(pole, pennant, beam);
       scene.add(g);
-      this.list.push({ x, y, z });
+      this.list.push({ x, y, z, group: g });
     };
 
-    const [inner, mid, outer] = CFG.world.walls.map((w) => w.r);
+    const [, mid, outer] = CFG.world.walls.map((w) => w.r);
     add(-9, CFG.player.spawn.z + 8); // şehir, doğuş noktasının yanı
-    add(-24, inner + 46);
     add(-24, mid - 150);
-    add(-24, mid + 50);
     add(-24, outer - 50);
-    add(-24, outer + 50);
+    // Her kapı kasabasının caddesinde, iç kapıyla dış kapının arasında bir ikmal noktası.
+    for (const d of DISTRICTS) {
+      const along = CFG.world.walls[d.ring].r + d.r * 0.45;
+      const fx = Math.sin(d.ang);
+      const fz = Math.cos(d.ang);
+      add(fx * along - fz * 16, fz * along + fx * 16);
+    }
     for (const v of world.villages) add(v.x, v.z);
   }
 
@@ -104,6 +110,8 @@ export class Stations {
 
   update(dt: number, game: Game) {
     const p = game.player;
+    // Uzaktaki ikmal noktaları çizilmez (sis zaten örter).
+    for (const s of this.list) s.group.visible = (s.x - p.pos.x) ** 2 + (s.z - p.pos.z) ** 2 < 900 * 900;
     this.filling = false;
     if (p.mode === 'titan' || p.dead || p.gas >= p.maxGas) return;
     const { station, dist } = this.nearest(p.pos.x, p.pos.z);

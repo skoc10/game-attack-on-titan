@@ -3,22 +3,24 @@ import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { Giant } from '../enemies/giant';
 import { BOSSES, GIANT_TYPES, type BossId, type GiantKind } from '../enemies/giantTypes';
+import { ringOf, spawnable } from './layout';
 
 const S = CFG.spawn;
 
-function pickKind(r: number, game: Game): GiantKind {
+function pickKind(x: number, z: number, game: Game): GiantKind {
   if (game.save.level === 1 && game.save.kills < 3) return 'normal';
-  const x = Math.random();
+  const roll = Math.random();
+  const zone = ringOf(x, z);
   const table: [GiantKind, number][] =
-    r < CFG.world.walls[1].r
+    zone <= 1
       ? [['normal', 0.66], ['runner', 0.1], ['leaper', 0.08], ['crawler', 0.07], ['screamer', 0.05], ['thrower', 0.04]]
-      : r < CFG.world.walls[2].r
+      : zone === 2
         ? [['normal', 0.4], ['runner', 0.13], ['leaper', 0.12], ['armored', 0.13], ['crawler', 0.08], ['thrower', 0.08], ['screamer', 0.06]]
         : [['normal', 0.27], ['runner', 0.14], ['leaper', 0.14], ['armored', 0.19], ['crawler', 0.09], ['thrower', 0.1], ['screamer', 0.07]];
   let acc = 0;
   for (const [k, w] of table) {
     acc += w;
-    if (x < acc) return k;
+    if (roll < acc) return k;
   }
   return 'normal';
 }
@@ -98,10 +100,8 @@ export class Spawner {
       const d = S.minDist + Math.random() * (S.maxDist - S.minDist);
       const x = p.x + Math.sin(a) * d;
       const z = p.z + Math.cos(a) * d;
-      const r = Math.hypot(x, z);
-      if (r < CFG.world.walls[0].r + 60 || r > 2500) continue;
-      if (CFG.world.walls.some((w) => Math.abs(r - w.r) < 22)) continue;
-      this.spawn(pickKind(r, game), x, z, game);
+      if (!spawnable(x, z, 60, 22)) continue;
+      this.spawn(pickKind(x, z, game), x, z, game);
       return;
     }
   }

@@ -5,6 +5,7 @@ import { TITANS, type TitanId } from '../data/titans';
 import { storeSave } from '../core/save';
 import { coinsFor } from './progression';
 import type { Crate } from '../world/crates';
+import { spawnable } from '../world/layout';
 import { chapterAt, goal, missionAt, needleFor, nextStep, progressFor, storyDone, type StoryEvent } from './storyRules';
 
 export interface ObjectiveView {
@@ -14,7 +15,6 @@ export interface ObjectiveView {
   goal: number;
 }
 
-const IN = CFG.world.walls[0].r;
 
 /**
  * Hikâye modu: sezonlara bölünmüş görevleri sırayla yürütür. Adımların ilerlemesini oyun
@@ -299,8 +299,7 @@ export class Story {
         const d = 55 + Math.random() * 55;
         const x = ax + Math.sin(a) * d;
         const z = az + Math.cos(a) * d;
-        const r = Math.hypot(x, z);
-        if (r < IN + 45 || CFG.world.walls.some((w) => Math.abs(r - w.r) < 24)) continue;
+        if (!spawnable(x, z, 45)) continue;
         if (Math.hypot(x - p.x, z - p.z) < 45) continue;
         if (g.world.solidAt(x, g.world.heightAt(x, z) + 2, z, 3)) continue;
         g.spawner.spawn(kinds[(offset + i) % kinds.length], x, z, g).tag = grp.tag;

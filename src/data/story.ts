@@ -77,9 +77,13 @@ const W = CFG.world.walls;
 const IN = W[0].r;
 const MID = W[1].r;
 const OUT = W[2].r;
+/** Her surun +Z yolundaki kapı kasabasının dış kapısı. */
+const IN_G = IN + W[0].district;
+const MID_G = MID + W[1].district;
+const OUT_G = OUT + W[2].district;
 
 /** Sur ötesindeki son hedef: simyacıların çağrı kulesi. */
-export const BEACON: [number, number] = [0, OUT + 300];
+export const BEACON: [number, number] = [0, OUT_G + 260];
 
 const rep = (kind: GiantKind, n: number): GiantKind[] => Array.from({ length: n }, () => kind);
 
@@ -102,7 +106,7 @@ export const CHAPTERS: Chapter[] = [
         ],
         objectives: [
           { kind: 'mount', text: 'Atına bin (F ile çağır, E ile bin)' },
-          { kind: 'beyond', text: 'Taç Suru kapısından dışarı çık', r: IN + 25 },
+          { kind: 'beyond', text: 'Taç Suru kapısından dışarı çık', r: IN_G + 20 },
         ],
         xp: 40,
       },
@@ -172,10 +176,10 @@ export const CHAPTERS: Chapter[] = [
           ['sare', 'Kapı düşerse içeride kılıç tutabilecek kimse kalmaz. Hemen dön.'],
         ],
         objectives: [
-          { kind: 'reach', text: 'Taç Suru kapısının önüne dön', at: [0, IN + 90], radius: 55 },
+          { kind: 'reach', text: 'Taç Suru kapısının önüne dön', at: [0, IN_G + 60], radius: 55 },
           { kind: 'kill', text: 'Kapıya yürüyen sürüyü durdur', count: 6, tag: 's1-suru' },
         ],
-        spawns: [{ on: 1, tag: 's1-suru', kinds: rep('normal', 6), at: [0, IN + 170] }],
+        spawns: [{ on: 1, tag: 's1-suru', kinds: rep('normal', 6), at: [0, IN_G + 130] }],
         outro: [
           ['sare', 'Kapı ayakta. Otuz yıldır ilk kez saldırıyı surun dışında karşıladık.'],
           ['aras', 'Dışarıda iki sur daha var. İkisi de bizimdi.'],
@@ -199,7 +203,7 @@ export const CHAPTERS: Chapter[] = [
           ['sare', 'Demir Sur buradan sekiz yüz adım ötede. Yürüyerek varamazsın; atını kullan.'],
           ['yel', 'Yol boyunca ikmal noktaları var. Gazını doldurmadan sıradakine geçme.'],
         ],
-        objectives: [{ kind: 'reach', text: 'Yolu izle: yarı yoldaki eski karakola var', at: [0, 620], radius: 60 }],
+        objectives: [{ kind: 'reach', text: 'Yolu izle: yarı yoldaki eski karakola var', at: [0, Math.round((IN_G + MID) / 2)], radius: 60 }],
         xp: 60,
       },
       {
@@ -302,12 +306,12 @@ export const CHAPTERS: Chapter[] = [
           ['sare', 'Bu kez karışık geliyorlar. Hangi bedeni seçeceğine sen karar ver.'],
         ],
         objectives: [
-          { kind: 'beyond', text: 'Demir Sur’un ötesine geç', r: MID + 60 },
-          { kind: 'reach', text: 'Karakol yerine var', at: [0, MID + 210], radius: 70 },
+          { kind: 'beyond', text: 'Demir Sur’un ötesine geç', r: MID_G + 30 },
+          { kind: 'reach', text: 'Karakol yerine var', at: [0, MID_G + 70], radius: 70 },
           { kind: 'kill', text: 'Karakolu kuşatan sürüyü dağıt', count: 8, tag: 's3-kusatma' },
         ],
         spawns: [
-          { on: 2, tag: 's3-kusatma', kinds: [...rep('normal', 4), ...rep('runner', 2), ...rep('leaper', 2)], at: [0, MID + 290] },
+          { on: 2, tag: 's3-kusatma', kinds: [...rep('normal', 4), ...rep('runner', 2), ...rep('leaper', 2)], at: [0, MID_G + 150] },
         ],
         outro: [
           ['sare', 'Karakol ayakta. Artık iki surumuz var.'],
@@ -394,7 +398,7 @@ export const CHAPTERS: Chapter[] = [
           ['sare', 'Buradan sonrası için emir veremem. Haritamız burada bitiyor.'],
           ['aras', 'Öyleyse haritayı ben çizerim.'],
         ],
-        objectives: [{ kind: 'beyond', text: 'Kalkan Suru’nun ötesine çık', r: OUT + 60 }],
+        objectives: [{ kind: 'beyond', text: 'Kalkan Suru’nun ötesine çık', r: OUT_G + 30 }],
         xp: 150,
       },
       {

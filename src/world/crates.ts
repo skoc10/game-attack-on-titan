@@ -4,6 +4,7 @@ import { CFG } from '../data/config';
 import { mulberry32 } from '../core/rng';
 import { rollTitan, TITANS, type TitanId } from '../data/titans';
 import { heightAt } from './terrain';
+import { EDGE, inSafe, wallDist } from './layout';
 
 export type CrateContent = 'needle' | 'gas' | 'blade' | 'spear' | 'medic' | 'coin' | 'hood';
 
@@ -114,23 +115,25 @@ export class Crates {
       const form = deep ? 'zirve' : rollTitan(rng());
       add(x, z, rollContent(r, village), form);
     };
-    const valid = (x: number, z: number) => {
-      const r = Math.hypot(x, z);
-      return r > 370 && r < 2350 && !CFG.world.walls.some((w) => Math.abs(r - w.r) < 30);
-    };
+    const valid = (x: number, z: number) => !inSafe(x, z, 20) && wallDist(x, z) >= 30 && Math.hypot(x, z) < EDGE - 120;
+    const [w0, w1, w2] = CFG.world.walls;
+    // Kapı kasabalarının dış kapısının hemen önü (+Z yolunda).
+    const MID_G = w1.r + w1.district;
+    const OUT_G = w2.r + w2.district;
 
     // İlk kutular kapının hemen dışında: oyuncu döngüyü erken öğrensin.
-    add(16, 392, 'needle', 'ofke');
-    add(-20, 560, 'gas');
-    add(18, 470, 'spear');
+    const IN_G = w0.r + w0.district;
+    add(16, IN_G + 25, 'needle', 'ofke');
+    add(-20, IN_G + 165, 'gas');
+    add(18, IN_G + 80, 'spear');
     // Orman Kapşonu: ilk ormanın kenarında, yolun biraz dışında.
-    add(-58, 640, 'hood');
-    add(22, 760, 'needle', 'firtina');
-    add(-26, 900, 'needle', 'kaya');
-    add(-30, CFG.world.walls[1].r + 150, 'needle', 'zirve');
+    add(-58, IN_G + 245, 'hood');
+    add(22, IN_G + 365, 'needle', 'firtina');
+    add(-26, IN_G + 505, 'needle', 'kaya');
+    add(-30, MID_G + 60, 'needle', 'zirve');
     // Sur ötesi: son görevlerde iğnesiz kalan oyuncu için kulenin yolunda iki sandık.
-    add(26, CFG.world.walls[2].r + 110, 'needle', 'ofke');
-    add(-34, CFG.world.walls[2].r + 220, 'needle', 'kaya');
+    add(26, OUT_G + 40, 'needle', 'ofke');
+    add(-34, OUT_G + 140, 'needle', 'kaya');
     for (const v of villages) {
       if (this.list.length >= CFG.crate.count - 14) break;
       const x = v.x + (rng() - 0.5) * 30;
@@ -140,7 +143,9 @@ export class Crates {
     let guard = 0;
     while (this.list.length < CFG.crate.count && guard++ < 500) {
       const a = rng() * Math.PI * 2;
-      const rr = 380 + rng() * 1900;
+      const a0 = w0.r + w0.district + 20;
+      const a1 = EDGE - 150;
+      const rr = Math.sqrt(a0 * a0 + (a1 * a1 - a0 * a0) * rng());
       const x = Math.sin(a) * rr;
       const z = Math.cos(a) * rr;
       if (valid(x, z)) addRandom(x, z);
@@ -195,8 +200,13 @@ export class Crates {
     game.onCrateOpened(c);
   }
 
-  update(dt: number) {
+  /** Oyuncudan bu kadar uzaktaki kutular çizilmez (sis zaten örter). */
+  static readonly DRAW = 900;
+
+  update(dt: number, px: number, pz: number) {
+    const far = Crates.DRAW * Crates.DRAW;
     for (const c of this.list) {
+      c.group.visible = (c.x - px) ** 2 + (c.z - pz) ** 2 < far;
       if (!c.opened) {
         (c.beam.material as THREE.MeshBasicMaterial).opacity = 0.18 + Math.sin(performance.now() * 0.003 + c.x) * 0.06;
         continue;

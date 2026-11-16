@@ -4,6 +4,9 @@ import { CFG } from '../data/config';
 import type { Rng } from '../core/rng';
 import { facadeTexture, roofTexture } from '../core/textures';
 import { heightAt } from './terrain';
+import { DISTRICTS, districtLots, placeVillages, type Village } from './layout';
+
+export type { Village };
 
 export interface Building {
   minX: number;
@@ -20,11 +23,6 @@ export interface Building {
   /** En yüksek nokta (mahya). */
   top: number;
   town: boolean;
-}
-
-export interface Village {
-  x: number;
-  z: number;
 }
 
 /** Çatının duvardan dışarı taşma payı. */
@@ -49,35 +47,34 @@ export function generateBuildings(rng: Rng) {
     list.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2, base, eave, roofH, ridgeX, top: eave + roofH, town });
   };
 
-  // Şehir: Taç Suru'nun içinde, yol ve doğuş alanı boş.
-  for (let i = 0; i < 46; i++) {
+  // Şehir: Taç Suru'nun içinde; doğuş alanı ve dört kapıya giden caddeler boş.
+  for (let i = 0; i < 52; i++) {
     const a = rng() * Math.PI * 2;
     const rr = 40 + rng() * 215;
     const x = Math.sin(a) * rr;
     const z = Math.cos(a) * rr;
     if (Math.abs(x) < 20 && z > -30) continue;
+    if (Math.min(Math.abs(x), Math.abs(z)) < 16) continue;
     add(x, z, 8 + rng() * 7, 8 + rng() * 7, 6.4 + Math.floor(rng() * 3) * 3.2, true, false);
   }
 
-  const village = (minR: number, maxR: number, count: number) => {
-    for (let v = 0; v < count; v++) {
-      const a = rng() * Math.PI * 2;
-      const rr = minR + rng() * (maxR - minR);
-      const cx = Math.sin(a) * rr;
-      const cz = Math.cos(a) * rr;
-      if (cz > 0 && Math.abs(cx) < 70) continue;
-      villages.push({ x: cx, z: cz });
-      const n = 5 + Math.floor(rng() * 6);
-      for (let i = 0; i < n; i++) {
-        const x = cx + (rng() - 0.5) * 90;
-        const z = cz + (rng() - 0.5) * 90;
-        const ruin = rng() < 0.35;
-        add(x, z, 7 + rng() * 6, 7 + rng() * 6, ruin ? 2.5 + rng() * 4 : 3.2 + Math.floor(rng() * 2) * 3.2, false, ruin);
-      }
+  // Kapı kasabaları: surun dışına taşan yarım dairede sık, iki üç katlı evler.
+  for (const d of DISTRICTS) {
+    for (const lot of districtLots(d, rng)) add(lot.x, lot.z, lot.w, lot.d, 6.4 + Math.floor(rng() * 2.4) * 3.2, true, false);
+  }
+
+  // Köyler: sur ötesindekiler çoğunlukla terk edilmiş, yıkık.
+  for (const v of placeVillages(rng)) {
+    villages.push(v);
+    const n = 6 + Math.floor(rng() * 6);
+    const ruinChance = v.zone === 3 ? 0.6 : 0.3;
+    for (let i = 0; i < n; i++) {
+      const x = v.x + (rng() - 0.5) * 90;
+      const z = v.z + (rng() - 0.5) * 90;
+      const ruin = rng() < ruinChance;
+      add(x, z, 7 + rng() * 6, 7 + rng() * 6, ruin ? 2.5 + rng() * 4 : 3.2 + Math.floor(rng() * 2) * 3.2, false, ruin);
     }
-  };
-  village(420, 1000, 11);
-  village(1200, 1900, 16);
+  }
   return { buildings: list, villages };
 }
 
@@ -104,8 +101,16 @@ function tris(pos: number[], uv: number[]) {
 
 /** Yarı ahşap evler ve kiremit beşik çatılar; iki birleştirilmiş ağ (duvarlar, çatılar). */
 export function buildRuins(buildings: Building[], rng: Rng) {
-  const wallParts: THREE.BufferGeometry[] = [];
-  const roofParts: THREE.BufferGeometry[] = [];
+  // Evler bölgelere ayrılır: görüş ve gölge alanı dışındaki bölgeler hiç çizilmez.
+  const CHUNK = 420;
+  const wallBuckets = new Map<string, THREE.BufferGeometry[]>();
+  const roofBuckets = new Map<string, THREE.BufferGeometry[]>();
+  const bucket = (map: Map<string, THREE.BufferGeometry[]>, x: number, z: number) => {
+    const k = `${Math.floor(x / CHUNK)}:${Math.floor(z / CHUNK)}`;
+    let list = map.get(k);
+    if (!list) map.set(k, (list = []));
+    return list;
+  };
   const FW = 4; // cephe karosu genişliği (m)
   const FH = 3.2; // kat yüksekliği (m)
   const RT = 3; // çatı karosu (m)
@@ -117,6 +122,8 @@ export function buildRuins(buildings: Building[], rng: Rng) {
     const cz = (b.minZ + b.maxZ) / 2;
     const h = b.eave - b.base + 0.12;
     const ruin = b.roofH <= 0;
+    const wallParts = bucket(wallBuckets, cx, cz);
+    const roofParts = bucket(roofBuckets, cx, cz);
 
     // Duvarlar
     const box = new THREE.BoxGeometry(w, h, d).toNonIndexed();
@@ -173,15 +180,19 @@ export function buildRuins(buildings: Building[], rng: Rng) {
     wallParts.push(tint(gable, shade, shade * 0.97, shade * warm));
   }
 
-  const walls = new THREE.Mesh(mergeGeometries(wallParts, false)!, new THREE.MeshLambertMaterial({ map: facadeTexture(), vertexColors: true }));
-  const roofs = new THREE.Mesh(
-    mergeGeometries(roofParts, false)!,
-    new THREE.MeshLambertMaterial({ map: roofTexture(), vertexColors: true, side: THREE.DoubleSide }),
-  );
-  for (const m of [walls, roofs]) {
-    m.castShadow = true;
-    m.receiveShadow = true;
-  }
+  const group = (buckets: Map<string, THREE.BufferGeometry[]>, mat: THREE.Material) => {
+    const g = new THREE.Group();
+    for (const list of buckets.values()) {
+      if (list.length === 0) continue;
+      const m = new THREE.Mesh(mergeGeometries(list, false)!, mat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+    }
+    return g;
+  };
+  const walls = group(wallBuckets, new THREE.MeshLambertMaterial({ map: facadeTexture(), vertexColors: true }));
+  const roofs = group(roofBuckets, new THREE.MeshLambertMaterial({ map: roofTexture(), vertexColors: true, side: THREE.DoubleSide }));
   return { walls, roofs };
 }
 

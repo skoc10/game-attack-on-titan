@@ -4,7 +4,7 @@ import { CFG } from '../data/config';
 import { lerp, turnToward } from '../core/rng';
 import { rollVoice, type IdleVoice } from '../core/audioMath';
 import type { GiantSound } from '../core/audio';
-import { wallPush } from '../world/walls';
+import { DISTRICTS, wallPush } from '../world/layout';
 import { animateCollapse, newCollapse, type Collapse } from './collapse';
 import { pickMelee } from './attacks';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
@@ -544,12 +544,23 @@ export class Giant {
       }
       this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
     }
-    // Devler şehre giremez; surlardan yalnızca kapılardan geçer.
+    // Devler şehre ve Taç Suru kasabalarına giremez; surlardan yalnızca kapılardan geçer.
     const r = Math.hypot(this.pos.x, this.pos.z);
     const minR = CFG.world.walls[0].r + 40;
     if (r < minR && r > 0.01) {
       this.pos.x *= minR / r;
       this.pos.z *= minR / r;
+    }
+    for (let i = 0; i < 4; i++) {
+      const d = DISTRICTS[i];
+      const dx = this.pos.x - d.x;
+      const dz = this.pos.z - d.z;
+      const l = Math.hypot(dx, dz);
+      const min = d.r + 40;
+      if (l < min && l > 0.01) {
+        this.pos.x = d.x + (dx / l) * min;
+        this.pos.z = d.z + (dz / l) * min;
+      }
     }
     if (this.state !== 'leap') wallPush(this.pos, this.radius, 0);
     b.root.rotation.y = this.yaw;

@@ -35,7 +35,7 @@ export class Hud {
         <div class="bar boss"><i data-id="boss"></i></div>
         <div class="bossHint" data-id="bossHint"></div>
       </div>
-      <canvas class="minimap" width="180" height="180"></canvas>
+      <canvas class="minimap" width="180" height="180" data-key="KeyM"></canvas>
       <div class="crosshair" data-id="cross"></div>
       <div class="hint" data-id="hint"></div>
       <div class="toasts" data-id="toasts"></div>

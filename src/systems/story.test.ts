@@ -5,6 +5,7 @@ import { TITAN_IDS } from '../data/titans';
 import { BOSSES, GIANT_TYPES } from '../enemies/giantTypes';
 import { newSave, sanitizeSave } from './progression';
 import { clampProgress, goal, missionAt, missionsDone, needleFor, nextStep, progressFor, storyDone, type StoryEvent } from './storyRules';
+import { EDGE, inSafe, wallDist } from '../world/layout';
 
 const kill = (over: Partial<Extract<StoryEvent, { type: 'kill' }>> = {}): StoryEvent => ({
   type: 'kill',
@@ -128,10 +129,9 @@ describe('hikâye içeriği', () => {
   it('hedef noktalar şehrin dışında, sur gövdesinden uzakta ve harita içindedir', () => {
     const W = CFG.world;
     const clear = (x: number, z: number) => {
-      const r = Math.hypot(x, z);
-      expect(r).toBeGreaterThan(W.walls[0].r);
-      expect(r).toBeLessThan(W.size / 2 - 100);
-      for (const w of W.walls) expect(Math.abs(r - w.r)).toBeGreaterThan(W.wallT + 30);
+      expect(inSafe(x, z), `${x},${z}`).toBe(false);
+      expect(Math.hypot(x, z)).toBeLessThan(EDGE - 100);
+      expect(wallDist(x, z), `${x},${z}`).toBeGreaterThan(W.wallT + 30);
     };
     for (const m of missions) {
       for (const o of m.objectives) if (o.kind === 'reach') clear(o.at[0], o.at[1]);

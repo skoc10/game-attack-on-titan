@@ -2,12 +2,22 @@ import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { hex } from '../data/titans';
 import { crateColor } from '../world/crates';
+import { ARCS, DIRS, ROAD_END } from '../world/layout';
 
-const VIEW = 380; // metre cinsinden görüş yarıçapı
+/** Metre cinsinden görüş yarıçapı: yakın ve geniş (M ya da haritaya dokunarak geçilir). */
+const NEAR = 380;
+const WIDE = 2400;
 
 export class Minimap {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly size: number;
+  private wide = false;
+
+  /** Yakın görünüm ile bölgeyi gösteren geniş görünüm arasında geçer. */
+  toggle() {
+    this.wide = !this.wide;
+    return this.wide;
+  }
 
   constructor(
     private readonly game: Game,
@@ -22,6 +32,7 @@ export class Minimap {
     const c = this.ctx;
     const S = this.size;
     const R = S / 2;
+    const VIEW = this.wide ? WIDE : NEAR;
     const k = R / VIEW;
     const p = g.player.pos;
     const sin = Math.sin(g.camYaw);
@@ -43,25 +54,49 @@ export class Minimap {
     c.fillStyle = 'rgba(18,20,18,0.78)';
     c.fillRect(0, 0, S, S);
 
-    // Surlar ve kapılar
-    const [ox, oy] = map(0, 0);
-    for (const w of CFG.world.walls) {
-      c.strokeStyle = '#b9b4a6';
-      c.lineWidth = Math.max(2, CFG.world.wallT * k);
-      c.beginPath();
-      c.arc(ox, oy, w.r * k, 0, Math.PI * 2);
-      c.stroke();
-      const [gx, gy] = map(0, w.r);
-      c.fillStyle = '#e8c36a';
-      c.fillRect(gx - 3, gy - 3, 6, 6);
-    }
-    // Yol
+    // Yollar
     c.strokeStyle = 'rgba(140,120,90,0.6)';
     c.lineWidth = 2;
     c.beginPath();
-    c.moveTo(...map(0, 300));
-    c.lineTo(...map(0, 2400));
+    for (const a of DIRS) {
+      c.moveTo(...map(Math.sin(a) * 200, Math.cos(a) * 200));
+      c.lineTo(...map(Math.sin(a) * ROAD_END, Math.cos(a) * ROAD_END));
+    }
     c.stroke();
+
+    // Köyler
+    c.fillStyle = '#9c7a52';
+    for (const v of g.world.villages) {
+      if (Math.hypot(v.x - p.x, v.z - p.z) > VIEW + 60) continue;
+      const [x, y] = map(v.x, v.z);
+      const s = Math.max(9, 90 * k);
+      c.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+
+    // Surlar, kapı kasabaları ve kapılar
+    c.strokeStyle = '#b9b4a6';
+    c.lineWidth = Math.max(2, CFG.world.wallT * k);
+    for (const a of ARCS) {
+      if (Math.hypot(a.cx - p.x, a.cz - p.z) > VIEW * 1.5 + a.r) continue;
+      const full = a.half >= Math.PI;
+      const n = full ? 96 : 24;
+      c.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const t = a.mid - a.half + (a.half * 2 * i) / n;
+        const [x, y] = map(a.cx + Math.sin(t) * a.r, a.cz + Math.cos(t) * a.r);
+        if (i === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+    c.fillStyle = '#e8c36a';
+    for (const a of ARCS) {
+      for (const gt of a.gates) {
+        const [gx, gy] = map(a.cx + Math.sin(gt) * a.r, a.cz + Math.cos(gt) * a.r);
+        if (Math.abs(gx - R) > R || Math.abs(gy - R) > R) continue;
+        c.fillRect(gx - 2.5, gy - 2.5, 5, 5);
+      }
+    }
 
     // Kutular: Taktisyen hepsini, diğerleri yakındakileri görür.
     const seeAll = g.player.cls.id === 'taktisyen';
