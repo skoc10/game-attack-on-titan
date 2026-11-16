@@ -202,6 +202,25 @@ Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun iç
 - **Kılıç izi:** her savuruş havada soluk bir hilal bırakır; ağır darbede iz altın rengidir. Dev formunun yumruğu hedefe değince formun renginde bir darbe izi çıkar.
 - **Isırık:** üstten ve alttan kapanan iki diş izi, kıvılcım ve kan; kendine özgü bir çene sesi.
 
+## Tablette oynamak
+
+Oyun dokunmatik ekranı kendiliğinden tanır: tablette ya da telefonda açınca ekran kontrolleri çıkar. Masaüstünde dokunmatik ekrana dokununca da açılırlar, fare hareket edince gizlenirler. Cihazı **yatay** tut; dik tutarken oyun durur ve "yatay çevir" uyarısı çıkar. Başlayınca tarayıcı izin veriyorsa tam ekrana geçilir.
+
+| Dokunuş | Ne yapar |
+| --- | --- |
+| Ekranın sol tarafı | Parmağını koyduğun yerde sanal çubuk açılır: sürükleyerek yürü, sonuna kadar itince koşarsın (atlıyken dörtnala). |
+| Ekranın sağ tarafı | Kaydırarak yönünü ve bakışını çevir. Nişangâh ekranın ortasındadır. |
+| **KANCA / KILIÇ** (büyük tuş) | Nişangâh tutunacak bir yerdeyse "KANCA" yazar: basılı tuttukça çekilirsin, bırakınca kanca kopar. Değilse kılıç savurur. Yakalanınca "KES" olur, seri bas. |
+| **ZIPLA** | Zıpla; kancadayken "FIRLA", atlıyken "İN", yakalanınca "GAZ" olur. |
+| **MIZRAK**, sınıf yeteneği, **KOZA** | Patlar mızrak, sınıf yeteneği, billur koza. Bekleme süresi tuşun üstünde sayılır. |
+| **AÇ / KONUŞ / BİN / İN** | Yalnızca bir kutunun, kişinin ya da atın yanındayken çıkar. |
+| **DÖNÜŞ**, **İĞNE**, **SARGI**, **AT** | Dönüşme, iğne seçme, sargı sarma, atı çağırma; işe yaradıklarında görünürler. |
+| Dev formunda | Tuşlar formun güçlerine (yumruk, iki güç, ezme), **ISIRIK** ve **ÇIK** tuşlarına döner; bar yetmeyen güç soluk görünür. |
+| **ÇANTA**, **❚❚** | Sağ üstte: çantayı aç, duraklat. |
+| Pencereler | Telsiz satırına dokununca sonraki satıra geçilir; Nuran'ın tezgâhında ve çantada satırlara dokunarak seçilir, **KAPAT** ile kapanır. |
+
+Dokunmatikte görev ve bildirim yazılarındaki klavye tuşları ekran tuşlarının adlarıyla yazılır ("Q ile fırlat" yerine "MIZRAK tuşuyla fırlat"). Tablette çözünürlük ve gölge kalitesi biraz düşürülür; oyun uygulama değiştirilince ya da ekran kilitlenince duraklar. Dokunmatik düzeni masaüstünde denemek için adrese `?touch` ekle.
+
 ## Efektler ve sesler
 
 - **Kesip geçme:** öldürücü ense kesiğinde çapraz iki kılıç izi parlar, kan gidiş yönüne fışkırır ve zaman kısa süre yavaşlar. Ne kadar hızlı geçersen iz o kadar büyür; yüksek hızda yol boyunca beyaz bir iz ve kısa bir parlama eklenir. Dev formundaki öldürmelerde formun renginde tek büyük darbe izi çıkar.
@@ -214,5 +233,5 @@ Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun iç
 
 - `src/data/config.ts` — denge sayıları; `src/data/titans.ts` — dev formları (boy, hız, güçler, bar bedelleri).
 - `src/enemies/humanoid.ts` — eklemli karakter modeli ve kontur kurucu (`Rig`); `src/core/textures.ts` — kodla çizilen dokular.
-- `src/world/` arazi, surlar, orman, harabeler, kutular, ikmal noktaları, dev üretici · `src/player/` oyuncu, kanca, at, dev formu · `src/enemies/` devler · `src/systems/` saf oyun mantığı (testli) · `src/ui/` HUD, menü, mini harita.
+- `src/world/` arazi, surlar, orman, harabeler, kutular, ikmal noktaları, dev üretici · `src/player/` oyuncu, kanca, at, dev formu · `src/enemies/` devler · `src/systems/` saf oyun mantığı (testli) · `src/ui/` HUD, menü, mini harita, dokunmatik kontroller (`touch.ts`; düzen kuralları `src/systems/touchLayout.ts`).
 - `?debug` parametresi: `1` barı doldur, `2` her türden iğne ver, `3` Demir Sur'a ışınlan, `4` dev üret, `5` XP ver; `window.__game` konsoldan erişilir.

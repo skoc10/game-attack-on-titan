@@ -37,6 +37,7 @@ import { CLASSES } from './player/classes';
 import { Hud } from './ui/hud';
 import { Menu } from './ui/menu';
 import { Minimap } from './ui/minimap';
+import { TouchControls } from './ui/touch';
 
 const target = new THREE.Vector3();
 const look = new THREE.Vector3();
@@ -75,6 +76,7 @@ export class Game {
   readonly hud: Hud;
   readonly menu: Menu;
   readonly minimap: Minimap;
+  readonly touch: TouchControls;
   readonly giants: Giant[] = [];
   readonly stats = { kills: 0, needlesFound: 0, transforms: 0 };
   readonly debug: boolean;
@@ -114,8 +116,10 @@ export class Game {
 
   constructor(canvas: HTMLCanvasElement) {
     this.debug = new URLSearchParams(location.search).has('debug');
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    // Dokunmatik cihazlar (tablet, telefon) çoğunlukla daha zayıf: çözünürlük ve gölge haritası küçülür.
+    const lowPower = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, lowPower ? 1.25 : 1.5));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
@@ -127,7 +131,8 @@ export class Game {
     // Güneş: gölge haritası oyuncuyu izleyen ~220 m'lik bir alanı kapsar.
     this.sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    const shadowSize = lowPower ? 1024 : 2048;
+    this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -110;
     sc.right = sc.top = 110;
@@ -159,6 +164,11 @@ export class Game {
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
     this.menu = new Menu(this);
+    this.touch = new TouchControls(this, document.getElementById('hud')!, canvas);
+    this.input.onTouchChange = () => {
+      this.touch.reset();
+      if (!this.running) this.menu.render(); // kontroller listesi dokunmatik/klavye arasında değişir
+    };
     this.player.applyLoadout();
     if (!this.save.bossDefeated) this.spawner.spawnBoss(this);
 
@@ -205,6 +215,10 @@ export class Game {
       if (!locked && this.wasLocked && this.running) this.pause();
       this.wasLocked = locked;
     });
+    // Tablette uygulama değiştirilince ya da ekran kilitlenince oyun duraklar.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.running) this.pause();
+    });
     this.hud.setVisible(false);
     if (this.debug) (window as unknown as { __game: Game }).__game = this;
     requestAnimationFrame((t) => this.frame(t));
@@ -237,6 +251,7 @@ export class Game {
     this.hud.setVisible(true);
     this.renderer.domElement.classList.add('playing');
     this.input.requestLock();
+    if (this.input.touch) this.enterFullscreen();
     if (this.lockHintT < 0) this.lockHintT = 1.2;
     this.last = performance.now();
   }
@@ -248,6 +263,21 @@ export class Game {
     this.menu.show();
     this.renderer.domElement.classList.remove('playing');
     if (document.pointerLockElement) document.exitPointerLock();
+    this.touch.reset();
+    this.input.releaseAll();
+  }
+
+  /** Dokunmatik cihazda tarayıcı çubuklarını gizlemek için tam ekranı dener (desteklenmezse sessizce geçer). */
+  private enterFullscreen() {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    const doc = document as Document & { webkitFullscreenElement?: Element | null };
+    if (document.fullscreenElement || doc.webkitFullscreenElement) return;
+    try {
+      if (el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      else el.webkitRequestFullscreen?.();
+    } catch {
+      /* tam ekran yok */
+    }
   }
 
   setClass(id: ClassId) {
@@ -344,8 +374,8 @@ export class Game {
   /** İmleç ışınını araziyle kesiştirir: yürüme hedefi ve nişan yönü buradan gelir. */
   private updateCursor() {
     const inp = this.input;
-    // Fare kilitliyken nişan ekranın ortasıdır.
-    if (inp.locked) this.cursor.set(0, 0);
+    // Fare kilitliyken ve dokunmatikte nişan ekranın ortasıdır.
+    if (inp.centerAim) this.cursor.set(0, 0);
     else this.cursor.set((inp.mouseX / window.innerWidth) * 2 - 1, -(inp.mouseY / window.innerHeight) * 2 + 1);
     this.cursorRay.setFromCamera(this.cursor, this.camera);
     const o = this.cursorRay.ray.origin;
@@ -666,8 +696,11 @@ export class Game {
   private frame(now: number) {
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
     this.last = now;
-    if (this.running) this.update(dt);
-    else this.idleCamera(dt);
+    // Dokunmatik cihaz dik tutulurken "yatay çevir" uyarısı çıkar; o sırada oyun akmaz.
+    const portraitHold = this.input.touch && window.innerHeight > window.innerWidth;
+    if (this.running) {
+      if (!portraitHold) this.update(dt);
+    } else this.idleCamera(dt);
     this.updateEnvironment(dt);
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame((t) => this.frame(t));
@@ -736,9 +769,10 @@ export class Game {
     // imleç ekranın ortasından ne kadar yana kayarsa kamera o yöne o kadar hızlı döner.
     let mouseYaw = 0;
     let mousePitch = 0;
-    if (inp.locked) {
-      mouseYaw = -inp.mouseDX * 0.0024;
-      mousePitch = -inp.mouseDY * 0.0022;
+    if (inp.centerAim) {
+      // Dokunmatikte parmak kaydırması fareden biraz daha hızlı çevirir.
+      mouseYaw = -inp.mouseDX * 0.0024 - inp.lookDX * CFG.touch.lookYaw;
+      mousePitch = -inp.mouseDY * 0.0022 - inp.lookDY * CFG.touch.lookPitch;
     } else if (inp.inside) {
       const nx = (inp.mouseX / window.innerWidth) * 2 - 1;
       const over = Math.abs(nx) - CFG.camera.deadZone;
@@ -750,7 +784,13 @@ export class Game {
       this.lockHintT -= dt;
       if (this.lockHintT <= 0) {
         this.lockHintT = 0;
-        this.hud.toast(inp.locked ? 'Fareyi hareket ettirerek yönünü değiştir' : 'Dönmek için imleci ekranın sağına ya da soluna götür');
+        this.hud.toast(
+          inp.touch
+            ? 'Solda parmağınla yürü, sağda ekranı kaydırarak bak'
+            : inp.locked
+              ? 'Fareyi hareket ettirerek yönünü değiştir'
+              : 'Dönmek için imleci ekranın sağına ya da soluna götür',
+        );
       }
     }
 
@@ -828,6 +868,7 @@ export class Game {
     this.updateCamera(dt);
     if (this.frameNo % 2 === 0) this.aim = this.player.mode !== 'titan' && !this.player.dead ? this.player.grapple.aim(this) : null;
     this.hud.update(dt);
+    this.touch.update();
     if (this.frameNo % 2 === 0) this.minimap.draw();
     inp.endFrame();
   }

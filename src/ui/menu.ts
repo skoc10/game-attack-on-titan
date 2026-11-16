@@ -28,6 +28,23 @@ const CONTROLS: [string, string][] = [
   ['Esc', 'Duraklat'],
 ];
 
+/** Tablet ve telefonda ekran kontrolleri. */
+const TOUCH_CONTROLS: [string, string][] = [
+  ['Sol yarı', 'Parmağını koy ve sürükle: yürü · sonuna kadar it: koş'],
+  ['Sağ yarı', 'Ekranı kaydır: yönünü ve bakışını çevir'],
+  ['KANCA / KILIÇ', 'Nişangâh tutunacak yerdeyken basılı tut: kanca · dev yakınken: kılıç'],
+  ['ZIPLA', 'Zıpla · kancadan fırla · attan in'],
+  ['MIZRAK', 'Patlar mızrak fırlat'],
+  ['Sınıf tuşu', 'Sınıf yeteneği'],
+  ['AÇ / KONUŞ / BİN', 'Yanına gelince çıkar: kutu, kişi, at'],
+  ['DÖNÜŞ', 'Bar yeterince dolunca çıkar: deve dönüş'],
+  ['Dev formunda', 'Tuşlar formun güçlerine, ISIRIK ve ÇIK tuşlarına döner'],
+  ['KOZA · SARGI · İĞNE · AT', 'Koza, sargı, iğne seçimi, atı çağır'],
+  ['ÇANTA', 'Kapşonu giy/çıkar, sargı kullan (satırlara dokun)'],
+  ['❚❚', 'Duraklat'],
+  ['Konuşmalar', 'Telsiz satırına dokunarak geç · seçeneklere dokunarak seç'],
+];
+
 export class Menu {
   private readonly root: HTMLElement;
   private resetArmed = false;
@@ -155,7 +172,8 @@ export class Menu {
       </div>`;
     const freeBox = `<div class="story"><p class="storyLead">Hikâye yok, sıra yok: surların dışında dilediğin gibi avlan. Seviye, sınıf ve yükseltmeler iki modda ortaktır.</p></div>`;
     const startLabel = this.game.started ? 'DEVAM ET' : story ? (missionsDone(s.story) > 0 && !done ? 'HİKÂYEYE DEVAM ET' : 'HİKÂYEYE BAŞLA') : 'SURLARIN DIŞINA ÇIK';
-    const controls = CONTROLS.map(([k, v]) => `<li><kbd>${k}</kbd><span>${v}</span></li>`).join('');
+    const touch = this.game.input.touch;
+    const controls = (touch ? TOUCH_CONTROLS : CONTROLS).map(([k, v]) => `<li><kbd>${k}</kbd><span>${v}</span></li>`).join('');
     this.root.innerHTML = `
       <div class="panel">
         <header>
@@ -191,7 +209,7 @@ export class Menu {
               <li>Her dev <b>av puanı</b> düşürür; puanla yeni karakter al. ★ işaretli karakterler bar <b>dolunca iğnesiz</b> kendi devine dönüşür.</li>
             </ol>
           </section>
-          <section><h2>Kontroller</h2><ul class="keys">${controls}</ul></section>
+          <section><h2>Kontroller <span>${touch ? 'dokunmatik' : 'klavye ve fare'}</span></h2><ul class="keys">${controls}</ul></section>
         </div>
         <footer>
           <button class="primary" data-act="start">${startLabel}</button>
