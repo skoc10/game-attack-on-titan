@@ -5,6 +5,7 @@ import { rollTitan, TITANS } from '../data/titans';
 import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
 import { angDiff, lerp } from '../core/rng';
 import { storeSave } from '../core/save';
+import { CFG } from '../data/config';
 import { applyContractEvent, currentContract, type Contract, type ContractEvent, type Reward } from '../systems/contracts';
 
 const REACH = 3.6;
@@ -143,16 +144,16 @@ export class Npcs {
     }
     const full =
       (item.id === 'spear' && p.spears >= p.maxSpears) ||
-      (item.id === 'medic' && p.hp >= p.maxHp) ||
+      (item.id === 'medic' && g.save.inv.sargi >= CFG.inv.sargiMax) ||
       (item.id === 'blade' && p.blades >= p.maxBlades) ||
       (item.id === 'gas' && p.gas >= p.maxGas);
     if (full) {
-      g.hud.toast('Buna şu an ihtiyacın yok');
+      g.hud.toast(item.id === 'medic' ? 'Çantan sargıyla dolu' : 'Buna şu an ihtiyacın yok');
       return;
     }
     g.save.coins -= item.price;
     if (item.id === 'spear') p.spears = Math.min(p.maxSpears, p.spears + 2);
-    else if (item.id === 'medic') p.hp = p.maxHp;
+    else if (item.id === 'medic') g.inventory.giveSargi(1);
     else if (item.id === 'blade') p.blades = p.maxBlades;
     else if (item.id === 'gas') p.gas = p.maxGas;
     else {

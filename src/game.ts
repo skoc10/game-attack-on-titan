@@ -9,6 +9,7 @@ import { Spears } from './player/spears';
 import { Boulders } from './enemies/boulders';
 import { Cocoon } from './player/cocoon';
 import { Npcs } from './world/npcs';
+import { Inventory } from './player/inventory';
 import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
@@ -55,6 +56,7 @@ export class Game {
   readonly boulders: Boulders;
   readonly cocoon: Cocoon;
   readonly npcs: Npcs;
+  readonly inventory: Inventory;
   /** Patlama sürerken yapılan öldürmeler mızrağa yazılır (kesik izi çizilmez). */
   killBy: 'spear' | null = null;
   /** Öldürme serisi ve bitmesine kalan süre. */
@@ -152,6 +154,7 @@ export class Game {
     this.quests = new QuestLog(this);
     this.story = new Story(this);
     this.npcs = new Npcs(this);
+    this.inventory = new Inventory(this);
     this.scene.add(buildBeacon());
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
@@ -577,8 +580,9 @@ export class Game {
       p.spears += got;
       this.hud.toast(got > 0 ? `Patlar mızrak +${got} — Q ile fırlat` : 'Mızrak kılıfın dolu');
     } else if (c.content === 'medic') {
-      p.hp = Math.min(p.maxHp, p.hp + p.maxHp * CFG.crate.medicHeal);
-      this.hud.toast('Yaraların sarıldı');
+      this.inventory.giveSargi(1);
+    } else if (c.content === 'hood') {
+      this.inventory.giveHood();
     } else if (c.content === 'coin') {
       this.grantCoins(CFG.crate.coins);
       this.hud.toast(`Ganimet: +${CFG.crate.coins} av puanı`);
@@ -752,13 +756,18 @@ export class Game {
 
     // Biriyle konuşurken tuşlar pencereye gider: oyuncu girdisi ve duraklatma o karede işlenmez.
     const talking = this.npcs.open !== null;
-    if (talking) this.npcs.keys();
-    else if (inp.pressed('KeyP') || inp.pressed('Escape')) {
+    if (talking) {
+      this.inventory.open = false;
+      this.npcs.keys();
+    } else if (this.inventory.open || inp.pressed('KeyI') || inp.pressed('KeyH')) {
+      // Çanta açıkken Esc ve rakamlar çantaya gider; oyuncu yürümeye devam eder.
+      this.inventory.keys();
+    } else if (inp.pressed('KeyP') || inp.pressed('Escape')) {
       inp.endFrame();
       this.pause();
       return;
     }
-    if (this.debug && !talking) this.debugKeys();
+    if (this.debug && !talking && !this.inventory.open) this.debugKeys();
 
     let sdt = dt;
     if (this.slowT > 0) {

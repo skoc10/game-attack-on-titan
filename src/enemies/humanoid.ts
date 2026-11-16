@@ -60,6 +60,8 @@ export interface Humanoid {
   handR: THREE.Object3D;
   /** At kuyruğunun menteşesi (o saç biçimi yoksa null); hızla savrulması için döndürülür. */
   hairTail: THREE.Group | null;
+  /** Saçın tamamı (kapşon giyilince gizlenir). */
+  hair: THREE.Group;
   mats: THREE.Material[];
   skinMat: THREE.MeshToonMaterial;
   armMat: THREE.MeshToonMaterial;
@@ -310,17 +312,20 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
   // ---- Saç
   const hairStyle = pal.hair !== undefined ? (pal.hairStyle ?? 'short') : 'none';
   let hairTail: THREE.Group | null = null;
+  // Saçın tüm parçaları tek grupta: kapşon takılınca birlikte gizlenir.
+  const hairRoot = new THREE.Group();
+  head.add(hairRoot);
   if (hairStyle !== 'none' && pal.hair !== undefined) {
     const hairMat = rig.toon(pal.hair);
-    const cap = rig.part(head, GEO.cap, hairMat, 0.076, 0.088, 0.084, 0, 0.08, -0.004);
+    const cap = rig.part(hairRoot, GEO.cap, hairMat, 0.076, 0.088, 0.084, 0, 0.08, -0.004);
     cap.rotation.x = -0.36;
     // Arka hacim ve favoriler: saç kafaya yapışık bir kabuk gibi görünmesin.
-    rig.part(head, GEO.sphere, hairMat, 0.071, 0.066, 0.05, 0, 0.082, -0.036, false);
-    for (const s of [-1, 1]) rig.part(head, GEO.box, hairMat, 0.009, 0.04, 0.024, s * 0.069, 0.074, 0.018, false);
+    rig.part(hairRoot, GEO.sphere, hairMat, 0.071, 0.066, 0.05, 0, 0.082, -0.036, false);
+    for (const s of [-1, 1]) rig.part(hairRoot, GEO.box, hairMat, 0.009, 0.04, 0.024, s * 0.069, 0.074, 0.018, false);
     if (style !== 'giant') {
       // Perçem
       for (const [bx, len] of [[-0.036, 0.05], [-0.012, 0.062], [0.014, 0.055], [0.038, 0.046]]) {
-        const bang = rig.part(head, GEO.cone, hairMat, 0.018, len, 0.011, bx, 0.128 - len / 2, 0.066, false);
+        const bang = rig.part(hairRoot, GEO.cone, hairMat, 0.018, len, 0.011, bx, 0.128 - len / 2, 0.066, false);
         bang.rotation.x = Math.PI - 0.12;
         bang.rotation.z = bx * 3;
       }
@@ -341,36 +346,36 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       ];
       for (const [dx, dy, dz, len] of dirs) {
         dirBuf.set(dx, dy, dz).normalize();
-        const spike = rig.part(head, GEO.cone, hairMat, 0.024, len, 0.024, dirBuf.x * 0.07, 0.08 + dirBuf.y * 0.08, -0.004 + dirBuf.z * 0.074, false);
+        const spike = rig.part(hairRoot, GEO.cone, hairMat, 0.024, len, 0.024, dirBuf.x * 0.07, 0.08 + dirBuf.y * 0.08, -0.004 + dirBuf.z * 0.074, false);
         spike.quaternion.setFromUnitVectors(UP, dirBuf);
       }
     } else if (hairStyle === 'long') {
-      rig.part(head, GEO.capsule, hairMat, 0.066, 0.044, 0.026, 0, 0.0, -0.058);
-      rig.part(head, GEO.capsule, hairMat, 0.05, 0.03, 0.02, 0, -0.07, -0.062, false); // uca doğru incelir
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.066, 0.044, 0.026, 0, 0.0, -0.058);
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.05, 0.03, 0.02, 0, -0.07, -0.062, false); // uca doğru incelir
       for (const s of [-1, 1]) {
-        const lock = rig.part(head, GEO.cone, hairMat, 0.016, 0.09, 0.014, s * 0.066, 0.03, 0.03, false);
+        const lock = rig.part(hairRoot, GEO.cone, hairMat, 0.016, 0.09, 0.014, s * 0.066, 0.03, 0.03, false);
         lock.rotation.x = Math.PI;
       }
     } else if (hairStyle === 'ponytail') {
       // At kuyruğu: tepede bağ, ondan sarkan ve uca doğru incelen iki boğum. Menteşeli: koşarken savrulur.
       const tieMat = rig.toon(shade(pal.top, 1.25));
-      rig.part(head, GEO.sphere, tieMat, 0.019, 0.016, 0.019, 0, 0.118, -0.07, false);
+      rig.part(hairRoot, GEO.sphere, tieMat, 0.019, 0.016, 0.019, 0, 0.118, -0.07, false);
       hairTail = new THREE.Group();
       hairTail.position.set(0, 0.116, -0.076);
-      head.add(hairTail);
+      hairRoot.add(hairTail);
       rig.part(hairTail, GEO.capsule, hairMat, 0.027, 0.03, 0.024, 0, -0.058, -0.012);
       const tip = rig.part(hairTail, GEO.cone, hairMat, 0.024, 0.11, 0.021, 0, -0.165, -0.016, false);
       tip.rotation.x = Math.PI;
       for (const s of [-1, 1]) {
-        const lock = rig.part(head, GEO.cone, hairMat, 0.012, 0.07, 0.011, s * 0.067, 0.045, 0.034, false);
+        const lock = rig.part(hairRoot, GEO.cone, hairMat, 0.012, 0.07, 0.011, s * 0.067, 0.045, 0.034, false);
         lock.rotation.x = Math.PI;
       }
     } else if (hairStyle === 'bob') {
       // Küt kesim: ense hizasında biten arka perde ve çene hizasına inen yan tutamlar.
-      rig.part(head, GEO.capsule, hairMat, 0.07, 0.026, 0.03, 0, 0.034, -0.05);
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.07, 0.026, 0.03, 0, 0.034, -0.05);
       for (const s of [-1, 1]) {
-        rig.part(head, GEO.capsule, hairMat, 0.017, 0.022, 0.034, s * 0.066, 0.046, 0.004, false);
-        const tipLock = rig.part(head, GEO.cone, hairMat, 0.015, 0.04, 0.02, s * 0.064, -0.002, 0.03, false);
+        rig.part(hairRoot, GEO.capsule, hairMat, 0.017, 0.022, 0.034, s * 0.066, 0.046, 0.004, false);
+        const tipLock = rig.part(hairRoot, GEO.cone, hairMat, 0.015, 0.04, 0.02, s * 0.064, -0.002, 0.03, false);
         tipLock.rotation.x = Math.PI;
       }
     }
@@ -494,6 +499,7 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     handL: aL.hand,
     handR: aR.hand,
     hairTail,
+    hair: hairRoot,
     mats: rig.mats,
     skinMat,
     armMat,

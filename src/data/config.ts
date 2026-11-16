@@ -69,6 +69,10 @@ export const CFG = {
   },
   spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
   crate: { count: 64, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
+  // Çanta: en çok kaç sargı taşınır.
+  inv: { sargiMax: 3 },
+  // Orman Kapşonu: giyiliyken devler oyuncuyu ancak bu oranda yakından fark eder; saldırınca `reveal` saniye görünür olur.
+  hood: { sight: 0.45, reveal: 4 },
 } as const;
 
 export type MeterKind = 'normal' | 'elite' | 'boss';
