@@ -47,6 +47,7 @@ export class Hud {
       <div class="callout" data-id="callout"></div>
       <div class="cocoon" data-id="cocoon"><span class="label">BİLLUR KOZA</span><b data-id="cocoonT"></b><div class="bar"><i data-id="cocoonBar"></i></div><small><kbd>C</kbd> erken kır</small></div>
       <div class="npc" data-id="npc"></div>
+      <div class="inv" data-id="inv"></div>
       <div class="streak" data-id="streak"><b data-id="streakN"></b><small data-id="streakM"></small><div class="bar"><i data-id="streakT"></i></div></div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
       <div class="chapter" data-id="chapter"><small data-id="chapterLabel"></small><div data-id="chapterTitle"></div><p data-id="chapterSub"></p></div>
@@ -171,6 +172,16 @@ export class Hud {
         .join('');
       this.html('npc', `<div class="npcHead"><b>${esc(nv.name)}</b><span>${esc(nv.role)}</span></div><p>“${esc(nv.greet)}”</p><ul>${opts}</ul><div class="npcNote">${esc(nv.note)}</div><div class="npcKeys"><kbd>E</kbd> / <kbd>Esc</kbd> kapat</div>`);
     }
+    // Çanta
+    const iv = g.inventory.view();
+    this.el.inv.classList.toggle('show', iv !== null);
+    if (iv) {
+      const rows = iv.rows
+        .map((r) => `<li class="${r.off ? 'off' : ''}" style="--c:${r.color}"><kbd>${r.key}</kbd><div><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></div><em>${esc(r.tag)}</em></li>`)
+        .join('');
+      const gear = iv.gear.map((x) => `<span style="--c:${x.color}">${esc(x.name)} <b>${esc(x.value)}</b></span>`).join('');
+      this.html('inv', `<div class="npcHead"><b>ÇANTA</b><span>yürürken de açık kalır</span></div><ul>${rows}</ul><div class="invGear">${gear}</div><div class="npcKeys"><kbd>I</kbd> / <kbd>Esc</kbd> kapat</div>`);
+    }
     this.html(
       'contracts',
       g.npcs
@@ -266,7 +277,9 @@ export class Hud {
     this.html(
       'ability',
       `<kbd>R</kbd> ${p.cls.ability}${p.abilityCd > 0 ? ` <b>${Math.ceil(p.abilityCd)}</b>` : p.heavyT > 0 ? ' <b>HAZIR</b>' : ''}` +
-        ` &nbsp; <kbd>C</kbd> Koza${co.active ? ' <b>AÇIK</b>' : co.cd > 0 ? ` <b>${Math.ceil(co.cd)}</b>` : ''}`,
+        ` &nbsp; <kbd>C</kbd> Koza${co.active ? ' <b>AÇIK</b>' : co.cd > 0 ? ` <b>${Math.ceil(co.cd)}</b>` : ''}` +
+        ` &nbsp; <kbd>H</kbd> Sargı <b class="n">${g.save.inv.sargi}</b> &nbsp; <kbd>I</kbd> Çanta` +
+        (g.save.inv.wear ? (p.revealT > 0 ? ` &nbsp; <span class="hoodTag seen">KAPŞON · GÖRÜNÜRSÜN ${Math.ceil(p.revealT)}</span>` : ' &nbsp; <span class="hoodTag">KAPŞON · GİZLİ</span>') : ''),
     );
 
     // Nişangâh imleci izler.

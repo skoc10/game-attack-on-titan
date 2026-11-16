@@ -2,6 +2,7 @@ import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
 import { NPC_IDS, NPCS, type NpcId } from '../data/npcs';
 import { newContractState, type ContractState } from './contracts';
+import { newInv, sanitizeInv, type InvState } from './inventory';
 import { clampProgress, type StoryProgress } from './storyRules';
 
 export type GameMode = 'story' | 'free';
@@ -30,6 +31,8 @@ export interface SaveData {
   char: CharId;
   /** Sur içindeki görev verenlerle sözleşme durumu. */
   contracts: Record<NpcId, ContractState>;
+  /** Çanta: kapşon ve sargılar. */
+  inv: InvState;
 }
 
 export const MAX_UPGRADE = 5;
@@ -60,6 +63,7 @@ export function newSave(): SaveData {
     chars: ['aras'],
     char: 'aras',
     contracts: { nuran: newContractState(), kagan: newContractState(), behram: newContractState() },
+    inv: newInv(),
   };
 }
 
@@ -155,6 +159,7 @@ export function sanitizeSave(raw: unknown): SaveData {
     const goal = list.length > 0 ? list[index % list.length].goal : 0;
     d.contracts[id] = { index, active, progress: active ? num(c.progress, 0, 0, Math.max(0, goal - 1)) : 0 };
   }
+  d.inv = sanitizeInv(r.inv);
   if (typeof r.cls === 'string' && r.cls in CLASS_UNLOCK && classUnlocked(d, r.cls as ClassId)) d.cls = r.cls as ClassId;
   return d;
 }

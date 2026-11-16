@@ -1082,3 +1082,93 @@ kbd {
     filter: brightness(1.15) saturate(1);
   }
 }
+
+/* Çanta: sağda, oyunu kapatmadan açık kalır. */
+#hud .inv {
+  position: absolute;
+  right: 18px;
+  bottom: 120px;
+  width: min(360px, 86vw);
+  background: rgba(12, 13, 12, 0.9);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  padding: 12px 14px;
+  display: none;
+}
+#hud .inv.show {
+  display: block;
+}
+#hud .inv ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+#hud .inv li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+#hud .inv li > div {
+  flex: 1;
+}
+#hud .inv li b {
+  display: block;
+  font-weight: normal;
+  font-size: 15px;
+  color: var(--c);
+}
+#hud .inv li small {
+  display: block;
+  font-size: 12px;
+  color: var(--dim);
+}
+#hud .inv li em {
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+#hud .inv li.off b {
+  opacity: 0.5;
+}
+#hud .invGear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--dim);
+}
+#hud .invGear span::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  background: var(--c);
+  border-radius: 50%;
+}
+#hud .invGear b {
+  font-weight: normal;
+  color: #e8e2d4;
+  font-family: ui-monospace, Menlo, monospace;
+}
+#hud .ability b.n {
+  color: #ff9ab4;
+}
+#hud .hoodTag {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #6fd08a;
+  border: 1px solid rgba(111, 208, 138, 0.5);
+  padding: 1px 5px;
+}
+#hud .hoodTag.seen {
+  color: var(--ember);
+  border-color: rgba(255, 120, 60, 0.5);
+}

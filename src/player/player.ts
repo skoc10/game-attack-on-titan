@@ -10,6 +10,7 @@ import { autoBend, buildHumanoid, disposeHumanoid, GEO, Rig, type Humanoid } fro
 import { CLASSES, type ClassDef } from './classes';
 import { Grapple } from './grapple';
 import { TitanForm } from './titanForm';
+import { sightMult } from '../systems/inventory';
 
 export type PlayerMode = 'foot' | 'mounted' | 'titan';
 
@@ -68,6 +69,11 @@ export class Player {
   moveTarget: THREE.Vector3 | null = null;
   private readonly targetBuf = new THREE.Vector3();
   private moveHold = 0;
+  /** Saldırdıktan sonra kapşonun işe yaramadığı kalan süre. */
+  revealT = 0;
+  private hoodShown = false;
+  private hood = new THREE.Group();
+  private cloakColors: { mat: THREE.MeshToonMaterial; base: THREE.Color; hood: THREE.Color }[] = [];
   /** Dev formunda yerinde duruyor mu (bar azalmaz). */
   titanResting = false;
   /** Oyuncuyu elinde tutan dev (yoksa null) ve kurtulma barı (0..100). */
@@ -86,6 +92,16 @@ export class Player {
     this.buildBody(this.char.look);
     this.grapple = new Grapple(game.scene);
     this.titan = new TitanForm(game);
+  }
+
+  /** Devlerin fark etme mesafesinin çarpanı (kapşon). */
+  get sightMult() {
+    return sightMult({ wearing: this.game.save.inv.wear, titan: this.mode === 'titan', revealed: this.revealT > 0 });
+  }
+
+  /** Saldırı kapşonun gizliliğini bir süre bozar. */
+  reveal() {
+    if (this.game.save.inv.wear) this.revealT = CFG.hood.reveal;
   }
 
   get inTown() {
@@ -155,6 +171,36 @@ export class Player {
     const liningMat = rig.toon(new THREE.Color(L.cloak).multiplyScalar(0.62).getHex());
     liningMat.side = THREE.DoubleSide;
     const trimMat = rig.toon(new THREE.Color(L.cloak).lerp(new THREE.Color(0xf2e6c8), 0.55).getHex());
+    // Orman Kapşonu giyilince pelerin koyu yeşile döner (astarı daha koyu, şeridi soluk yeşil).
+    const HOOD = 0x2f5e3c;
+    this.cloakColors = [
+      { mat: this.cloakMat, base: this.cloakMat.color.clone(), hood: new THREE.Color(HOOD) },
+      { mat: liningMat, base: liningMat.color.clone(), hood: new THREE.Color(HOOD).multiplyScalar(0.6) },
+      { mat: trimMat, base: trimMat.color.clone(), hood: new THREE.Color(HOOD).lerp(new THREE.Color(0xd8e6c8), 0.45) },
+    ];
+    // Kapşon: başı saran kabuk, yüzü çevreleyen kenar, ensede sivri uç ve omuza dökülen kumaş. Arması yok.
+    const hoodMat = rig.toon(HOOD);
+    hoodMat.side = THREE.DoubleSide;
+    const hoodDark = rig.toon(new THREE.Color(HOOD).multiplyScalar(0.55).getHex());
+    this.hood = new THREE.Group();
+    b.head.add(this.hood);
+    const shell = rig.part(this.hood, GEO.cap, hoodMat, 0.083, 0.097, 0.092, 0, 0.076, -0.012);
+    shell.rotation.x = -0.62;
+    rig.part(this.hood, GEO.sphere, hoodMat, 0.077, 0.08, 0.062, 0, 0.058, -0.045);
+    for (const s of [-1, 1]) {
+      // Yanlar yüzü açık bırakır, çene hizasında içe doğru kıvrılır.
+      const side = rig.part(this.hood, GEO.sphere, hoodMat, 0.014, 0.062, 0.05, s * 0.074, 0.05, -0.004);
+      side.rotation.z = s * 0.12;
+      rig.part(this.hood, GEO.box, hoodDark, 0.005, 0.085, 0.01, s * 0.066, 0.06, 0.04, false); // yüz kenarındaki gölge
+    }
+    // Alnın üstündeki yumuşak kıvrım.
+    const fold = rig.part(this.hood, GEO.sphere, hoodMat, 0.066, 0.016, 0.026, 0, 0.142, 0.036, false);
+    fold.rotation.x = 0.4;
+    const tip = rig.part(this.hood, GEO.cone, hoodMat, 0.026, 0.06, 0.026, 0, 0.1, -0.104, false);
+    tip.rotation.x = -2.3;
+    rig.part(this.hood, GEO.sphere, hoodMat, 0.1, 0.04, 0.085, 0, -0.012, -0.012); // omuza dökülen yaka
+    this.hood.visible = false;
+    this.hoodShown = false;
     this.cloak.position.set(0, 0.778, -0.062);
     this.cloakMid = new THREE.Group();
     this.cloakTip = new THREE.Group();
@@ -280,7 +326,7 @@ export class Player {
     if (inp.pressed('KeyF')) g.horse.call(g);
     if (inp.pressed('KeyE')) this.interact();
     if (inp.pressed('KeyR')) this.useAbility();
-    if (inp.pressed('KeyQ')) g.spears.fire(g);
+    if (inp.pressed('KeyQ') && g.spears.fire(g) !== false) this.reveal();
     // Sol tık: imlecin altında tutunacak yer varsa kanca atar; yakında dev varsa (ya da kanca atılamadıysa) kılıç savurur.
     if (inp.mousePressed(0)) {
       let hooked = false;
@@ -487,6 +533,7 @@ export class Player {
 
   private startSwing() {
     if (this.attackCd > 0) return;
+    if (this.giantNear()) this.reveal();
     this.swingT = 0;
     this.attackCd = CFG.sword.cooldown;
     this.swingHit.clear();
@@ -717,6 +764,7 @@ export class Player {
   step(dt: number) {
     const g = this.game;
     if (this.invuln > 0) this.invuln -= dt;
+    if (this.revealT > 0) this.revealT -= dt;
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.abilityCd > 0) this.abilityCd -= dt;
     if (this.heavyT > 0) this.heavyT -= dt;
@@ -911,8 +959,19 @@ export class Player {
   }
 
   // ---------------------------------------------------------------- görsel
+  /** Kapşon giyilip çıkarılınca modeli günceller. */
+  private syncHood() {
+    const on = this.game.save.inv.wear;
+    if (on === this.hoodShown) return;
+    this.hoodShown = on;
+    this.hood.visible = on;
+    this.body.hair.visible = !on;
+    for (const c of this.cloakColors) c.mat.color.copy(on ? c.hood : c.base);
+  }
+
   animate(dt: number) {
     const g = this.game;
+    this.syncHood();
     this.titan.tickHusk(dt);
     this.grapple.updateLine(this);
     const hs = Math.hypot(this.vel.x, this.vel.z);

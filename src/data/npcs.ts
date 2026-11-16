@@ -15,7 +15,7 @@ export interface ShopItem {
 /** Levazımcının tezgâhı: av puanıyla alınır. */
 export const SHOP: ShopItem[] = [
   { id: 'spear', name: 'Patlar mızrak ×2', desc: 'Zırhı deler, devi yere serer', price: 45 },
-  { id: 'medic', name: 'Sargı', desc: 'Canı tamamen doldurur', price: 25 },
+  { id: 'medic', name: 'Sargı', desc: 'Çantaya girer, H ile canın %60’ını doldurur', price: 25 },
   { id: 'blade', name: 'Kılıç takımı', desc: 'Kılıçları yeniler', price: 15 },
   { id: 'gas', name: 'Gaz tüpü', desc: 'Gazı tamamen doldurur', price: 10 },
   { id: 'needle', name: 'Kor İğnesi', desc: 'Öfke Devi’ne dönüştürür', price: 120 },

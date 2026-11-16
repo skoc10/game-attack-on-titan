@@ -51,6 +51,8 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `Q` | — | Formun birinci gücü |
 | `F` | Atı çağır | Isırık: önündeki devi dişle |
 | `R` | Sınıf yeteneği | — |
+| `I` | Çanta | Çanta |
+| `H` | Sargı sar | — |
 | `Tab` | Dönüşülecek devi seç | — |
 | `T` | Seçili deve dönüş | İnsan formuna dön |
 | `Esc` / `P` | Duraklat, menü | |
@@ -117,7 +119,8 @@ Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun iç
 | Sarı | Patlar mızrak (+2) |
 | Beyaz | Gaz |
 | Gri | Kılıç |
-| Gül pembesi | Sargı (canın %60'ı) |
+| Gül pembesi | Sargı (çantaya girer) |
+| Koyu yeşil | Orman Kapşonu |
 | Zümrüt yeşili | Ganimet (60 av puanı) |
 
 **Yeni iğne formları:** Işın Devi (16 m; ağzından çıkan ışın 120 metrelik hattaki her şeyi deler, zırh kırar) ve Buz Devi (14 m, buz zırhlı; geniş alanı 7 saniye dondurur, koçbaşı hücumu zırh kırar).
@@ -161,6 +164,19 @@ Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun iç
 **Yıkılış:** ayakta ölen dev önce sendeler, dizlerinin üstüne çöker, sonra gövdesi öne devrilir; yerde seker, kolları ve bacakları dağınık kalır, hafifçe yana yatar. Önden yumruk yiyen dev sırtüstü düşer. Dev formundan çıktığında terk ettiğin gövde de aynı biçimde yıkılıp buharlaşır.
 
 **Karakter hareketleri:** koşarken dirsekler kırılır, gövde öne eğilir ve her adımda omuzdan döner; dururken nefes alıp ağırlık aktarır; havada dönüşlere yatar, inişte dizleri çöker; baş nişan alınan yere bakar.
+
+## Çanta ve Orman Kapşonu
+
+`I` ile **çanta** açılır. Ekranın sağında durur ve açıkken oyun sürer, yürümeye devam edebilirsin. İçinde kullanılabilen eşyalar rakamla seçilir; altında mızrak, gaz, kılıç, iğneler ve av puanı görünür. Çanta kayda yazılır.
+
+| Tuş | Eşya | Ne yapar |
+| --- | --- | --- |
+| `1` | **Orman Kapşonu** | Giy / çıkar. Giyiliyken devler seni %55 daha yakından fark eder (sıradan bir dev 130 m yerine 58 m'den), kovalayan dev de seni daha çabuk kaybeder. Bir deve kılıç savurursan ya da mızrak atarsan 4 saniye görünür olursun. Dev formunda işe yaramaz. |
+| `2` ya da `H` | **Sargı** | Canın %60'ını doldurur. En çok 3 tane taşınır; `H` çanta kapalıyken de çalışır. |
+
+- **Kapşon** koyu yeşil ışıklı **Kapşon sandığından** çıkar. İlki kapının ötesindeki ilk ormanın kenarındadır; başka sandıklardan da nadiren çıkar. İkinci bir kapşon bulursan av puanına çevrilir. Giyince pelerinin rengi koyu yeşile döner ve başına kapşon gelir; armasızdır.
+- **Sargılar** artık hemen sarılmaz, çantaya girer. Sargı sandıkları ve Nuran'ın tezgâhındaki sargı çantaya ekler; çanta doluysa sargı hemen sarılır.
+- HUD'da yetenek satırında sargı sayısı ve kapşon durumu (GİZLİ ya da GÖRÜNÜRSÜN) yazar.
 
 ## Isırık, dinlenen dev ve görsel yenilemeler
 

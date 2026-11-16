@@ -388,11 +388,13 @@ export class Giant {
           move = speed * (this.home ? 0.8 : 0.35);
           moveYaw = this.wanderYaw;
         }
-        const aggro = this.home ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < this.type.aggro : dist < this.type.aggro;
+        // Kapşon giyen oyuncu ancak daha yakından fark edilir.
+        const sight = this.type.aggro * p.sightMult;
+        const aggro = this.home ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < sight : dist < sight;
         if (targetable && aggro) {
           this.setState('chase');
           // Avını fark etti: hızlı türler çığlık atar, diğerleri kendi sesiyle seslenir.
-          if (this.type.screamer && !this.screamed && dist < 170) {
+          if (this.type.screamer && !this.screamed && dist < 170 * p.sightMult) {
             this.screamed = true;
             this.screamT = 1.7;
             this.say('shriek', 3.5);
@@ -404,7 +406,7 @@ export class Giant {
       }
       case 'chase': {
         const leashed = this.home !== null && Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) > this.type.aggro * 1.3;
-        if (!targetable || dist > this.type.aggro * 1.7 || leashed) {
+        if (!targetable || dist > this.type.aggro * 1.7 * p.sightMult || leashed) {
           this.setState('wander');
           break;
         }

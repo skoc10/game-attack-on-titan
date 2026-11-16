@@ -10,7 +10,7 @@ import { crateColor, crateLabel, rollContent, type CrateContent } from '../world
 import { segmentDistance } from '../player/spears';
 
 describe('sandıklar', () => {
-  const kinds: CrateContent[] = ['needle', 'gas', 'blade', 'spear', 'medic', 'coin'];
+  const kinds: CrateContent[] = ['needle', 'gas', 'blade', 'spear', 'medic', 'coin', 'hood'];
 
   it('her içerik türü zardan çıkabilir; köylerde en çok mızrak çıkar', () => {
     const count = (village: boolean) => {
@@ -38,7 +38,7 @@ describe('sandıklar', () => {
       ...TITAN_IDS.map((form) => crateColor({ content: 'needle', form })),
       ...kinds.filter((k) => k !== 'needle').map((content) => crateColor({ content, form: 'ofke' })),
     ];
-    expect(colors).toHaveLength(TITAN_IDS.length + 5);
+    expect(colors).toHaveLength(TITAN_IDS.length + kinds.length - 1);
     expect(new Set(colors).size).toBe(colors.length);
     const labels = kinds.map((content) => crateLabel({ content, form: 'buz' }));
     expect(new Set(labels).size).toBe(labels.length);
