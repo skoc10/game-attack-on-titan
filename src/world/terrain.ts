@@ -1,15 +1,20 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
-import { mulberry32, smooth } from '../core/rng';
+import { angDiff, mulberry32, smooth } from '../core/rng';
 import { cobbleTexture, dirtTexture, grassTexture } from '../core/textures';
+import { DIRS, DISTRICTS, ROAD_END, ROAD_HALF, districtGap, districtHalf, wallDist } from './layout';
 
-/** Analitik arazi yüksekliği. Sur diplerinde, şehirde ve ana yolda düz. */
+/** Analitik arazi yüksekliği. Sur diplerinde, şehirde, kasabalarda ve ana yollarda düz. */
 export function heightAt(x: number, z: number) {
   const r = Math.hypot(x, z);
   if (r < 340) return 0;
   let a = smooth(340, 470, r);
-  for (const w of CFG.world.walls) a *= smooth(30, 150, Math.abs(r - w.r));
-  if (z > 0) a *= smooth(14, 70, Math.abs(x));
+  if (r < ROAD_END) a *= smooth(14, 70, Math.min(Math.abs(x), Math.abs(z)));
+  if (a <= 0) return 0;
+  a *= smooth(0, 90, districtGap(x, z));
+  if (a <= 0) return 0;
+  a *= smooth(30, 150, wallDist(x, z));
   if (a <= 0) return 0;
   const n =
     Math.sin(x * 0.011 + 1.3) * Math.cos(z * 0.013 - 0.7) * 0.55 +
@@ -48,32 +53,61 @@ export function buildTerrain() {
   ground.receiveShadow = true;
   group.add(ground);
 
-  // Kapıları birbirine bağlayan toprak yol (+Z yönünde).
-  const outer = CFG.world.walls[2].r;
-  const len = outer + 200;
+  // Dört kapıdan geçip birbirini kesen toprak yollar (şehrin dışından başlar).
+  const len = ROAD_END - 200;
   const dirt = dirtTexture();
   dirt.repeat.set(1, len / 13);
-  const road = new THREE.Mesh(
-    new THREE.PlaneGeometry(13, len),
-    new THREE.MeshLambertMaterial({ map: dirt, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-  );
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(0, 0.08, 200 + len / 2);
-  road.receiveShadow = true;
-  group.add(road);
+  const roadMat = new THREE.MeshLambertMaterial({ map: dirt, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  for (const ang of DIRS) {
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, len), roadMat);
+    road.rotation.set(-Math.PI / 2, 0, ang, 'YXZ');
+    const mid = 200 + len / 2;
+    road.position.set(Math.sin(ang) * mid, 0.08, Math.cos(ang) * mid);
+    road.receiveShadow = true;
+    group.add(road);
+  }
 
   // Şehir zemini: arnavut kaldırımı.
   const townR = CFG.world.walls[0].r - 5;
   const cobble = cobbleTexture();
   cobble.repeat.set((townR * 2) / 5, (townR * 2) / 5);
-  const town = new THREE.Mesh(
-    new THREE.CircleGeometry(townR, 64),
-    new THREE.MeshLambertMaterial({ map: cobble, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-  );
+  const cobbleMat = (tex: THREE.Texture) =>
+    new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const town = new THREE.Mesh(new THREE.CircleGeometry(townR, 64), cobbleMat(cobble));
   town.rotation.x = -Math.PI / 2;
   town.position.y = 0.05;
   town.receiveShadow = true;
   group.add(town);
+
+  // Kapı kasabalarının zemini: surun dışında kalan yarım ay biçimli alan.
+  const lens: THREE.BufferGeometry[] = [];
+  for (const d of DISTRICTS) {
+    const R = CFG.world.walls[d.ring].r;
+    const half = districtHalf(d);
+    const shape = new THREE.Shape();
+    const pt = (x: number, z: number, first = false) => (first ? shape.moveTo(x, -z) : shape.lineTo(x, -z));
+    const N = 40;
+    for (let i = 0; i <= N; i++) {
+      const a = d.ang - half + (half * 2 * i) / N;
+      pt(d.x + Math.sin(a) * d.r, d.z + Math.cos(a) * d.r, i === 0);
+    }
+    // Sur boyunca geri dön: kasaba yayının iki ucu surun üstündedir.
+    const end = d.ang + half;
+    const beta = angDiff(Math.atan2(d.x + Math.sin(end) * d.r, d.z + Math.cos(end) * d.r), d.ang);
+    for (let i = 1; i < N; i++) {
+      const a = d.ang + beta - (beta * 2 * i) / N;
+      pt(Math.sin(a) * R, Math.cos(a) * R);
+    }
+    const geo = new THREE.ShapeGeometry(shape);
+    geo.rotateX(-Math.PI / 2);
+    lens.push(geo);
+  }
+  const districtCobble = cobbleTexture();
+  districtCobble.repeat.set(1 / 5, 1 / 5);
+  const districts = new THREE.Mesh(mergeGeometries(lens, false)!, cobbleMat(districtCobble));
+  districts.position.y = 0.05;
+  districts.receiveShadow = true;
+  group.add(districts);
   return group;
 }
 
@@ -122,7 +156,7 @@ export function buildSky(fogColor: THREE.Color) {
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(6000, 32, 16), mat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(8800, 32, 16), mat);
   sky.frustumCulled = false;
   sky.renderOrder = -10;
   return sky;
@@ -160,7 +194,7 @@ export function buildMountains(fogColor: THREE.Color) {
     m.renderOrder = -5;
     group.add(m);
   };
-  ring(4600, 380, 1100, 0.22);
-  ring(3600, 160, 560, 0.4);
+  ring(7000, 520, 1500, 0.22);
+  ring(5600, 220, 760, 0.4);
   return group;
 }

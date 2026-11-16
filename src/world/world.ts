@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../core/rng';
-import { CFG } from '../data/config';
 import { buildMountains, buildSky, buildTerrain, heightAt } from './terrain';
-import { buildWalls, wallPush, wallTopAt } from './walls';
+import { buildWalls } from './walls';
+import { wallPush, wallSolid, wallTopAt } from './layout';
 import { buildForest, buildProps, generateTrees, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
 
@@ -87,15 +87,7 @@ export class World {
 
   /** Nokta katı bir yapının (sur gövdesi ya da bina) içinde mi? Kamera engeli için. */
   solidAt(x: number, y: number, z: number, margin = 0.3) {
-    const W = CFG.world;
-    if (y < W.wallH + margin) {
-      const r = Math.hypot(x, z);
-      for (const w of W.walls) {
-        if (Math.abs(r - w.r) >= W.wallT / 2 + margin) continue;
-        const inGate = z > 0 && Math.abs(x) < W.gateHalfW - margin && y < W.gateH - margin;
-        if (!inGate) return true;
-      }
-    }
+    if (wallSolid(x, y, z, margin)) return true;
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {

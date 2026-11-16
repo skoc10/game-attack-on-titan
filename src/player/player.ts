@@ -12,6 +12,7 @@ import { Grapple } from './grapple';
 import { TitanForm } from './titanForm';
 import { sightMult } from '../systems/inventory';
 import type { Interact } from '../systems/touchLayout';
+import { districtAt } from '../world/layout';
 
 export type PlayerMode = 'foot' | 'mounted' | 'titan';
 
@@ -105,8 +106,9 @@ export class Player {
     if (this.game.save.inv.wear) this.revealT = CFG.hood.reveal;
   }
 
+  /** Şehirde ya da Taç Suru'nun kapı kasabalarında: devler buraya giremez, oyuncu iyileşir. */
   get inTown() {
-    return Math.hypot(this.pos.x, this.pos.z) < CFG.world.townR;
+    return Math.hypot(this.pos.x, this.pos.z) < CFG.world.townR || districtAt(this.pos.x, this.pos.z)?.ring === 0;
   }
 
   /** Karakterin görünümüyle avcı modelini (yeniden) kurar. */

@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
 import type { Rng } from '../core/rng';
 import { heightAt } from './terrain';
+import { DIRS, EDGE, ROAD_END, districtGap, onRoad, wallDist } from './layout';
 
 export interface Tree {
   x: number;
@@ -16,10 +17,10 @@ export interface Tree {
 
 function validSpot(x: number, z: number) {
   const r = Math.hypot(x, z);
-  if (r < 350 || r > 2450) return false;
-  for (const w of CFG.world.walls) if (Math.abs(r - w.r) < 34) return false;
-  if (z > 0 && Math.abs(x) < 26) return false; // ana yol açık kalsın
-  return true;
+  if (r < 350 || r > EDGE - 60) return false;
+  if (onRoad(x, z, 26)) return false; // ana yollar açık kalsın
+  if (districtGap(x, z) < 12) return false; // kasabaların içi ve önü açık
+  return wallDist(x, z) >= 34;
 }
 
 export function generateTrees(rng: Rng): Tree[] {
@@ -46,23 +47,30 @@ export function generateTrees(rng: Rng): Tree[] {
       }
     }
   };
-  cluster(380, 1040, 26);
-  cluster(1160, 1950, 44);
-  cluster(2060, 2400, 14);
-  // Yol kenarı ağaçları: kapılar arası rotada kanca noktası sağlar.
-  for (let z = 370; z < 1960; z += 46) {
-    for (const sx of [-1, 1]) {
-      const x = sx * (30 + rng() * 14);
-      const zz = z + rng() * 20;
-      if (!validSpot(x, zz)) continue;
-      trees.push({ x, z: zz, y: heightAt(x, zz) - 1, r: 1.2 + rng() * 0.6, h: 30 + rng() * 14, kind: rng() < 0.3 ? 1 : 0 });
+  const [w0, w1, w2] = CFG.world.walls;
+  cluster(w0.r + w0.district + 20, w1.r - 50, 38);
+  cluster(w1.r + 50, w2.r - 50, 66);
+  cluster(w2.r + 60, EDGE - 120, 34);
+  // Yol kenarı ağaçları: kapılar arası rotalarda kanca noktası sağlar.
+  for (const ang of DIRS) {
+    const fx = Math.sin(ang);
+    const fz = Math.cos(ang);
+    for (let d = 380; d < ROAD_END; d += 50) {
+      for (const side of [-1, 1]) {
+        const off = side * (30 + rng() * 14);
+        const along = d + rng() * 20;
+        const x = fx * along + fz * off;
+        const z = fz * along - fx * off;
+        if (!validSpot(x, z)) continue;
+        trees.push({ x, z, y: heightAt(x, z) - 1, r: 1.2 + rng() * 0.6, h: 30 + rng() * 14, kind: rng() < 0.3 ? 1 : 0 });
+      }
     }
   }
   return trees;
 }
 
 /** Ağaç ve süs bölgelerinin kenar uzunluğu (m). */
-const CHUNK = 260;
+const CHUNK = 340;
 
 /** Geometrinin tüm köşelerini, yüksekliğe göre koyudan açığa giden bir renge boyar. */
 function paint(geo: THREE.BufferGeometry, low: THREE.Color, high: THREE.Color, y0: number, y1: number) {
@@ -180,14 +188,19 @@ export function buildProps(trees: Tree[], rng: Rng) {
       spots.push({ x: t.x + Math.sin(a) * d, z: t.z + Math.cos(a) * d, rock: rng() < 0.3 });
     }
   }
-  for (let z = 330; z < 2300; z += 9) {
-    if (rng() < 0.5) continue;
-    const side = rng() < 0.5 ? -1 : 1;
-    spots.push({ x: side * (8 + rng() * 14), z: z + rng() * 8, rock: rng() < 0.45 });
+  for (const ang of DIRS) {
+    const fx = Math.sin(ang);
+    const fz = Math.cos(ang);
+    for (let d = 330; d < ROAD_END; d += 11) {
+      if (rng() < 0.5) continue;
+      const off = (rng() < 0.5 ? -1 : 1) * (8 + rng() * 14);
+      const along = d + rng() * 8;
+      spots.push({ x: fx * along + fz * off, z: fz * along - fx * off, rock: rng() < 0.45 });
+    }
   }
   const valid = spots.filter((sp) => {
     const r = Math.hypot(sp.x, sp.z);
-    return r > 345 && !CFG.world.walls.some((w) => Math.abs(r - w.r) < 12) && !(sp.z > 0 && Math.abs(sp.x) < 7.5);
+    return r > 345 && r < EDGE && wallDist(sp.x, sp.z) >= 12 && !onRoad(sp.x, sp.z, 7.5) && districtGap(sp.x, sp.z) > 2;
   });
   const bushGeo = paint(new THREE.IcosahedronGeometry(1, 1), new THREE.Color(0x2f4f26), new THREE.Color(0x7a9a48), -1, 1);
   const rockGeo = paint(new THREE.DodecahedronGeometry(1, 0), new THREE.Color(0x55524c), new THREE.Color(0x9c978c), -1, 1);

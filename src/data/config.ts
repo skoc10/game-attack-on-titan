@@ -1,12 +1,16 @@
 // Tüm denge sayıları tek yerde.
 export const CFG = {
   world: {
-    size: 5200,
+    size: 8400,
+    // Her surun dört yönünde (+Z, +X, -Z, -X) dışa taşan yarım daire biçimli bir kapı kasabası vardır.
+    // district: kasabanın yarıçapı, towns: o yönlerdeki kasabaların adları.
     walls: [
-      { name: 'Taç Suru', r: 300 },
-      { name: 'Demir Sur', r: 1100 },
-      { name: 'Kalkan Suru', r: 2000 },
+      { name: 'Taç Suru', r: 300, district: 95, towns: ['Mühürhane', 'Çanlıkapı', 'Kandilli', 'Sancaktepe'] },
+      { name: 'Demir Sur', r: 1600, district: 150, towns: ['Örsköy', 'Karakule', 'Değirmenli', 'Taşhan'] },
+      { name: 'Kalkan Suru', r: 3000, district: 200, towns: ['Sınırboyu', 'Kuzgunkapı', 'Yelkovan', 'Sonkale'] },
     ],
+    // Surlar arasındaki ovalara dağılmış köyler: her bölgede kaç tane ve birbirine en az uzaklıkları.
+    villages: { perZone: [12, 18, 10], spacing: 260 },
     wallH: 50,
     wallT: 12,
     gateHalfW: 11,
@@ -70,7 +74,7 @@ export const CFG = {
     decay: 12,
   },
   spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
-  crate: { count: 64, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
+  crate: { count: 120, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
   // Çanta: en çok kaç sargı taşınır.
   inv: { sargiMax: 3 },
   // Orman Kapşonu: giyiliyken devler oyuncuyu ancak bu oranda yakından fark eder; saldırınca `reveal` saniye görünür olur.

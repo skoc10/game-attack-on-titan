@@ -21,7 +21,7 @@ import { Stations } from './world/stations';
 import { TITAN_IDS, TITANS } from './data/titans';
 import { Grass } from './world/grass';
 import { SUN_DIR } from './world/terrain';
-import { zoneName } from './world/walls';
+import { spawnable, zoneName } from './world/layout';
 import { Player } from './player/player';
 import { Horse } from './player/horse';
 import type { AimHit } from './player/grapple';
@@ -45,7 +45,7 @@ const look = new THREE.Vector3();
 export class Game {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(70, 1, 0.5, 8000);
+  readonly camera = new THREE.PerspectiveCamera(70, 1, 0.5, 10000);
   readonly input: Input;
   readonly audio = new GameAudio();
   readonly meter = new TitanMeter();
@@ -660,8 +660,7 @@ export class Game {
       const d = 45 + Math.random() * 40;
       const x = g.pos.x + Math.sin(a) * d;
       const z = g.pos.z + Math.cos(a) * d;
-      const r = Math.hypot(x, z);
-      if (r < CFG.world.walls[0].r + 50 || CFG.world.walls.some((w) => Math.abs(r - w.r) < 24)) continue;
+      if (!spawnable(x, z)) continue;
       if (this.world.solidAt(x, this.world.heightAt(x, z) + 2, z, 3)) continue;
       this.spawner.spawn(made === 2 ? 'runner' : 'normal', x, z, this).alert();
       made++;
@@ -807,6 +806,7 @@ export class Game {
       this.pause();
       return;
     }
+    if (inp.pressed('KeyM')) this.hud.toast(this.minimap.toggle() ? 'Harita: geniş görünüm' : 'Harita: yakın görünüm');
     if (this.debug && !talking && !this.inventory.open) this.debugKeys();
 
     let sdt = dt;
@@ -823,7 +823,7 @@ export class Game {
     for (const g of this.giants) g.update(sdt, this);
     this.horse.update(sdt, this);
     this.spawner.update(sdt, this);
-    this.crates.update(sdt);
+    this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);
     const gasRatio = this.player.gas / this.player.maxGas;
     if (gasRatio < CFG.gas.lowRatio && !this.lowGasWarned && this.player.mode !== 'titan') {
@@ -859,7 +859,7 @@ export class Game {
       if (this.boltT <= 0) this.bolt.visible = false;
     }
 
-    const z = zoneName(Math.hypot(this.player.pos.x, this.player.pos.z));
+    const z = zoneName(this.player.pos.x, this.player.pos.z);
     if (z !== this.zone) {
       if (this.zone) this.hud.banner(z.split(' — ')[0], z.split(' — ')[1] ?? '');
       this.zone = z;

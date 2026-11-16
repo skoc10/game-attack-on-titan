@@ -1392,6 +1392,7 @@ body.touch #hud .tl {
 }
 body.touch #hud .minimap {
   right: calc(env(safe-area-inset-right, 0px) + 18px);
+  pointer-events: auto;
 }
 /* Seçilebilir satırlar parmakla kolay vurulsun. */
 body.touch #hud .dialog.show,

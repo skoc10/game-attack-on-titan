@@ -3,6 +3,7 @@ import type { World } from './world';
 import { CFG } from '../data/config';
 import { smooth } from '../core/rng';
 import { grassTuftTexture } from '../core/textures';
+import { districtGap, onRoad, wallDist } from './layout';
 
 const CELL = 2.3;
 const HALF = 30; // her yönde hücre sayısı → ~69 m yarıçap
@@ -74,7 +75,7 @@ export class Grass {
         const r = Math.hypot(x, z);
         let scale = 0;
         const sparse = hash(ix, iz, 3) < 0.78;
-        const clear = r > W.walls[0].r + 8 && !(z > 0 && Math.abs(x) < 8) && !W.walls.some((w) => Math.abs(r - w.r) < 9);
+        const clear = r > W.walls[0].r + 8 && !onRoad(x, z, 8) && districtGap(x, z) > 0 && wallDist(x, z) >= 9;
         if (sparse && clear) {
           const y = this.world.heightAt(x, z);
           if (!this.world.solidAt(x, y + 0.5, z, 0.4)) {

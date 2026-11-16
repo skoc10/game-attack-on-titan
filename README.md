@@ -20,10 +20,10 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 
 ## Oynanış
 
-1. **Taç Suru**'nun kapısından çık. Surlar birbirinden çok uzak (yarıçap 300 m / 1100 m / 2000 m); **atınla** yol al.
+1. **Taç Suru**'nun kapısından çık. Surlar birbirinden çok uzak (yarıçap 300 m / 1600 m / 3000 m); **atınla** yol al. Haritanın düzeni aşağıda, [Dünya haritası](#dünya-haritası) bölümünde.
 2. **Kanca Teçhizatı** ile ağaçlara, binalara, surlara ve devlere tutun.
 3. Devler yalnızca **enseden** ölür ve keskin kılıçla **tek temiz kesik yeter**: dev sendeler, devrilir, yere çarpar ve buharlaşır. Bacağına vurursan yere düşer; yerdeki deve de tek ense kesiği yeter. Zırhlı devin ensesi yalnızca yerdeyken kesilir (bacağına iki kesik); bölüm sonu devi üç ense kesiği ister. Kılıç körelmişse kesmez.
-4. **Gaz kendiliğinden dolmaz.** Mavi bayraklı **ikmal noktalarının** yanında durunca dolar (şehirde, sur kapılarında ve köylerde var); gaz kutuları da doldurur.
+4. **Gaz kendiliğinden dolmaz.** Mavi bayraklı **ikmal noktalarının** yanında durunca dolar (şehirde, sur kapılarında, her kapı kasabasında ve köylerde var); gaz kutuları da doldurur.
 5. Renkli ışıklı **kutulardan dev iğnesi** çıkar. Dört tür iğne var, her biri başka bir deve dönüştürür; ışığın rengi türü gösterir. Gaz kutuları beyaz, kılıç kutuları gri ışıklıdır.
 6. Dev öldürdükçe **dev barı** dolar. Bar **en az yarıya** gelmişse ve iğnen varsa `T` ile dönüşürsün; birden fazla türün varsa `Tab` ile seçersin. Dev formunda bar güç kaynağındır: **yalnızca hareket ederken** azalır (yerinde durursan dev dinlenir, bar yanmaz), her güç kendi bedeli kadar bar harcar, bar bitince insana dönersin. Erken çıkarsan (`T`) artan bar sende kalır.
 
@@ -55,6 +55,7 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `H` | Sargı sar | — |
 | `Tab` | Dönüşülecek devi seç | — |
 | `T` | Seçili deve dönüş | İnsan formuna dön |
+| `M` | Haritayı genişlet / daralt | Haritayı genişlet / daralt |
 | `Esc` / `P` | Duraklat, menü | |
 
 İsteğe bağlı: `W A S D` ile de yürünür, ok tuşları ya da orta tuşla sürükleme de kamerayı çevirir.
@@ -62,6 +63,23 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 **Sınıflar:** Nefer (dengeli), As (hız, Sv 2), Muhafız (güç, Sv 4), Taktisyen (destek, Sv 6).
 **Devler:** sıradan, Koşucu, Sıçrayan, Zırhlı (önce düşürülmeli) ve bölüm sonu Kapı Kıran.
 İlerleme (seviye, yükseltmeler, sınıf, görev) tarayıcıda `localStorage`'a kaydedilir.
+
+## Dünya haritası
+
+İç içe üç halka sur var; oyun ortadaki şehirde başlar:
+
+| Sur | Yarıçap | İçindeki bölge | Kapı kasabaları (+Z, +X, −Z, −X) |
+| --- | --- | --- | --- |
+| Taç Suru | 300 m | Şehir — güvenli bölge | Mühürhane, Çanlıkapı, Kandilli, Sancaktepe |
+| Demir Sur | 1600 m | Demir Ova | Örsköy, Karakule, Değirmenli, Taşhan |
+| Kalkan Suru | 3000 m | Kalkan Ormanları | Sınırboyu, Kuzgunkapı, Yelkovan, Sonkale |
+| — | 3000 m ötesi | Sur Ötesi | — |
+
+- Her surun dört yönünde (ön, arka, sağ, sol) birer **kapı**, her kapının önünde de surdan dışarı taşan, yarım daire biçimli, kendi suruyla çevrili bir **kapı kasabası** vardır. Kasabaya surun iç kapısından girilir, dış kapısından ovaya çıkılır. Her kasabanın caddesinde bir ikmal noktası bulunur.
+- Taç Suru'nun dört kasabası da şehir gibi **güvenli bölgedir**: devler giremez, orada can ve kılıç dolar. Dış surların kasabalarına devler kapıdan girebilir.
+- Dört **ana yol** kapılardan geçip şehirde kesişir ve Kalkan Suru'nun ötesine kadar uzanır.
+- Surların arasındaki ovalara **köyler** dağılmıştır: Demir Ova'da 12, Kalkan Ormanları'nda 18, Sur Ötesi'nde 10 (oradakiler çoğunlukla yıkık). Her köyde bir ikmal noktası ve bir sandık vardır.
+- Dünyanın kenarı yaklaşık 4100 m'dedir. Mini harita `M` ile (dokunmatikte haritaya dokunarak) yakın ve geniş görünüm arasında geçer; geniş görünümde surlar, kasabalar, yollar ve köyler (kahverengi kareler) görünür.
 
 ## Hikâye modu
 
@@ -217,6 +235,7 @@ Oyun dokunmatik ekranı kendiliğinden tanır: tablette ya da telefonda açınca
 | **DÖNÜŞ**, **İĞNE**, **SARGI**, **AT** | Dönüşme, iğne seçme, sargı sarma, atı çağırma; işe yaradıklarında görünürler. |
 | Dev formunda | Tuşlar formun güçlerine (yumruk, iki güç, ezme), **ISIRIK** ve **ÇIK** tuşlarına döner; bar yetmeyen güç soluk görünür. |
 | **ÇANTA**, **❚❚** | Sağ üstte: çantayı aç, duraklat. |
+| Harita | Sağ üstteki haritaya dokununca geniş görünüme geçer, tekrar dokununca yakına döner. |
 | Pencereler | Telsiz satırına dokununca sonraki satıra geçilir; Nuran'ın tezgâhında ve çantada satırlara dokunarak seçilir, **KAPAT** ile kapanır. |
 
 Dokunmatikte görev ve bildirim yazılarındaki klavye tuşları ekran tuşlarının adlarıyla yazılır ("Q ile fırlat" yerine "MIZRAK tuşuyla fırlat"). Tablette çözünürlük ve gölge kalitesi biraz düşürülür; oyun uygulama değiştirilince ya da ekran kilitlenince duraklar. Dokunmatik düzeni masaüstünde denemek için adrese `?touch` ekle.
@@ -233,5 +252,5 @@ Dokunmatikte görev ve bildirim yazılarındaki klavye tuşları ekran tuşları
 
 - `src/data/config.ts` — denge sayıları; `src/data/titans.ts` — dev formları (boy, hız, güçler, bar bedelleri).
 - `src/enemies/humanoid.ts` — eklemli karakter modeli ve kontur kurucu (`Rig`); `src/core/textures.ts` — kodla çizilen dokular.
-- `src/world/` arazi, surlar, orman, harabeler, kutular, ikmal noktaları, dev üretici · `src/player/` oyuncu, kanca, at, dev formu · `src/enemies/` devler · `src/systems/` saf oyun mantığı (testli) · `src/ui/` HUD, menü, mini harita, dokunmatik kontroller (`touch.ts`; düzen kuralları `src/systems/touchLayout.ts`).
+- `src/world/` arazi, surlar, orman, harabeler, kutular, ikmal noktaları, dev üretici; dünyanın yerleşimi (sur yayları, kapılar, kasabalar, köyler, çarpışma) saf ve testli olarak `src/world/layout.ts` içinde · `src/player/` oyuncu, kanca, at, dev formu · `src/enemies/` devler · `src/systems/` saf oyun mantığı (testli) · `src/ui/` HUD, menü, mini harita, dokunmatik kontroller (`touch.ts`; düzen kuralları `src/systems/touchLayout.ts`).
 - `?debug` parametresi: `1` barı doldur, `2` her türden iğne ver, `3` Demir Sur'a ışınlan, `4` dev üret, `5` XP ver; `window.__game` konsoldan erişilir.

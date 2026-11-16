@@ -24,6 +24,7 @@ const CONTROLS: [string, string][] = [
   ['Tab', 'Dönüşülecek devi seç (iğne türü)'],
   ['T', 'Deve dönüş (bar yarı + iğne)'],
   ['W A S D', 'Klavyeyle hareket (isteğe bağlı)'],
+  ['M', 'Haritayı genişlet / daralt'],
   ['Enter', 'Konuşma satırını geç'],
   ['Esc', 'Duraklat'],
 ];
@@ -41,6 +42,7 @@ const TOUCH_CONTROLS: [string, string][] = [
   ['Dev formunda', 'Tuşlar formun güçlerine, ISIRIK ve ÇIK tuşlarına döner'],
   ['KOZA · SARGI · İĞNE · AT', 'Koza, sargı, iğne seçimi, atı çağır'],
   ['ÇANTA', 'Kapşonu giy/çıkar, sargı kullan (satırlara dokun)'],
+  ['Harita', 'Dokun: geniş görünüm / yakın görünüm'],
   ['❚❚', 'Duraklat'],
   ['Konuşmalar', 'Telsiz satırına dokunarak geç · seçeneklere dokunarak seç'],
 ];
