@@ -11,6 +11,7 @@ import { CLASSES, type ClassDef } from './classes';
 import { Grapple } from './grapple';
 import { TitanForm } from './titanForm';
 import { sightMult } from '../systems/inventory';
+import type { Interact } from '../systems/touchLayout';
 
 export type PlayerMode = 'foot' | 'mounted' | 'titan';
 
@@ -251,8 +252,9 @@ export class Player {
 
   private wishDir(out: THREE.Vector3) {
     const inp = this.game.input;
-    const f = (inp.down('KeyW') ? 1 : 0) - (inp.down('KeyS') ? 1 : 0);
-    const s = (inp.down('KeyD') ? 1 : 0) - (inp.down('KeyA') ? 1 : 0);
+    // Klavye ve dokunmatik çubuk toplanır; yön her durumda birim vektöre indirgenir.
+    const f = (inp.down('KeyW') ? 1 : 0) - (inp.down('KeyS') ? 1 : 0) + inp.stickY;
+    const s = (inp.down('KeyD') ? 1 : 0) - (inp.down('KeyA') ? 1 : 0) + inp.stickX;
     const yaw = this.game.camYaw;
     out.set(Math.sin(yaw) * f - Math.cos(yaw) * s, 0, Math.cos(yaw) * f + Math.sin(yaw) * s);
     if (out.lengthSq() > 0) {
@@ -495,6 +497,16 @@ export class Player {
   }
 
   /** HUD ipucu için: E tuşu şu an ne yapar? */
+  /** E tuşunun şu an ne yapacağı (dokunmatik tuşun yazısı için). */
+  interactKind(): Interact {
+    if (this.mode === 'titan' || this.dead) return '';
+    if (this.mode === 'mounted') return 'dismount';
+    if (this.game.npcs.near(this.pos)) return 'talk';
+    if (this.game.crates.nearest(this.pos, CFG.crate.reach)) return 'open';
+    if (this.pos.distanceTo(this.game.horse.pos) < 4.5) return 'mount';
+    return '';
+  }
+
   interactHint() {
     if (this.mode === 'titan' || this.dead) return '';
     if (this.mode === 'mounted') return 'E — Attan in';
@@ -808,7 +820,7 @@ export class Player {
       this.vel.x = 0;
       this.vel.z = 0;
     }
-    const shift = g.input.down('ShiftLeft') || g.input.down('ShiftRight');
+    const shift = g.input.down('ShiftLeft') || g.input.down('ShiftRight') || g.input.stickSprint;
     // Fareyle uzak bir hedefe gidiliyorsa kendiliğinden koşar.
     const mt = this.moveTarget;
     const far = mt !== null && Math.hypot(mt.x - this.pos.x, mt.z - this.pos.z) > (this.mode === 'foot' ? 14 : 28);

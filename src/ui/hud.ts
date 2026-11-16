@@ -4,6 +4,7 @@ import { FORMS, hex, TITAN_IDS, TITANS } from '../data/titans';
 import { streakMult, xpToNext } from '../systems/progression';
 import { FREE_HUNT } from '../systems/quests';
 import { SPEAKERS, withHero } from '../data/story';
+import { touchText } from '../systems/touchLayout';
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -51,7 +52,7 @@ export class Hud {
       <div class="streak" data-id="streak"><b data-id="streakN"></b><small data-id="streakM"></small><div class="bar"><i data-id="streakT"></i></div></div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
       <div class="chapter" data-id="chapter"><small data-id="chapterLabel"></small><div data-id="chapterTitle"></div><p data-id="chapterSub"></p></div>
-      <div class="dialog" data-id="dialog"><b data-id="dialogWho"></b><span data-id="dialogText"></span><kbd>Enter</kbd></div>
+      <div class="dialog" data-id="dialog" data-key="Enter"><b data-id="dialogWho"></b><span data-id="dialogText"></span><kbd>Enter</kbd><em class="tapNext">dokun ›</em></div>
       <div class="bl">
         <div class="row"><span class="label">CAN</span><div class="bar hp"><i data-id="hp"></i></div></div>
         <div class="row"><span class="label">GAZ</span><div class="bar gas"><i data-id="gas"></i></div></div>
@@ -75,15 +76,19 @@ export class Hud {
     this.root.style.display = v ? 'block' : 'none';
   }
 
+  /** Dokunmatikte metindeki klavye tuşları ekran tuşlarının adlarına çevrilir. */
+  private words(s: string) {
+    return this.game.input.touch ? touchText(s) : s;
+  }
   private text(id: string, value: string) {
     if (this.last[id] === value) return;
     this.last[id] = value;
-    this.el[id].textContent = value;
+    this.el[id].textContent = this.words(value);
   }
   private html(id: string, value: string) {
     if (this.last[id] === value) return;
     this.last[id] = value;
-    this.el[id].innerHTML = value;
+    this.el[id].innerHTML = this.words(value);
   }
   private width(id: string, ratio: number) {
     const v = `${Math.round(Math.max(0, Math.min(1, ratio)) * 1000) / 10}%`;
@@ -95,7 +100,7 @@ export class Hud {
   toast(msg: string) {
     const t = document.createElement('div');
     t.className = 'toast';
-    t.textContent = msg;
+    t.textContent = this.words(msg);
     const box = this.el.toasts;
     box.appendChild(t);
     while (box.children.length > 4) box.firstElementChild!.remove();
@@ -105,7 +110,7 @@ export class Hud {
 
   banner(title: string, sub = '') {
     this.el.bannerTitle.textContent = title;
-    this.el.bannerSub.textContent = sub;
+    this.el.bannerSub.textContent = this.words(sub);
     this.el.banner.classList.add('show');
     this.bannerTimer = 2.6;
   }
@@ -168,19 +173,19 @@ export class Hud {
     this.el.npc.classList.toggle('show', nv !== null);
     if (nv) {
       const opts = nv.options
-        .map((o) => `<li class="${o.off ? 'off' : ''}"><kbd>${o.key}</kbd><div><b>${esc(o.text)}</b><small>${esc(o.sub)}</small></div></li>`)
+        .map((o) => `<li class="${o.off ? 'off' : ''}" data-key="Digit${o.key}"><kbd>${o.key}</kbd><div><b>${esc(o.text)}</b><small>${esc(o.sub)}</small></div></li>`)
         .join('');
-      this.html('npc', `<div class="npcHead"><b>${esc(nv.name)}</b><span>${esc(nv.role)}</span></div><p>“${esc(nv.greet)}”</p><ul>${opts}</ul><div class="npcNote">${esc(nv.note)}</div><div class="npcKeys"><kbd>E</kbd> / <kbd>Esc</kbd> kapat</div>`);
+      this.html('npc', `<div class="npcHead"><b>${esc(nv.name)}</b><span>${esc(nv.role)}</span></div><p>“${esc(nv.greet)}”</p><ul>${opts}</ul><div class="npcNote">${esc(nv.note)}</div><div class="npcKeys" data-key="Escape"><kbd>E</kbd> / <kbd>Esc</kbd> kapat<b class="tapClose">KAPAT ✕</b></div>`);
     }
     // Çanta
     const iv = g.inventory.view();
     this.el.inv.classList.toggle('show', iv !== null);
     if (iv) {
       const rows = iv.rows
-        .map((r) => `<li class="${r.off ? 'off' : ''}" style="--c:${r.color}"><kbd>${r.key}</kbd><div><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></div><em>${esc(r.tag)}</em></li>`)
+        .map((r) => `<li class="${r.off ? 'off' : ''}" style="--c:${r.color}" data-key="Digit${r.key}"><kbd>${r.key}</kbd><div><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></div><em>${esc(r.tag)}</em></li>`)
         .join('');
       const gear = iv.gear.map((x) => `<span style="--c:${x.color}">${esc(x.name)} <b>${esc(x.value)}</b></span>`).join('');
-      this.html('inv', `<div class="npcHead"><b>ÇANTA</b><span>yürürken de açık kalır</span></div><ul>${rows}</ul><div class="invGear">${gear}</div><div class="npcKeys"><kbd>I</kbd> / <kbd>Esc</kbd> kapat</div>`);
+      this.html('inv', `<div class="npcHead"><b>ÇANTA</b><span>yürürken de açık kalır</span></div><ul>${rows}</ul><div class="invGear">${gear}</div><div class="npcKeys" data-key="Escape"><kbd>I</kbd> / <kbd>Esc</kbd> kapat<b class="tapClose">KAPAT ✕</b></div>`);
     }
     this.html(
       'contracts',
@@ -284,8 +289,8 @@ export class Hud {
 
     // Nişangâh imleci izler.
     const cross = this.el.cross;
-    const cx = g.input.locked ? window.innerWidth / 2 : g.input.mouseX;
-    const cy = g.input.locked ? window.innerHeight / 2 : g.input.mouseY;
+    const cx = g.input.centerAim ? window.innerWidth / 2 : g.input.mouseX;
+    const cy = g.input.centerAim ? window.innerHeight / 2 : g.input.mouseY;
     cross.style.transform = `translate(${cx - 9}px, ${cy - 9}px)`;
     cross.classList.toggle('titan', titan);
     cross.classList.toggle('ok', g.aim !== null);

@@ -27,6 +27,8 @@ export const CFG = {
   },
   // Serbest imleçte: ortadaki ölü bölge (yarı genişlik oranı) ve kenardaki dönüş hızı (rad/sn).
   camera: { deadZone: 0.28, edgeTurn: 2.6 },
+  // Dokunmatik: parmak kaydırmasının piksel başına dönüşü (radyan), çubuğun yarıçapı ve ölü bölgesi (piksel).
+  touch: { lookYaw: 0.0052, lookPitch: 0.0042, stickRadius: 62, stickDead: 8 },
   grapple: {
     range: 130,
     reelAccel: 44,

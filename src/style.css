@@ -1172,3 +1172,269 @@ kbd {
   color: var(--ember);
   border-color: rgba(255, 120, 60, 0.5);
 }
+
+/* ------------------------------------------------------------- Dokunmatik (tablet) */
+#game {
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.touchUi,
+#hud .tapNext,
+#hud .tapClose {
+  display: none;
+}
+body.touch .touchUi {
+  display: block;
+}
+body.touch #hud .tapNext,
+body.touch #hud .tapClose {
+  display: inline-block;
+}
+body.touch #hud kbd {
+  display: none;
+}
+.touchUi {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  --sl: env(safe-area-inset-left, 0px);
+  --sr: env(safe-area-inset-right, 0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+  --st: env(safe-area-inset-top, 0px);
+}
+.touchUi .tb {
+  pointer-events: auto;
+  touch-action: none;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 195, 106, 0.55);
+  background: radial-gradient(circle at 50% 35%, rgba(40, 44, 42, 0.62), rgba(10, 11, 11, 0.62));
+  color: var(--ink);
+  font-family: inherit;
+  text-shadow: 0 1px 2px #000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    transform 0.06s,
+    opacity 0.15s;
+}
+.touchUi .tb b {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  font-weight: bold;
+  text-align: center;
+}
+.touchUi .tb.long b {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.touchUi .tb small {
+  font-size: 10px;
+  color: var(--gold);
+  line-height: 1;
+}
+.touchUi .tb small:empty {
+  display: none;
+}
+.touchUi .tb.down {
+  transform: scale(0.92);
+  background: radial-gradient(circle at 50% 35%, rgba(232, 195, 106, 0.55), rgba(90, 70, 30, 0.6));
+}
+.touchUi .tb.off {
+  opacity: 0.45;
+}
+.touchUi .tb.hide {
+  display: none;
+}
+.touchUi .tb.atk {
+  border-width: 2px;
+  border-color: rgba(255, 138, 42, 0.8);
+}
+.touchUi .tb.atk b {
+  font-size: 16px;
+}
+.touchUi .tb.atk.long b {
+  font-size: 12px;
+}
+.touchUi .tb.jump b {
+  font-size: 13px;
+}
+.touchUi .tb.o1 {
+  border-color: rgba(255, 138, 42, 0.9);
+  box-shadow: 0 0 14px rgba(255, 138, 42, 0.55);
+}
+.touchUi .tbtns {
+  position: absolute;
+  right: calc(var(--sr) + 16px);
+  bottom: calc(var(--sb) + 16px);
+  width: 320px;
+  height: 320px;
+  transform-origin: bottom right;
+}
+.touchUi .ttop {
+  position: absolute;
+  top: calc(var(--st) + 16px);
+  right: calc(var(--sr) + 210px);
+  display: flex;
+  gap: 10px;
+}
+.touchUi .ttop .tb {
+  position: static;
+  width: auto;
+  min-width: 52px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+}
+/* Sanal çubuk: boştayken sol altta soluk durur, dokununca parmağın altına gelir. */
+.touchUi .stick {
+  position: absolute;
+  left: calc(var(--sl) + 100px);
+  top: calc(100% - var(--sb) - 100px);
+  width: 136px;
+  height: 136px;
+  margin: -68px 0 0 -68px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(236, 230, 214, 0.35);
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.32));
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+.touchUi .stick i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, rgba(236, 230, 214, 0.75), rgba(150, 140, 120, 0.55));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.touchUi .stick.on {
+  opacity: 0.9;
+}
+.touchUi .stick.run {
+  border-color: rgba(255, 138, 42, 0.9);
+}
+.touchUi .rotate {
+  display: none;
+}
+@media (orientation: portrait) {
+  body.touch .touchUi .rotate {
+    pointer-events: auto;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(8, 9, 9, 0.92);
+    font-size: 20px;
+    text-align: center;
+    padding: 24px;
+  }
+  body.touch .touchUi .rotate b {
+    font-size: 64px;
+    color: var(--gold);
+  }
+}
+/* Alçak ekranlarda (telefon yatay) tuş kümesi küçülür. */
+@media (max-height: 620px) {
+  .touchUi .tbtns {
+    transform: scale(0.8);
+  }
+}
+@media (max-height: 460px) {
+  .touchUi .tbtns {
+    transform: scale(0.64);
+  }
+  .touchUi .stick {
+    transform: scale(0.8);
+  }
+}
+
+/* Dokunmatikte HUD tuş kümesine ve çubuğa yer açar. */
+body.touch #hud .bl {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 190px);
+  left: calc(env(safe-area-inset-left, 0px) + 18px);
+  width: min(220px, 24vw);
+}
+body.touch #hud .bc {
+  left: 41%;
+  width: min(400px, 34vw);
+}
+body.touch #hud .inv {
+  bottom: auto;
+  top: 210px;
+}
+body.touch #hud .grab {
+  top: 30%;
+}
+body.touch #hud .dialog {
+  bottom: auto;
+  top: 56%;
+  width: min(480px, 46vw);
+}
+body.touch #hud .tl {
+  left: calc(env(safe-area-inset-left, 0px) + 18px);
+}
+body.touch #hud .minimap {
+  right: calc(env(safe-area-inset-right, 0px) + 18px);
+}
+/* Seçilebilir satırlar parmakla kolay vurulsun. */
+body.touch #hud .dialog.show,
+body.touch #hud .npc.show [data-key],
+body.touch #hud .inv.show [data-key] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+body.touch #hud .npc li,
+body.touch #hud .inv li {
+  min-height: 46px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+body.touch #hud .npcKeys {
+  font-size: 0;
+  margin-top: 10px;
+}
+#hud .tapClose {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.4);
+}
+#hud .tapNext {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--gold);
+  opacity: 0.8;
+}
+/* Menü dokunmatikte rahat kaysın, tuşlar parmak boyunda olsun. */
+#menu {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+body.touch #menu button {
+  min-height: 40px;
+}
+body.touch #menu .up button {
+  min-width: 44px;
+}
