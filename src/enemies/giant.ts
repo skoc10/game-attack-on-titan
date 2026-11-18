@@ -370,7 +370,7 @@ export class Giant {
     // Başka bir devin elindeki oyuncuya saldırılmaz.
     const targetable = !p.dead && !p.inTown && !game.cocoon.active && (p.grabbedBy === null || p.grabbedBy === this);
     const slow = this.slowT > 0 ? 0.45 : 1;
-    const speed = this.type.speed * (0.8 + this.h / 40) * slow;
+    const speed = this.type.speed * (0.8 + this.h / 40) * CFG.giantPace.walk * slow;
     let move = 0;
     let moveYaw = this.yaw;
     this.moving = false;
@@ -418,7 +418,7 @@ export class Giant {
         }
         // Taşçı uzaktan atar: menzile girince durur, çok yaklaşılırsa yumrukla karşılar.
         const holds = this.type.thrower === true && dist > 36 && dist < 125;
-        if (dist > reach * 0.7 && !holds) move = speed;
+        if (dist > reach * 0.7 && !holds) move = speed * CFG.giantPace.chase;
         if (holds && this.attackCd <= 0) {
           this.attackKind = 'throw';
           this.setState('windup');
@@ -504,7 +504,7 @@ export class Giant {
       } else {
         this.sinceAvoid += dt;
       }
-      this.yaw = turnToward(this.yaw, moveYaw, this.type.turn * (this.avoidT > 0 ? 2.5 : 1) * dt);
+      this.yaw = turnToward(this.yaw, moveYaw, this.type.turn * CFG.giantPace.turn * (this.avoidT > 0 ? 2.5 : 1) * dt);
       if (move > 0) {
         const sx = Math.sin(this.yaw);
         const sz = Math.cos(this.yaw);
@@ -683,7 +683,8 @@ export class Giant {
     let jawOpen = 0;
     let tiltRate = 6;
     let jawRate = 0;
-    const swing = this.moving ? Math.sin(this.phase) * 0.55 : 0;
+    // Kovalarken adımlar daha geniş, kollar daha çok sallanır.
+    const swing = this.moving ? Math.sin(this.phase) * (this.state === 'chase' ? 0.7 : 0.55) : 0;
     lL = swing;
     lR = -swing;
     aL = -swing * 0.5;
