@@ -84,4 +84,13 @@ describe('ısırık', () => {
     expect(pickMelee({ ...o, biteRoll: CFG.bite.titanChance - 0.01 })).toBe('bite');
     expect(pickMelee({ ...o, biteRoll: CFG.bite.titanChance + 0.01 })).toBe('swipe');
   });
+
+  it('ısırmayan dev zarına göre tekme atar; yukarıdaki insana tekme yetişmez, sürünen tekme atmaz', () => {
+    const o = { crawl: false, grabChance: 0, grabRoll: 1, biteRoll: 1 };
+    expect(pickMelee({ ...o, titan: true, low: false, kickRoll: CFG.giantKick.titanChance - 0.01 })).toBe('kick');
+    expect(pickMelee({ ...o, titan: true, low: false, kickRoll: CFG.giantKick.titanChance + 0.01 })).toBe('swipe');
+    expect(pickMelee({ ...o, titan: false, low: true, kickRoll: CFG.giantKick.chance - 0.01 })).toBe('kick');
+    expect(pickMelee({ ...o, titan: false, low: false, kickRoll: 0 })).toBe('swipe');
+    expect(pickMelee({ ...o, crawl: true, titan: true, low: true, kickRoll: 0 })).toBe('bite');
+  });
 });

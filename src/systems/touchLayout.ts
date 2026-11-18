@@ -49,7 +49,7 @@ export interface TouchCtx {
   abilityCd: number;
   cocoonCd: number;
   sargi: number;
-  titan?: { meter: number; punch: Power; q: Power; e: Power; slam: Power; bite: Power; steam?: Power };
+  titan?: { meter: number; punch: Power; q: Power; e: Power; slam: Power; bite: Power; steam?: Power; kick?: Power; guarding?: boolean };
   /** Sur topunun başında: yeniden dolma süresi ve hedefin vurulabilir olup olmadığı. */
   cannon?: { cd: number; ready: boolean };
 }
@@ -59,6 +59,8 @@ export interface TouchBtn {
   sub: string;
   /** Şu an işe yaramaz (bekleme süresi, bar ya da mühimmat yok): soluk görünür. */
   off: boolean;
+  /** Yuvanın olağan tuşu yerine taklit edilecek tuş. */
+  code?: string;
 }
 
 const INTERACT: Record<Exclude<Interact, ''>, string> = {
@@ -99,6 +101,11 @@ export function touchLayout(c: TouchCtx): Partial<Record<Slot, TouchBtn>> {
     });
     const out: Partial<Record<Slot, TouchBtn>> = { atk: pw(t.punch), r2: pw(t.q), r3: pw(t.e), o2: pw(t.bite), jump: pw(t.slam), o1: { label: 'ÇIK', sub: 'formdan', off: false } };
     if (t.steam) out.r1 = pw(t.steam);
+    if (t.kick) {
+      // Gard basılı tutulur; gardda yumruk tuşu basılı tutulursa yumruklar seri çıkar.
+      out.o3 = { label: 'GARD', sub: t.guarding ? 'açık' : 'basılı tut', off: false, code: 'KeyG' };
+      out.o4 = { ...pw(t.kick), code: 'KeyV' };
+    }
     return out;
   }
   const out: Partial<Record<Slot, TouchBtn>> = {

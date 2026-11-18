@@ -87,6 +87,17 @@ describe('touchLayout', () => {
     expect(l.r3).toMatchObject({ off: true, sub: '4 sn' }); // bekliyor
     expect(l.o1?.label).toBe('ÇIK');
     expect(l.r1).toBeUndefined();
+    expect(l.o3).toBeUndefined();
+  });
+  it('dev formunda gard ve tekme tuşları kendi tuşlarını taklit eder', () => {
+    const l = touchLayout(
+      base({
+        mode: 'titan',
+        titan: { meter: 50, punch: pw('Yumruk', 1.5), q: pw('Kaya', 6), e: pw('Kalkan', 1), slam: pw('Tepin', 2), bite: pw('Isırık', 4), kick: pw('Tekme', 2, 1), guarding: true },
+      }),
+    );
+    expect(l.o3).toMatchObject({ label: 'GARD', sub: 'açık', code: 'KeyG' });
+    expect(l.o4).toMatchObject({ label: 'TEKME', off: true, code: 'KeyV' });
   });
   it('konuşurken ve ölüyken tuş yok; kozadayken yalnızca kırma tuşu', () => {
     expect(touchLayout(base({ talking: true }))).toEqual({});

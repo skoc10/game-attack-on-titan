@@ -240,6 +240,8 @@ export class TouchControls {
               slam: { name: d.slam.name, cost: d.slam.cost, cd: 0 },
               bite: { name: 'Isırık', cost: CFG.titan.bite.cost, cd: t.biteCd },
               steam: { name: CFG.titan.steam.name, cost: CFG.titan.steam.cost, cd: t.steamT > 0 ? t.steamT : t.steamCd },
+              kick: { name: 'Tekme', cost: CFG.kick.cost, cd: t.kickCd },
+              guarding: t.guarding,
             }
           : undefined,
     });
@@ -247,7 +249,7 @@ export class TouchControls {
   }
 
   private paint(id: Slot, b: TouchBtn | undefined) {
-    const key = b ? `${b.label}|${b.sub}|${b.off ? 1 : 0}` : '';
+    const key = b ? `${b.label}|${b.sub}|${b.off ? 1 : 0}|${b.code ?? ''}` : '';
     if (this.last[id] === key) return;
     this.last[id] = key;
     const el = this.btns[id];
@@ -255,13 +257,16 @@ export class TouchControls {
     if (!b) {
       // Gizlenen tuş basılıyken bırakılmış sayılsın.
       for (const [pid, code] of this.pressedBy) {
-        if (code !== SLOT_CODE[id]) continue;
+        if (code !== (el.dataset.code ?? SLOT_CODE[id])) continue;
         this.pressedBy.delete(pid);
         this.press(code, false);
         el.classList.remove('down');
       }
       return;
     }
+    // Bazı tuşlar bu durumda yuvanın olağan tuşu yerine başka bir tuşu taklit eder (dev formunda gard ve tekme).
+    if (b.code) el.dataset.code = b.code;
+    else delete el.dataset.code;
     el.classList.toggle('off', b.off);
     el.classList.toggle('long', b.label.length > 7);
     el.querySelector('b')!.textContent = b.label;

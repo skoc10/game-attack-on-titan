@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
-import type { Giant } from '../enemies/giant';
+import type { Giant, TitanHitOpts } from '../enemies/giant';
 import type { Player } from './player';
-import { lerp } from '../core/rng';
+import { angDiff, lerp } from '../core/rng';
 import { CFG } from '../data/config';
 import { FORMS, type Ability, type FormId, type TitanDef } from '../data/titans';
 import { autoBend, buildHumanoid, type Humanoid } from '../enemies/humanoid';
@@ -58,6 +58,23 @@ export class TitanForm {
   private slamCd = 0;
   private punchDone = false;
   private punchArm = 1;
+  /** Bu yumruğun süresi, hasar çarpanı, sersemletmesi ve seri bitirici olup olmadığı. */
+  private punchDur = 0.5;
+  private punchMult = 1;
+  private punchStun = 0;
+  private finisher = false;
+  /** Gard (G basılıyken): kollar yüzün önünde, önden gelen darbelerin çoğu engellenir. */
+  guarding = false;
+  /** Gardda art arda atılan yumrukların sırası; seriyi sürdürmek için kalan süre. */
+  combo = 0;
+  private comboT = 0;
+  /** Bir darbe engellendikten sonraki karşı saldırı penceresi. */
+  counterT = 0;
+  /** Tekme (V): süren animasyonun zamanı (yoksa -1), süresi ve bekleme süresi. */
+  kickT = -1;
+  kickCd = 0;
+  private kickDur = 0.7;
+  private kickDone = false;
   private phase = 0;
   private warnT = 0;
   private readonly bodies = new Map<FormId, Body>();
@@ -113,6 +130,12 @@ export class TitanForm {
     this.biteCd = 0;
     this.steamT = 0;
     this.steamCd = 0;
+    this.guarding = false;
+    this.combo = 0;
+    this.comboT = 0;
+    this.counterT = 0;
+    this.kickT = -1;
+    this.kickCd = 0;
     this.jumped = false;
     this.emergeT = 0;
     this.breathT = 0;
@@ -222,6 +245,8 @@ export class TitanForm {
   exit() {
     this.setStone(false);
     this.rushT = 0;
+    this.guarding = false;
+    this.kickT = -1;
     this.emergeT = -1;
     const body = this.ensureBody(this.def.id);
     body.model.root.scale.setScalar(this.def.height);
@@ -292,14 +317,15 @@ export class TitanForm {
   }
 
   /** Bir dairenin içindeki canlı devlere vurur; vurulan sayısını döner. */
-  private hitArea(p: Player, x: number, z: number, radius: number, dmg: number, armorBreak: boolean, stun = 0, once?: Set<Giant>) {
+  private hitArea(p: Player, x: number, z: number, radius: number, dmg: number, armorBreak: boolean, stun = 0, once?: Set<Giant>, hit: TitanHitOpts = {}) {
     const g = this.game;
     let n = 0;
     for (const gi of g.giants) {
       if (!gi.alive || once?.has(gi)) continue;
       if (Math.hypot(gi.pos.x - x, gi.pos.z - z) > radius + gi.radius) continue;
       once?.add(gi);
-      gi.titanHit(dmg, g, armorBreak, p.pos);
+      // Gardda karşılanan darbe sayılmaz: dev sersemlemez, kıvılcım yerine engel efekti çıkar.
+      if (gi.titanHit(dmg, g, armorBreak, p.pos, false, hit) === 'blocked') continue;
       if (stun > 0 && gi.alive) gi.stun(gi.heavy ? stun * 0.5 : stun);
       v.set(gi.pos.x, gi.pos.y + Math.min(gi.h, this.def.height) * 0.7, gi.pos.z);
       g.particles.burst(v, 22, 18, 0.8, armorBreak ? 0xbfe0ff : this.def.color, 2);
@@ -318,14 +344,90 @@ export class TitanForm {
     }
   }
 
+  /** Bir saldırı animasyonu sürüyor mu (yumruk, ısırık, atılım, tekme). */
+  get busy() {
+    return this.punchT >= 0 || this.biteT >= 0 || this.rushT > 0 || this.kickT >= 0;
+  }
+
+  /** G basılı mı: yerdeyken ve başka bir saldırı (yumruk dışında) sürmüyorken gard alınır. */
+  setGuard(on: boolean, p: Player) {
+    this.guarding = on && !this.emerging && p.onGround && this.biteT < 0 && this.rushT <= 0 && this.kickT < 0;
+  }
+
+  /**
+   * Yumruk. Gardda atılan yumruklar seriye bağlanır: daha hızlı çıkar, her vuruş bir öncekinden sert vurur,
+   * her dördüncüsü gardı kıran ve sersemleten bir aparkattır. Engellenen bir darbeden hemen sonraki yumruklar da sert vurur.
+   */
   punch(p: Player) {
     const pn = this.def.punch;
-    if (this.punchT >= 0 || this.biteT >= 0 || this.rushT > 0 || !this.pay(pn.cost)) return;
+    const G = CFG.guard;
+    if (this.busy || !this.pay(pn.cost)) return;
     this.punchT = 0;
     this.punchDone = false;
     this.punchArm *= -1;
+    this.punchDur = pn.time;
+    this.punchMult = this.counterT > 0 ? G.counter : 1;
+    this.punchStun = 0;
+    this.finisher = false;
+    if (this.guarding) {
+      this.combo = this.comboT > 0 ? this.combo + 1 : 1;
+      this.comboT = 0;
+      this.punchDur = pn.time * G.punchTime;
+      this.punchMult *= 1 + G.step * Math.min(this.combo - 1, 6);
+      if (this.combo % G.finishEvery === 0) {
+        this.finisher = true;
+        this.punchMult *= G.finisher;
+        this.punchStun = G.finisherStun;
+        this.punchDur = pn.time * 0.9;
+      }
+      if (this.combo >= 2) this.game.hud.callout(this.finisher ? 'APARKAT' : `SERİ ×${this.combo}`);
+    } else {
+      this.combo = 0;
+    }
     p.faceYaw = this.game.aimYaw();
     this.game.audio.swing();
+    // Önündeki devler yumruğun geldiğini görür; bazıları gardını alır.
+    const reach = pn.reach + pn.range + 6;
+    for (const gi of this.game.giants) {
+      if (!gi.alive) continue;
+      const dx = gi.pos.x - p.pos.x;
+      const dz = gi.pos.z - p.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d - gi.radius > reach || Math.abs(angDiff(Math.atan2(dx, dz), p.faceYaw)) > 1.1) continue;
+      gi.threat(this.game);
+    }
+  }
+
+  /** Tekme (V): yumruktan uzağa uzanır; devi geri iter, sersemletir ve gardını kırar. */
+  kick(p: Player) {
+    const K = CFG.kick;
+    if (this.busy || this.kickCd > 0 || !p.onGround || this.emerging) return;
+    if (!this.pay(K.cost)) return;
+    this.kickT = 0;
+    this.kickDone = false;
+    this.kickCd = K.cd;
+    this.kickDur = Math.min(K.maxTime, Math.max(K.minTime, this.def.punch.time * 1.3));
+    this.guarding = false;
+    p.faceYaw = this.game.aimYaw();
+    this.game.audio.kick();
+  }
+
+  /**
+   * Gardda önden gelen bir darbe: engellenen oranı döner (0 = engellenmedi). `pierce` gardı delen oran (tekme gibi).
+   * Engellenen her darbe kısa bir karşı saldırı penceresi açar.
+   */
+  blockFrom(p: Player, from: THREE.Vector3, pierce = 0) {
+    if (!this.guarding) return 0;
+    const yawTo = Math.atan2(from.x - p.pos.x, from.z - p.pos.z);
+    if (Math.abs(angDiff(yawTo, p.faceYaw)) > CFG.guard.arc) return 0;
+    const g = this.game;
+    const d = this.def;
+    this.counterT = CFG.guard.counterT;
+    g.audio.block();
+    v.set(p.pos.x + Math.sin(p.faceYaw) * d.radius * 1.2, p.pos.y + d.height * 0.72, p.pos.z + Math.cos(p.faceYaw) * d.radius * 1.2);
+    g.particles.burst(v, 16, 10 + d.height * 0.4, 0.45, 0xfff0d0, d.radius * 0.6);
+    g.smoke.burst(v, 5, 4, 1.2, 0x9a948a, d.radius * 0.5, 2, 2 + d.height * 0.12, 1.2);
+    return CFG.guard.block * (1 - pierce);
   }
 
   /** Önündeki en yakın dev: ısırığın hedefi. */
@@ -555,6 +657,12 @@ export class TitanForm {
     if (this.eCd > 0) this.eCd -= dt;
     if (this.slamCd > 0) this.slamCd -= dt;
     if (this.warnT > 0) this.warnT -= dt;
+    if (this.kickCd > 0) this.kickCd -= dt;
+    if (this.counterT > 0) this.counterT -= dt;
+    if (this.comboT > 0) {
+      this.comboT -= dt;
+      if (this.comboT <= 0) this.combo = 0;
+    }
     if (this.buffT > 0) {
       this.buffT -= dt;
       if (this.buffT <= 0) this.setStone(false);
@@ -570,20 +678,45 @@ export class TitanForm {
     }
     if (this.punchT >= 0) {
       this.punchT += dt;
-      if (!this.punchDone && this.punchT >= d.punch.time * 0.45) {
+      if (!this.punchDone && this.punchT >= this.punchDur * 0.45) {
         this.punchDone = true;
         const cx = p.pos.x + Math.sin(p.faceYaw) * d.punch.reach;
         const cz = p.pos.z + Math.cos(p.faceYaw) * d.punch.reach;
-        if (this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult, d.punch.armorBreak || this.stone) > 0) {
+        const hits = this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult * this.punchMult, d.punch.armorBreak || this.stone, this.punchStun, undefined, { melee: true, guardBreak: this.finisher, push: this.finisher ? 6 : this.combo > 0 ? 1.2 : undefined });
+        if (hits > 0) {
           g.audio.hit();
-          g.shakeCam(0.6);
-          // Yumruğun savrulduğu yönde bir darbe izi.
+          g.shakeCam(this.finisher ? 0.9 : 0.6);
+          // Yumruğun savrulduğu yönde bir darbe izi (aparkat yukarı doğru savrulur).
           v.set(cx, p.pos.y + d.height * 0.62, cz);
-          look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
-          g.slashes.spawn(v, look, d.height * 0.2 + 1.5, this.stone ? 0xbfe0ff : d.color, this.punchArm * 0.5, 0.26);
+          look.set(Math.sin(p.faceYaw), this.finisher ? 0.8 : 0, Math.cos(p.faceYaw));
+          g.slashes.spawn(v, look, d.height * (this.finisher ? 0.3 : 0.2) + 1.5, this.stone ? 0xbfe0ff : d.color, this.finisher ? 1.4 : this.punchArm * 0.5, 0.26);
         }
       }
-      if (this.punchT >= d.punch.time) this.punchT = -1;
+      if (this.punchT >= this.punchDur) {
+        this.punchT = -1;
+        if (this.combo > 0) this.comboT = CFG.guard.window;
+      }
+    }
+    if (this.kickT >= 0) {
+      const K = CFG.kick;
+      this.kickT += dt;
+      if (!this.kickDone && this.kickT >= this.kickDur * 0.5) {
+        this.kickDone = true;
+        const reach = d.punch.reach * K.reach;
+        const cx = p.pos.x + Math.sin(p.faceYaw) * reach;
+        const cz = p.pos.z + Math.cos(p.faceYaw) * reach;
+        const hits = this.hitArea(p, cx, cz, d.punch.range * K.range, d.punch.dmg * K.dmg * this.mult, d.punch.armorBreak || this.stone, K.stun, undefined, { melee: true, guardBreak: true, push: K.push });
+        v.set(cx, p.pos.y + d.height * 0.35, cz);
+        if (hits > 0) {
+          g.audio.hit();
+          g.audio.stomp();
+          g.shakeCam(0.8);
+          look.set(Math.sin(p.faceYaw), 0.25, Math.cos(p.faceYaw));
+          g.slashes.spawn(v, look, d.height * 0.25 + 1.5, this.stone ? 0xbfe0ff : d.color, 0, 0.3);
+        }
+        g.smoke.burst(v, 6, 6, 1.1, 0xa39a86, d.radius, 1.5, 2 + d.height * 0.15, 1.3);
+      }
+      if (this.kickT >= this.kickDur) this.kickT = -1;
     }
     if (this.biteCd > 0) this.biteCd -= dt;
     if (this.biteT >= 0) {
@@ -661,19 +794,82 @@ export class TitanForm {
       aL = aR = 0.9;
     }
     let punchElbow: number | undefined;
-    if (this.punchT >= 0) {
-      const t = this.punchT / d.punch.time;
-      const a = t < 0.45 ? lerp(0.9, -1.6, t / 0.45) : lerp(-1.6, -0.6, (t - 0.45) / 0.55);
-      if (this.punchArm > 0) aR = a;
-      else aL = a;
-      tilt = 0.25;
-      // Kol önce bükülür, vuruş anında açılır.
-      punchElbow = t < 0.3 ? -1.7 : -0.15;
-    }
-    let headX = 0;
-    let jaw = 0;
+    let guardElbowL: number | undefined;
+    let guardElbowR: number | undefined;
+    let inL = 0;
+    let inR = 0;
+    let kneeR: number | undefined;
     let tiltRate = 8;
-    const resting = !moving && p.onGround && this.punchT < 0 && this.rushT <= 0 && this.biteT < 0;
+    if (this.guarding) {
+      // Gard: yumruklar çenenin önünde, dirsekler kapalı, çene göğüste, ayaklar biri önde.
+      aL = aR = -1.15;
+      guardElbowL = guardElbowR = -2.15;
+      // Kollar kendi ekseninde içe döner: önkollar yüzün önünde birleşir.
+      inL = 0.55;
+      inR = -0.55;
+      tilt = 0.14;
+      if (!moving) {
+        lL = -0.22;
+        lR = 0.18;
+      } else {
+        lL *= 0.6;
+        lR *= 0.6;
+      }
+    }
+    if (this.punchT >= 0) {
+      const t = this.punchT / this.punchDur;
+      let a: number;
+      if (this.finisher) {
+        // Aparkat: kol aşağıdan yukarı savrulur, gövde arkaya yaslanır.
+        a = t < 0.4 ? lerp(-0.6, 0.4, t / 0.4) : lerp(0.4, -2.5, Math.min(1, (t - 0.4) / 0.3));
+        punchElbow = t < 0.4 ? -1.9 : -0.7;
+        tilt = t < 0.4 ? 0.3 : -0.12;
+        tiltRate = 16;
+      } else if (this.guarding) {
+        // Gardda kısa düz yumruk: gard yüksekliğinden çıkıp gard yüksekliğine döner.
+        a = t < 0.45 ? lerp(-1.15, -1.62, t / 0.45) : lerp(-1.62, -1.15, (t - 0.45) / 0.55);
+        punchElbow = t < 0.25 ? -2.1 : t < 0.7 ? -0.08 : -1.6;
+        tilt = 0.2;
+      } else {
+        a = t < 0.45 ? lerp(0.9, -1.6, t / 0.45) : lerp(-1.6, -0.6, (t - 0.45) / 0.55);
+        tilt = 0.25;
+        // Kol önce bükülür, vuruş anında açılır.
+        punchElbow = t < 0.3 ? -1.7 : -0.15;
+      }
+      if (this.punchArm > 0) {
+        aR = a;
+        inR = 0;
+        guardElbowR = undefined;
+      } else {
+        aL = a;
+        inL = 0;
+        guardElbowL = undefined;
+      }
+    }
+    if (this.kickT >= 0) {
+      // Tekme: diz göğse çekilir, bacak ileri açılır, sonra geri toplanır; kollar dengeyi tutar.
+      const t = this.kickT / this.kickDur;
+      tiltRate = 16;
+      lL = 0.12;
+      aL = -0.7;
+      aR = 0.5;
+      if (t < 0.4) {
+        lR = lerp(0, -1.35, t / 0.4);
+        kneeR = 1.9;
+        tilt = -0.1;
+      } else if (t < 0.7) {
+        lR = -1.6;
+        kneeR = 0.04;
+        tilt = -0.26;
+      } else {
+        lR = lerp(-1.6, 0, (t - 0.7) / 0.3);
+        kneeR = 1.1;
+        tilt = -0.1;
+      }
+    }
+    let headX = this.guarding ? 0.22 : 0;
+    let jaw = 0;
+    const resting = !moving && p.onGround && !this.busy && !this.guarding;
     if (resting) {
       // Dinlenme: derin nefes alır, omuzlar inip kalkar, ensesinden buhar sızar.
       const br = Math.sin(performance.now() * 0.0016);
@@ -739,6 +935,14 @@ export class TitanForm {
     b.tilt.rotation.x = lerp(b.tilt.rotation.x, tilt, 1 - Math.exp(-dt * tiltRate));
     b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
     b.jaw.rotation.x = lerp(b.jaw.rotation.x, jaw, 1 - Math.exp(-dt * 26));
-    autoBend(b, k, { elbowL: this.punchArm > 0 ? undefined : punchElbow, elbowR: this.punchArm > 0 ? punchElbow : undefined });
+    b.armL.rotation.z = lerp(b.armL.rotation.z, 0, k);
+    b.armR.rotation.z = lerp(b.armR.rotation.z, 0, k);
+    b.armL.rotation.y = lerp(b.armL.rotation.y, inL, k);
+    b.armR.rotation.y = lerp(b.armR.rotation.y, inR, k);
+    autoBend(b, k, {
+      elbowL: this.punchArm > 0 ? guardElbowL : (punchElbow ?? guardElbowL),
+      elbowR: this.punchArm > 0 ? (punchElbow ?? guardElbowR) : guardElbowR,
+      kneeR,
+    });
   }
 }

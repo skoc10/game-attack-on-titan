@@ -308,7 +308,10 @@ export class Player {
         this.moveTarget = null; // dönüşüm sahnesinde gövde kükrer; hareket ve güç yok
         return;
       }
-      if (inp.mousePressed(0)) this.titan.punch(this);
+      // G basılıyken gard; gardda sol tık basılı tutulursa yumruklar seri hâlinde çıkar.
+      this.titan.setGuard(inp.down('KeyG'), this);
+      if (inp.mousePressed(0) || (this.titan.guarding && inp.mouseDown(0))) this.titan.punch(this);
+      if (inp.pressed('KeyV')) this.titan.kick(this);
       if (inp.pressed('KeyQ')) this.titan.cast('q', this);
       if (inp.pressed('KeyE')) this.titan.cast('e', this);
       if (inp.pressed('KeyF')) this.titan.bite(this);
@@ -676,15 +679,24 @@ export class Player {
   }
 
   // ---------------------------------------------------------------- hasar
-  takeHit(dmg: number, from: THREE.Vector3, knock: number) {
+  /** `pierce`: dev formunda gardı delen oran (tekme gibi; 0 = gard tamamen işler). */
+  takeHit(dmg: number, from: THREE.Vector3, knock: number, pierce = 0) {
     if (this.dead || this.invuln > 0 || this.grabbedBy || this.game.cocoon.active) return;
     const g = this.game;
     if (this.mode === 'titan') {
-      g.meter.hit(CFG.titan.hitDrain * (dmg / 30) * this.titan.def.armor);
+      const blocked = this.titan.blockFrom(this, from, pierce);
+      g.meter.hit(CFG.titan.hitDrain * ((dmg * (1 - blocked)) / 30) * this.titan.def.armor);
       if (g.meter.value <= 0) this.revert();
-      this.invuln = 0.5;
-      g.shakeCam(0.4);
-      g.audio.hurt();
+      this.invuln = blocked > 0 ? 0.35 : 0.5;
+      // Ağır darbe dev gövdesini de biraz geri iter (gardda daha az).
+      const dx = this.pos.x - from.x;
+      const dz = this.pos.z - from.z;
+      const l = Math.hypot(dx, dz) || 1;
+      const push = knock * (blocked > 0 ? 0.25 : 0.5);
+      this.vel.x += (dx / l) * push;
+      this.vel.z += (dz / l) * push;
+      g.shakeCam(blocked > 0 ? 0.25 : 0.4);
+      if (blocked <= 0) g.audio.hurt();
       return;
     }
     if (this.mode === 'mounted') this.dismount(true);
@@ -966,7 +978,8 @@ export class Player {
       this.titan.update(dt, this);
       return;
     }
-    const sp = sprint ? T.sprint : T.speed;
+    const guard = this.titan.guarding;
+    const sp = guard ? T.speed * CFG.guard.slow : sprint ? T.sprint : T.speed;
     const rate = (this.onGround ? 46 : 10) * dt;
     const ddx = wish.x * sp - this.vel.x;
     const ddz = wish.z * sp - this.vel.z;
@@ -1029,7 +1042,9 @@ export class Player {
     const moving = hs > 0.5;
 
     if (this.mode === 'titan') {
-      if (this.titan.punchT < 0 && this.titan.rushT <= 0 && moving) this.faceYaw = turnToward(this.faceYaw, Math.atan2(this.vel.x, this.vel.z), 7 * dt);
+      // Gardda gövde nişan yönüne döner (darbeyi karşılamak için); yoksa gidilen yöne.
+      if (this.titan.guarding && this.titan.punchT < 0) this.faceYaw = turnToward(this.faceYaw, g.aimYaw(), 6 * dt);
+      else if (!this.titan.busy && moving) this.faceYaw = turnToward(this.faceYaw, Math.atan2(this.vel.x, this.vel.z), 7 * dt);
       this.titan.animate(dt, this, moving);
       return;
     }
