@@ -95,6 +95,16 @@ describe('touchLayout', () => {
   });
 });
 
+describe('sur topu', () => {
+  it('top başında yalnızca ATEŞ ve İN tuşları kalır; dolarken ATEŞ soluk', () => {
+    const l = touchLayout(base({ cannon: { cd: 0, ready: true } }));
+    expect(Object.keys(l).sort()).toEqual(['atk', 'jump']);
+    expect(l.atk).toMatchObject({ label: 'ATEŞ', off: false });
+    expect(touchLayout(base({ cannon: { cd: 1, ready: true } })).atk?.off).toBe(true);
+    expect(touchLayout(base({ interact: 'cannon' })).r3?.label).toBe('TOP');
+  });
+});
+
 describe('touchText', () => {
   it('klavye tuşlarını ekran tuşlarının adlarıyla değiştirir', () => {
     expect(touchText('Atına bin (F ile çağır, E ile bin)')).toBe('Atına bin (AT tuşuyla çağır, BİN tuşuyla bin)');

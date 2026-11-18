@@ -289,6 +289,11 @@ export class Player {
       this.struggle();
       return;
     }
+    // Top başında: tık ateş eder, E ya da Space toptan ayırır.
+    if (g.cannons.manned !== null) {
+      g.cannons.input(g);
+      return;
+    }
     // Sağ tık: kısa tıkla imlecin gösterdiği yere git; basılı tutunca baktığın yöne koş, bırakınca dur.
     if (inp.mouseDown(2)) {
       this.moveHold += g.frameDt;
@@ -495,6 +500,11 @@ export class Player {
       g.crates.open(crate, g);
       return;
     }
+    const gun = g.cannons.nearest(this.pos);
+    if (gun !== null) {
+      g.cannons.man(gun, g);
+      return;
+    }
     if (this.pos.distanceTo(g.horse.pos) < 4.5) this.mount();
   }
 
@@ -505,6 +515,7 @@ export class Player {
     if (this.mode === 'mounted') return 'dismount';
     if (this.game.npcs.near(this.pos)) return 'talk';
     if (this.game.crates.nearest(this.pos, CFG.crate.reach)) return 'open';
+    if (this.game.cannons.manned === null && this.game.cannons.nearest(this.pos) !== null) return 'cannon';
     if (this.pos.distanceTo(this.game.horse.pos) < 4.5) return 'mount';
     return '';
   }
@@ -512,10 +523,21 @@ export class Player {
   interactHint() {
     if (this.mode === 'titan' || this.dead) return '';
     if (this.mode === 'mounted') return 'E — Attan in';
+    const guns = this.game.cannons;
+    if (guns.manned !== null) {
+      const touch = this.game.input.touch;
+      const fire = touch ? 'ATEŞ' : 'Tıkla: ateş';
+      const leave = touch ? 'İN: toptan ayrıl' : 'E: toptan ayrıl';
+      const reload = guns.cooldown > 0 ? ' (dolduruluyor)' : '';
+      if (guns.lock) return `Hedef: ${guns.lock.type.name} · ${Math.round(guns.aimDist)} m — ${fire}${reload} · ${leave}`;
+      if (!guns.aimOk) return `${guns.aimDist > 0 ? 'Menzil dışı' : 'Top o yöne dönemez'} · ${leave}`;
+      return `Bir deve nişan al — ${fire}${reload} · ${leave}`;
+    }
     const npc = this.game.npcs.near(this.pos);
     if (npc) return `E — ${npc.name} ile konuş`;
     const crate = this.game.crates.nearest(this.pos, CFG.crate.reach);
     if (crate) return `E — ${crateLabel(crate)}nı aç`;
+    if (guns.nearest(this.pos) !== null) return 'E — Topun başına geç';
     if (this.pos.distanceTo(this.game.horse.pos) < 4.5) return 'E — Ata bin';
     return '';
   }
@@ -797,6 +819,10 @@ export class Player {
       return;
     }
     if (this.burstCd > 0) this.burstCd -= dt;
+    if (g.cannons.manned !== null) {
+      g.cannons.seat(this);
+      return;
+    }
     if (this.grabbedBy) {
       // Devin elinde: konum eli izler, fizik durur, kurtulma barı zamanla geriler.
       const by = this.grabbedBy;

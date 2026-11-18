@@ -246,6 +246,12 @@ export class GameAudio {
     this.tone('sawtooth', 300, 1400, 0.3, 0.14);
     this.noise(0.5, 0.25, 4000, 7000, 3, 0.05);
   }
+  /** Sur topu: derin bir gümbürtü ve uzun yankı. */
+  cannonFire() {
+    this.tone('sine', 95, 28, 0.8, 0.9);
+    this.noise(0.22, 0.85, 2600, 300, 0.7);
+    this.noise(1.6, 0.45, 600, 70, 0.5, 0.03, undefined, 'lowpass');
+  }
   /** Patlama: çatırtı, derin vuruş ve yankılanan gürleme. Uzaklaştıkça kısılır. */
   explosion(x: number, z: number) {
     const sp = spatial(this.listener, x, z, 70);

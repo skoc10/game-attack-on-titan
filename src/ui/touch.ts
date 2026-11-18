@@ -229,6 +229,7 @@ export class TouchControls {
       abilityCd: p.abilityCd,
       cocoonCd: g.cocoon.cd,
       sargi: g.save.inv.sargi,
+      cannon: g.cannons.manned !== null ? { cd: Math.max(0, g.cannons.cooldown), ready: g.cannons.aimOk } : undefined,
       titan:
         p.mode === 'titan'
           ? {

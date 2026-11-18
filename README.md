@@ -81,6 +81,15 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 - Surların arasındaki ovalara **köyler** dağılmıştır: Demir Ova'da 12, Kalkan Ormanları'nda 18, Sur Ötesi'nde 10 (oradakiler çoğunlukla yıkık). Her köyde bir ikmal noktası ve bir sandık vardır.
 - Dünyanın kenarı yaklaşık 4100 m'dedir. Mini harita `M` ile (dokunmatikte haritaya dokunarak) yakın ve geniş görünüm arasında geçer; geniş görünümde surlar, kasabalar, yollar ve köyler (kahverengi kareler) görünür.
 
+## Sur topları
+
+Surların tepesinde, yürüme yolunun dış kenarında aralıklarla **toplar** durur (halka surlarda yaklaşık 110 m, kasaba surlarında 70 m arayla; kapıların önü boş). Mini haritanın yakın görünümünde gri noktalarla görünürler. Sura kancayla çık, topun yanına gel ve `E` ile (dokunmatikte **TOP**) başına geç.
+
+- **Nişan:** İmleci (fare kilitliyken ya da dokunmatikte ekranın ortasındaki nişangâhı) bir deve doğrult. Top deve **kilitlenir**: devin üstünde kırmızı bir işaret çıkar, namlu açısını kendi ayarlar ve devin gidişini hesaba katar. Güllenin düşeceği yer halkayla, yolu kesikli çizgiyle gösterilir. Dev yoksa top imlecin gösterdiği yere atar.
+- **Ateş:** Tıkla (dokunmatikte **ATEŞ**). Gülle kilitli deve doğru yönünü düzeltir. Yaklaşık 10 m yarıçaplı patlamanın içinde kalan **sıradan devler ölür** (zırhlılar dahil). Bölüm sonu devi ölmez: ensesine yakın isabet ense kesiği sayılır, gövdeye isabet onu sendeletir. Top 1,6 saniyede yeniden dolar.
+- **Menzil:** yaklaşık 550 m. Top dışa bakan yönünden en çok 83° döner; daha yandaki hedef için yandaki topa geç.
+- **Ayrılmak:** `E` ya da `Space` (dokunmatikte **İN**).
+
 ## Hikâye modu
 
 Menüden **Hikâye Modu** ya da **Serbest Av** seçilir; seviye, sınıf ve yükseltmeler iki modda ortaktır.

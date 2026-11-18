@@ -98,6 +98,21 @@ export class Minimap {
       }
     }
 
+    // Sur topları (yalnızca yakın görünümde)
+    if (!this.wide) {
+      c.fillStyle = '#3a3f46';
+      c.strokeStyle = '#d8d2c2';
+      c.lineWidth = 1;
+      for (const gun of g.cannons.list) {
+        if (Math.abs(gun.x - p.x) > VIEW || Math.abs(gun.z - p.z) > VIEW) continue;
+        const [x, y] = map(gun.x, gun.z);
+        c.beginPath();
+        c.arc(x, y, 2.6, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+      }
+    }
+
     // Kutular: Taktisyen hepsini, diğerleri yakındakileri görür.
     const seeAll = g.player.cls.id === 'taktisyen';
     for (const cr of g.crates.list) {

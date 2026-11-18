@@ -47,6 +47,10 @@ export const CFG = {
   blade: { max: 20 },
   // Patlar Mızrak: teçhizattan fırlatılır, çarptığı yerde patlar. Zırhı deler; yakınında durana da zarar verir.
   spear: { max: 6, start: 2, perCrate: 2, speed: 100, gravity: 5, range: 190, radius: 7.5, cooldown: 0.8, selfRadius: 6.5, selfDmg: 22 },
+  // Sur topları: surların üstünde aralıklarla durur. spacing/districtSpacing: halka surda ve kasaba surunda aralık (m),
+  // speed/gravity: güllenin hızı ve düşüşü (menzil ≈ speed²/gravity), radius: patlama yarıçapı,
+  // homing: güllenin kilitlendiği deve doğru yön düzeltmesi (m/sn²), arc: namlunun dışa bakan yönden en çok dönüşü (rad).
+  cannon: { spacing: 110, districtSpacing: 70, speed: 110, gravity: 22, cooldown: 1.6, radius: 10, reach: 3.6, homing: 40, arc: 1.45, pivot: 2.5, lockAngle: 0.09 },
   // Billur koza: içindeyken hasar alınmaz, devler oyuncuyu göremez; süre dolunca kırılır ve çevreyi sersemletir.
   cocoon: { dur: 6, cooldown: 25, heal: 0.06, stunRadius: 16, stun: 2.5 },
   // Öldürme serisi: süre dolmadan gelen her yeni öldürme av puanı çarpanını artırır.

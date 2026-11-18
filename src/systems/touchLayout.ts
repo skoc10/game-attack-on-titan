@@ -21,7 +21,7 @@ export const SLOT_CODE: Record<Slot, string> = {
   o5: 'KeyH',
 };
 
-export type Interact = '' | 'talk' | 'open' | 'mount' | 'dismount';
+export type Interact = '' | 'talk' | 'open' | 'mount' | 'dismount' | 'cannon';
 
 export interface Power {
   name: string;
@@ -50,6 +50,8 @@ export interface TouchCtx {
   cocoonCd: number;
   sargi: number;
   titan?: { meter: number; punch: Power; q: Power; e: Power; slam: Power; bite: Power };
+  /** Sur topunun başında: yeniden dolma süresi ve hedefin vurulabilir olup olmadığı. */
+  cannon?: { cd: number; ready: boolean };
 }
 
 export interface TouchBtn {
@@ -64,6 +66,7 @@ const INTERACT: Record<Exclude<Interact, ''>, string> = {
   open: 'AÇ',
   mount: 'BİN',
   dismount: 'İN',
+  cannon: 'TOP',
 };
 
 const up = (s: string) => s.toLocaleUpperCase('tr');
@@ -80,6 +83,12 @@ export function touchLayout(c: TouchCtx): Partial<Record<Slot, TouchBtn>> {
     };
     if (c.canTransform) out.o1 = { label: 'DÖNÜŞ', sub: '', off: false };
     return out;
+  }
+  if (c.cannon) {
+    return {
+      atk: { label: 'ATEŞ', sub: c.cannon.cd > 0 ? 'dolduruluyor' : c.cannon.ready ? 'nişan tamam' : 'nişan al', off: c.cannon.cd > 0 || !c.cannon.ready },
+      jump: { label: 'İN', sub: 'toptan', off: false },
+    };
   }
   if (c.mode === 'titan' && c.titan) {
     const t = c.titan;
