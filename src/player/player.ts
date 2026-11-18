@@ -995,7 +995,7 @@ export class Player {
     this.titan.update(dt, this);
     // Bar yalnızca hareket ederken yanar: yerinde duran dev dinlenir.
     this.titanResting = this.onGround && this.titan.rushT <= 0 && Math.hypot(this.vel.x, this.vel.z) < 0.5;
-    if (g.meter.tick(dt, T.drain * this.char.drain * (1 - 0.1 * g.save.upgrades.titan), !this.titanResting)) this.revert();
+    if (g.meter.tick(dt, T.drain * CFG.titan.drainMult * this.char.drain * (1 - 0.1 * g.save.upgrades.titan), !this.titanResting)) this.revert();
   }
 
   // ---------------------------------------------------------------- görsel
