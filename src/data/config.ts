@@ -60,8 +60,9 @@ export const CFG = {
   // minRatio: dönüşmek için gereken en az doluluk oranı.
   meter: { max: 100, normal: 10, elite: 25, boss: 100, minRatio: 0.5 },
   // Dev formlarının sayıları data/titans.ts içindedir; burada yalnızca ortak olanlar var.
+  // drainMult: dev formunda hareket ederken barın azalma hızının ortak çarpanı (tüm formlara uygulanır).
   // bite: dev formunun ısırığı (F). Tek hedefe ağır, zırh delen hasar; öldürürse bar geri kazanılır.
-  titan: { hitDrain: 3, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
+  titan: { hitDrain: 3, drainMult: 0.5, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
   // Devlerin temposu (tür hızlarının çarpanları): walk her yürüyüşe, chase kovalarken ek olarak, turn dönüşe uygulanır.
   giantPace: { walk: 1.2, chase: 1.15, turn: 1.3 },
   // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.
