@@ -4,7 +4,7 @@ import type { GiantKind } from '../enemies/giantTypes';
 export type KillStyle = 'pass' | 'dive' | 'ground';
 
 export type ContractEvent =
-  | { type: 'kill'; giant: GiantKind; elite: boolean; by: 'blade' | 'titan' | 'spear'; style: KillStyle | null }
+  | { type: 'kill'; giant: GiantKind; elite: boolean; by: 'blade' | 'titan' | 'spear' | 'cannon'; style: KillStyle | null }
   | { type: 'crate'; content: string }
   | { type: 'streak'; n: number };
 

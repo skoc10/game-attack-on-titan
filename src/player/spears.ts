@@ -30,6 +30,17 @@ export function segmentDistance(p: THREE.Vector3, s0: THREE.Vector3, s1: THREE.V
   return Math.hypot(p.x - s0.x - n.x * t, p.y - s0.y - n.y * t, p.z - s0.z - n.z * t);
 }
 
+/** Devin gövde ekseni (a → b): ayaktayken dikey, yerdeyken baktığı yöne doğru yatay. */
+export function giantAxis(gi: Giant, a: THREE.Vector3, b: THREE.Vector3) {
+  if (gi.state === 'downed' || gi.type.crawl) {
+    a.set(gi.pos.x, gi.pos.y + gi.h * 0.12, gi.pos.z);
+    b.set(gi.pos.x + Math.sin(gi.yaw) * gi.h * 0.9, gi.pos.y + gi.h * 0.2, gi.pos.z + Math.cos(gi.yaw) * gi.h * 0.9);
+  } else {
+    a.copy(gi.pos);
+    b.set(gi.pos.x, gi.pos.y + gi.h * 0.92, gi.pos.z);
+  }
+}
+
 /**
  * Patlar Mızrak: teçhizattan nişan alınan yöne fırlatılır; bir deve, yapıya ya da yere çarpınca patlar.
  * Patlama enseye yakınsa zırhı delip öldürür, gövdeye yakınsa devi yere serer. Yakınında duran oyuncu da zarar görür.
@@ -134,23 +145,12 @@ export class Spears {
     }
   }
 
-  /** Devin gövde ekseni: ayaktayken dikey, yerdeyken baktığı yöne doğru yatay. */
-  private axis(gi: Giant) {
-    if (gi.state === 'downed' || gi.type.crawl) {
-      a.set(gi.pos.x, gi.pos.y + gi.h * 0.12, gi.pos.z);
-      b.set(gi.pos.x + Math.sin(gi.yaw) * gi.h * 0.9, gi.pos.y + gi.h * 0.2, gi.pos.z + Math.cos(gi.yaw) * gi.h * 0.9);
-    } else {
-      a.copy(gi.pos);
-      b.set(gi.pos.x, gi.pos.y + gi.h * 0.92, gi.pos.z);
-    }
-  }
-
   private touching(pos: THREE.Vector3, game: Game) {
     for (const gi of game.giants) {
       if (!gi.alive) continue;
       const span = gi.h + 6;
       if (Math.abs(gi.pos.x - pos.x) > span || Math.abs(gi.pos.z - pos.z) > span) continue;
-      this.axis(gi);
+      giantAxis(gi, a, b);
       if (segmentDistance(pos, a, b) < gi.radius * 1.15 + 0.3) return true;
     }
     return false;
@@ -183,7 +183,7 @@ export class Spears {
         if (gi.hitNape(game, true, true) === 'kill') kills++;
         continue;
       }
-      this.axis(gi);
+      giantAxis(gi, a, b);
       if (segmentDistance(at, a, b) > S.radius + gi.radius) continue;
       if (gi.type.kind === 'boss') {
         gi.hitLeg(true);

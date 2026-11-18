@@ -6,6 +6,7 @@ import { Particles } from './core/particles';
 import { SlashFx } from './core/slashfx';
 import { Shockwaves } from './core/shockwave';
 import { Spears } from './player/spears';
+import { Cannons } from './world/cannons';
 import { Boulders } from './enemies/boulders';
 import { Cocoon } from './player/cocoon';
 import { Npcs } from './world/npcs';
@@ -54,12 +55,14 @@ export class Game {
   readonly slashes: SlashFx;
   readonly rings: Shockwaves;
   readonly spears: Spears;
+  readonly cannons: Cannons;
   readonly boulders: Boulders;
   readonly cocoon: Cocoon;
   readonly npcs: Npcs;
   readonly inventory: Inventory;
   /** Patlama sürerken yapılan öldürmeler mızrağa yazılır (kesik izi çizilmez). */
-  killBy: 'spear' | null = null;
+  /** Öldürmeyi patlayan bir silah yaptıysa hangisi (kılıç ve dev formu dışında). */
+  killBy: 'spear' | 'cannon' | null = null;
   /** Öldürme serisi ve bitmesine kalan süre. */
   streak = 0;
   streakT = 0;
@@ -149,6 +152,7 @@ export class Game {
     this.slashes = new SlashFx(this.scene, 16);
     this.rings = new Shockwaves(this.scene);
     this.spears = new Spears(this.scene);
+    this.cannons = new Cannons(this.scene);
     this.boulders = new Boulders(this.scene);
     this.cocoon = new Cocoon(this.scene);
     this.player = new Player(this);
@@ -447,7 +451,7 @@ export class Game {
       this.hud.banner(`${g.type.name.toLocaleUpperCase('tr')} DÜŞTÜ`, g.tag === 'gate' ? 'Demir Sur kapısı yeniden açık' : 'Dev barın doldu');
     }
     this.grantXp(g.type.xp);
-    this.npcs.emit({ type: 'kill', giant: g.type.kind, elite: g.isElite, by: this.killBy === 'spear' ? 'spear' : source, style });
+    this.npcs.emit({ type: 'kill', giant: g.type.kind, elite: g.isElite, by: this.killBy ?? source, style });
     this.npcs.emit({ type: 'streak', n: this.streak });
     const p = this.player;
     this.storyEvent({ type: 'kill', giant: g.type.kind, by: source, form: p.mode === 'titan' ? p.titan.def.id : null, tag: g.tag });
@@ -464,7 +468,7 @@ export class Game {
     if (speed > 3) look.copy(p.vel).divideScalar(speed);
     else look.set(Math.sin(p.faceYaw), 0, Math.cos(p.faceYaw));
     const lying = g.state === 'dead' && g.wasLying;
-    if (this.killBy === 'spear') {
+    if (this.killBy !== null) {
       // Patlamanın kendi efekti var; yalnızca ensede bir alev patlaması eklenir.
       this.particles.burst(at, 50, g.h + 12, 0.9, 0xffb040, g.h * 0.1);
       this.slowT = 0.2;
@@ -838,6 +842,7 @@ export class Game {
     this.slashes.update(sdt);
     this.rings.update(sdt);
     this.spears.update(sdt, this);
+    this.cannons.update(sdt, this);
     this.boulders.update(sdt, this);
     this.cocoon.update(sdt, this);
     this.npcs.update(sdt);
@@ -876,9 +881,10 @@ export class Game {
   private updateCamera(dt: number) {
     const p = this.player;
     const speed = p.vel.length();
-    const want = p.mode === 'titan' ? p.titan.def.camDist : p.mode === 'mounted' ? 9.5 : 6.5 + Math.min(4, speed * 0.07);
+    const gunner = this.cannons.manned !== null;
+    const want = gunner ? 10 : p.mode === 'titan' ? p.titan.def.camDist : p.mode === 'mounted' ? 9.5 : 6.5 + Math.min(4, speed * 0.07);
     this.camDist = lerp(this.camDist, want, 1 - Math.exp(-dt * 4));
-    const off = p.mode === 'titan' ? p.titan.def.height * 0.85 : p.mode === 'mounted' ? 2.3 : 1.7;
+    const off = gunner ? 4.2 : p.mode === 'titan' ? p.titan.def.height * 0.85 : p.mode === 'mounted' ? 2.3 : 1.7;
     target.set(p.pos.x, p.pos.y + off, p.pos.z);
     this.lookDir(look);
     const cam = this.camera;
