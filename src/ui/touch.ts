@@ -239,6 +239,7 @@ export class TouchControls {
               e: { name: d.e.name, cost: d.e.cost, cd: t.eCd },
               slam: { name: d.slam.name, cost: d.slam.cost, cd: 0 },
               bite: { name: 'Isırık', cost: CFG.titan.bite.cost, cd: t.biteCd },
+              steam: { name: CFG.titan.steam.name, cost: CFG.titan.steam.cost, cd: t.steamT > 0 ? t.steamT : t.steamCd },
             }
           : undefined,
     });

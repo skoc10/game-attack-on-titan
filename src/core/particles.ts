@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 
-/** Havuzlu basit parçacık sistemi (buhar, gaz, kıvılcım). */
+/**
+ * Havuzlu basit parçacık sistemi (buhar, gaz, kıvılcım).
+ * `smoke` kipinde ışık saçmaz: normal karışımla çizilir, rengi korunur ve ömrü bittikçe saydamlaşır (duman).
+ */
 export class Particles {
   private readonly n: number;
   private readonly pos: Float32Array;
@@ -13,11 +16,12 @@ export class Particles {
   private readonly size: Float32Array;
   private readonly size0: Float32Array;
   private readonly grow: Float32Array;
+  private readonly fade: Float32Array;
   private next = 0;
   private readonly geo = new THREE.BufferGeometry();
   readonly points: THREE.Points;
 
-  constructor(scene: THREE.Scene, n = 2400) {
+  constructor(scene: THREE.Scene, n = 2400, private readonly smoke = false) {
     this.n = n;
     this.pos = new Float32Array(n * 3).fill(-9999);
     this.col = new Float32Array(n * 3);
@@ -29,9 +33,11 @@ export class Particles {
     this.size = new Float32Array(n);
     this.size0 = new Float32Array(n);
     this.grow = new Float32Array(n);
+    this.fade = new Float32Array(n).fill(1);
     this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
     this.geo.setAttribute('tint', new THREE.BufferAttribute(this.col, 3));
     this.geo.setAttribute('size', new THREE.BufferAttribute(this.size, 1));
+    this.geo.setAttribute('fade', new THREE.BufferAttribute(this.fade, 1));
     const cvs = document.createElement('canvas');
     cvs.width = cvs.height = 32;
     const ctx = cvs.getContext('2d')!;
@@ -47,10 +53,13 @@ export class Particles {
       vertexShader: `
         attribute float size;
         attribute vec3 tint;
+        attribute float fade;
         uniform float scale;
         varying vec3 vTint;
+        varying float vFade;
         void main() {
           vTint = tint;
+          vFade = fade;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = size * scale / max(0.1, -mv.z);
           gl_Position = projectionMatrix * mv;
@@ -58,13 +67,14 @@ export class Particles {
       fragmentShader: `
         uniform sampler2D map;
         varying vec3 vTint;
+        varying float vFade;
         void main() {
           float a = texture2D(map, gl_PointCoord).a;
-          gl_FragColor = vec4(vTint, a * 0.55);
+          gl_FragColor = vec4(vTint, a * 0.55 * vFade);
         }`,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: smoke ? THREE.NormalBlending : THREE.AdditiveBlending,
     });
     this.points = new THREE.Points(this.geo, mat);
     this.points.frustumCulled = false;
@@ -140,13 +150,17 @@ export class Particles {
       this.pos[j + 1] += this.vel[j + 1] * dt;
       this.pos[j + 2] += this.vel[j + 2] * dt;
       const f = this.life[i] / this.maxLife[i];
-      this.col[j] = this.base[j] * f;
-      this.col[j + 1] = this.base[j + 1] * f;
-      this.col[j + 2] = this.base[j + 2] * f;
+      // Işık saçan parçacık kararır; duman rengini korur, saydamlaşarak kaybolur (önce hafifçe belirir).
+      const k = this.smoke ? 1 : f;
+      if (this.smoke) this.fade[i] = Math.min(1, (1 - f) * 6) * f;
+      this.col[j] = this.base[j] * k;
+      this.col[j + 1] = this.base[j + 1] * k;
+      this.col[j + 2] = this.base[j + 2] * k;
       this.size[i] = this.size0[i] * Math.max(0.2, 1 + this.grow[i] * (1 - f));
     }
     (this.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.tint as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.size as THREE.BufferAttribute).needsUpdate = true;
+    if (this.smoke) (this.geo.attributes.fade as THREE.BufferAttribute).needsUpdate = true;
   }
 }

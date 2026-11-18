@@ -60,11 +60,17 @@ export const CFG = {
   // minRatio: dönüşmek için gereken en az doluluk oranı.
   meter: { max: 100, normal: 10, elite: 25, boss: 100, minRatio: 0.5 },
   // Dev formlarının sayıları data/titans.ts içindedir; burada yalnızca ortak olanlar var.
+  // steam: R ile çevreye kaynar buhar salar; radius dev boyunun katıdır (+8 m), devlere saniyede dps hasar verir ve iter.
   // drainMult: dev formunda hareket ederken barın azalma hızının ortak çarpanı (tüm formlara uygulanır).
   // bite: dev formunun ısırığı (F). Tek hedefe ağır, zırh delen hasar; öldürürse bar geri kazanılır.
-  titan: { hitDrain: 3, drainMult: 0.5, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
+  titan: { hitDrain: 3, drainMult: 0.5, steam: { name: 'Buhar', cost: 12, cd: 9, dur: 3.5, radius: 1.5, dps: 180, tick: 0.25 }, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
   // Devlerin temposu (tür hızlarının çarpanları): walk her yürüyüşe, chase kovalarken ek olarak, turn dönüşe uygulanır.
   giantPace: { walk: 1.2, chase: 1.15, turn: 1.3 },
+  // Devlerin gücü: can ve vuruş çarpanları; bazı devler (bigChance) türünün boyunun big katı kadar iri doğar.
+  giantPower: { hp: 1.4, dmg: 1.3, bigChance: 0.16, big: [1.35, 1.8] as [number, number] },
+  // Düşman dönüşümcüler: oyuncunun dönüşebildiği dev formlarına giren düşmanlar. İlki `first` sn sonra,
+  // sonrakiler `every` aralığında, oyuncudan `dist` uzaklıkta, kendi güçleriyle saldırır.
+  shifter: { first: 75, every: [130, 220] as [number, number], dist: [220, 370] as [number, number], hp: 900, armoredHp: 1300 },
   // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.
   bite: { chance: 0.3, titanChance: 0.4, dmgMult: 1.4, windup: 0.75, lunge: 0.45, knock: 8 },
   // Yakalama: devler oyuncuyu eliyle tutup ağzına götürür; oyuncu kurtulma barını doldurarak sıyrılır.

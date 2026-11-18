@@ -113,6 +113,34 @@ export function buildTerrain() {
 
 export const SUN_DIR = new THREE.Vector3(0.48, 0.62, 0.36).normalize();
 
+/**
+ * Yansıma ortamı: gökyüzü mavisi, ufuk ışığı ve toprak tonundan oluşan basit bir küre, bir kez önceden süzülür.
+ * Yalnızca fiziksel malzemeleri (dev derisi, zırh) etkiler; onlara gökten gelen yumuşak bir parıltı verir.
+ */
+export function buildEnvironment(renderer: THREE.WebGLRenderer) {
+  const scene = new THREE.Scene();
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms: { sun: { value: SUN_DIR.clone() } },
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 sun; varying vec3 vDir;
+      void main(){
+        vec3 d = normalize(vDir);
+        vec3 sky = mix(vec3(0.78, 0.84, 0.9), vec3(0.32, 0.5, 0.78), smoothstep(0.0, 0.7, d.y));
+        vec3 ground = mix(vec3(0.42, 0.4, 0.3), vec3(0.3, 0.36, 0.22), smoothstep(0.0, -0.5, d.y));
+        vec3 col = d.y > 0.0 ? sky : ground;
+        col += vec3(1.0, 0.92, 0.75) * pow(max(dot(d, sun), 0.0), 24.0) * 1.5;
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), mat));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(scene, 0.02).texture;
+  pmrem.dispose();
+  mat.dispose();
+  return env;
+}
+
 /** Güneşli, hareketli bulutlu gökyüzü kubbesi. Kamerayı izler. */
 export function buildSky(fogColor: THREE.Color) {
   const mat = new THREE.ShaderMaterial({

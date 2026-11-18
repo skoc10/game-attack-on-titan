@@ -185,7 +185,7 @@ export class Spears {
       }
       giantAxis(gi, a, b);
       if (segmentDistance(at, a, b) > S.radius + gi.radius) continue;
-      if (gi.type.kind === 'boss') {
+      if (gi.heavy) {
         gi.hitLeg(true);
         gi.hitLeg(true);
         gi.stun(1.5);

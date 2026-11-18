@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
-import { lerp, turnToward } from '../core/rng';
+import { angDiff, lerp, turnToward } from '../core/rng';
 import { rollVoice, type IdleVoice } from '../core/audioMath';
 import type { GiantSound } from '../core/audio';
 import { DISTRICTS, wallPush } from '../world/layout';
@@ -9,14 +9,17 @@ import { animateCollapse, newCollapse, type Collapse } from './collapse';
 import { pickMelee } from './attacks';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
 import type { GiantType } from './giantTypes';
+import type { Ability, TitanDef } from '../data/titans';
 
-export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'dead';
+export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'dead';
 export type NapeResult = 'kill' | 'hit' | 'blocked' | 'dull' | 'none';
 export type LegResult = 'down' | 'hit' | 'dull' | 'none';
 
 const v = new THREE.Vector3();
 const LEAP_G = 30;
 const OBSTACLES = { trees: true, buildings: true };
+/** Ağzın başa göre yeri (dev ağzından çıkan duman için). */
+const MOUTH = new THREE.Vector3(0, 0.042, 0.085);
 
 export class Giant {
   readonly body: Humanoid;
@@ -40,7 +43,22 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'power' = 'swipe';
+  /** Türünün olağan boyundan iri doğdu. */
+  readonly big: boolean = false;
+  /** Düşman dönüşümcünün formu (sıradan devlerde null). */
+  readonly form: TitanDef | null;
+  /** Dönüşümcünün sıradaki gücü ve bekleme süresi. */
+  private power: Ability | null = null;
+  private powerCd = 5;
+  private buffT = 0;
+  private rushSpeed = 0;
+  private rushTime = 0;
+  private rushHit = false;
+  /** Doğuş sahnesi: gövde buharın içinden büyür, sonra kükrer (dönüşümcüler). */
+  private introT = 0;
+  private smokeT = 0;
+  private lookYaw = 0;
   /** Darbe alınca gövdenin bir an parlaması için kalan süre. */
   private flashT = 0;
   private screamed = false;
@@ -76,48 +94,65 @@ export class Giant {
     x: number,
     z: number,
     private readonly game: Game,
+    form: TitanDef | null = null,
   ) {
     const r = Math.random;
-    this.h = lerp(type.minH, type.maxH, r() * r() * 0.6 + r() * 0.4);
-    if (type.kind === 'boss') this.h = type.maxH;
-    const skin = type.skins[Math.floor(r() * type.skins.length)];
-    const hairRoll = r();
-    const hairStyle: HairStyle = hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
-    const hairColors = [0x2a2220, 0x4a3524, 0x6b5a48, 0x8a8478];
-    this.body = buildHumanoid(
-      this.h,
-      {
-        skin,
-        top: skin,
-        legs: skin,
-        hair: hairStyle === 'none' ? undefined : hairColors[Math.floor(r() * hairColors.length)],
-        hairStyle,
-        nape: 0xc2372f,
-        eye: 0x1a1210,
-      },
-      {
-        style: 'giant',
-        outline: 0.0028,
-        bulk: lerp(type.bulk[0], type.bulk[1], r()),
-        head: lerp(type.head[0], type.head[1], r()),
-        arm: type.arm,
-        armor: type.armored,
-        face: type.screamer ? 1 : Math.floor(r() * 4),
-      },
-    );
+    const P = CFG.giantPower;
+    this.form = form;
+    let h = lerp(type.minH, type.maxH, r() * r() * 0.6 + r() * 0.4);
+    if (type.kind === 'boss' || form) h = type.maxH;
+    else if (!type.crawl && r() < P.bigChance) {
+      h *= lerp(P.big[0], P.big[1], r());
+      this.big = true;
+    }
+    this.h = h;
+    if (form) {
+      // Dönüşümcü: oyuncunun girebildiği formun gövdesi; ensesi işaretli.
+      this.body = buildHumanoid(this.h, { ...form.palette, nape: 0xc2372f }, form.opts);
+      this.introT = 2.8;
+    } else {
+      // Ten rengi her devde biraz farklı; bazıları şişman, bazıları sıska; kol boyu da değişir.
+      const skin = new THREE.Color(type.skins[Math.floor(r() * type.skins.length)]).offsetHSL((r() - 0.5) * 0.03, (r() - 0.5) * 0.12, (r() - 0.5) * 0.08).getHex();
+      const hairRoll = r();
+      const hairStyle: HairStyle = hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
+      const hairColors = [0x2a2220, 0x4a3524, 0x6b5a48, 0x8a8478];
+      const fat = !type.armored && type.kind !== 'runner' && r() < 0.28;
+      this.body = buildHumanoid(
+        this.h,
+        {
+          skin,
+          top: skin,
+          legs: skin,
+          hair: hairStyle === 'none' ? undefined : hairColors[Math.floor(r() * hairColors.length)],
+          hairStyle,
+          nape: 0xc2372f,
+          eye: 0x1a1210,
+        },
+        {
+          style: 'giant',
+          outline: 0.0028,
+          bulk: lerp(type.bulk[0], type.bulk[1], r()) * (fat ? 1.12 : 1),
+          head: lerp(type.head[0], type.head[1], r()),
+          arm: type.arm * lerp(0.92, 1.14, r()),
+          armor: type.armored,
+          face: type.screamer ? 1 : Math.floor(r() * 4),
+          belly: fat ? 0.4 + r() * 0.6 : 0,
+        },
+      );
+    }
     this.pos = this.body.root.position;
     this.pos.set(x, game.world.heightAt(x, z), z);
     this.yaw = r() * 6.28;
     this.radius = this.h * 0.14;
     this.napeRadius = this.h * 0.05 + 0.45;
     this.legRadius = this.h * 0.08 + 0.6;
-    this.maxHp = type.hpBase + type.hpPerM * this.h;
+    this.maxHp = (type.hpBase + type.hpPerM * this.h) * (form ? 1 : P.hp) * (this.big ? 1.6 : 1);
     this.hp = this.maxHp;
     this.legCuts = type.legCuts;
     this.napeCuts = type.napeCuts;
     this.eatTime = CFG.grab.eatBase + CFG.grab.eatPerM * this.h;
     // Büyük devler daha sık yakalar; bölüm sonu devi yakalamaz.
-    this.grabChance = type.kind === 'boss' || type.crawl || this.h < CFG.grab.minHeight ? 0 : Math.min(0.85, 0.3 + (this.h - CFG.grab.minHeight) * 0.07);
+    this.grabChance = type.kind === 'boss' || form || type.crawl || this.h < CFG.grab.minHeight ? 0 : Math.min(0.85, 0.3 + (this.h - CFG.grab.minHeight) * 0.07);
     this.body.root.traverse((o) => (o.userData.giant = this));
     game.scene.add(this.body.root);
   }
@@ -127,6 +162,10 @@ export class Giant {
   }
   get isElite() {
     return this.type.meter !== 'normal';
+  }
+  /** Bölüm sonu devi ya da dönüşümcü: sersemletme yarıya iner, darbeyle savrulmaz. */
+  get heavy() {
+    return this.type.kind === 'boss' || this.form !== null;
   }
 
   napeWorld(out: THREE.Vector3) {
@@ -182,7 +221,7 @@ export class Giant {
     this.flashT -= dt;
     const e = this.flashT > 0 ? Math.min(0.38, this.flashT * 4) : 0;
     for (const m of this.body.mats) {
-      if (m instanceof THREE.MeshToonMaterial) m.emissive.setScalar(e);
+      if (m instanceof THREE.MeshToonMaterial || m instanceof THREE.MeshStandardMaterial) m.emissive.setScalar(e);
     }
   }
 
@@ -229,12 +268,12 @@ export class Giant {
   }
 
   /** Dev formundaki oyuncunun yumruğu/ezmesi. */
-  titanHit(dmg: number, game: Game, armorBreak: boolean, from: THREE.Vector3) {
+  titanHit(dmg: number, game: Game, armorBreak: boolean, from: THREE.Vector3, quiet = false) {
     if (!this.alive) return;
     let d = dmg;
     if (this.type.armored && !armorBreak && this.state !== 'downed') {
       d *= 0.2;
-      game.audio.clang();
+      if (!quiet) game.audio.clang();
     }
     this.flash(0.18);
     this.hp -= d;
@@ -242,7 +281,7 @@ export class Giant {
       this.die(game, 'titan', from);
       return;
     }
-    if (this.type.kind === 'boss') {
+    if (this.heavy) {
       if (armorBreak) this.hitLeg(true, true);
     } else {
       const dx = this.pos.x - from.x;
@@ -259,7 +298,7 @@ export class Giant {
     // Sürünen devler zaten yere yakındır: devrilmez, olduğu yerde yığılır.
     this.lying = this.state === 'downed' || !!this.type.crawl;
     this.impacted = false;
-    this.say(this.lying ? 'rattle' : 'death', this.type.kind === 'boss' ? 2.5 : 1.4);
+    this.say(this.lying ? 'rattle' : 'death', this.heavy ? 2.5 : 1.4);
     this.fallDir = 1;
     if (from && !this.lying) {
       // Önden gelen dev yumruğu sırtüstü devirir.
@@ -288,7 +327,8 @@ export class Giant {
     const dist = Math.hypot(dx, dz);
     const dy = p.pos.y - this.pos.y;
     const titan = p.mode === 'titan';
-    const dmg = this.type.dmg + this.h * 1.2;
+    const dmg = (this.type.dmg + this.h * 1.2) * CFG.giantPower.dmg * (this.buffT > 0 ? 1.6 : 1);
+    if (this.attackKind === 'power') return this.castPower(game, dmg, dist, dx, dz, titan);
     if (this.attackKind === 'throw') {
       // Kaya, oyuncunun birazdan olacağı yere atılır; düşeceği yer halkayla işaretlenir.
       this.handWorld(v);
@@ -353,6 +393,18 @@ export class Giant {
     }
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.leapCd > 0) this.leapCd -= dt;
+    if (this.form) {
+      if (this.powerCd > 0) this.powerCd -= dt;
+      if (this.buffT > 0) {
+        this.buffT -= dt;
+        this.body.armMat.emissive.setHex(this.buffT > 0 ? 0x2a4458 : 0x000000);
+      }
+      this.mouthSmoke(dt, game);
+      if (this.introT > 0) {
+        this.intro(dt, game);
+        return;
+      }
+    }
     // Arada bir kendi sesini çıkarır; kovalarken daha sık.
     this.talkT -= dt;
     if (this.talkT <= 0) {
@@ -416,6 +468,17 @@ export class Giant {
           this.screamT -= dt; // çığlık atarken olduğu yerde durur
           break;
         }
+        // Dönüşümcü, formunun güçlerinden mesafeye uyanını kullanır.
+        if (this.form && this.powerCd <= 0) {
+          const ab = this.pickPower(dist);
+          if (ab) {
+            this.power = ab;
+            this.attackKind = 'power';
+            this.setState('windup');
+            this.say('growl', 2);
+            break;
+          }
+        }
         // Taşçı uzaktan atar: menzile girince durur, çok yaklaşılırsa yumrukla karşılar.
         const holds = this.type.thrower === true && dist > 36 && dist < 125;
         if (dist > reach * 0.7 && !holds) move = speed * CFG.giantPace.chase;
@@ -424,7 +487,7 @@ export class Giant {
           this.setState('windup');
           this.say('grunt');
         } else if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
-          if (this.type.kind === 'boss') this.attackKind = titan || dy < 8 ? 'stomp' : 'swipe';
+          if (this.heavy) this.attackKind = titan || dy < 8 ? 'stomp' : 'swipe';
           else this.attackKind = pickMelee({ crawl: !!this.type.crawl, titan, low: dy < this.h * 0.5, grabChance: this.grabChance, grabRoll: Math.random(), biteRoll: Math.random() });
           this.setState('windup');
           this.say(this.attackKind === 'bite' ? 'growl' : 'grunt');
@@ -442,10 +505,31 @@ export class Giant {
       }
       case 'windup': {
         moveYaw = Math.atan2(dx, dz);
-        if (this.stateT > (this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : 0.75)) {
-          this.attackCd = this.type.kind === 'boss' ? 2.4 : 1.5;
+        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : 0.75;
+        if (this.attackKind === 'power') this.telegraph(game);
+        if (this.stateT > wind) {
+          this.attackCd = this.heavy ? 2.4 : 1.5;
           if (!this.strike(game)) this.setState('recover');
         }
+        break;
+      }
+      case 'rush': {
+        // Atılım: yönü kilitli, hızla ileri savrulur; yolundaki avı çarpıp fırlatır.
+        const step = this.rushSpeed * dt;
+        this.pos.x += Math.sin(this.yaw) * step;
+        this.pos.z += Math.cos(this.yaw) * step;
+        this.phase += step / (this.h * 0.18);
+        this.moving = true;
+        if (!this.rushHit && !p.dead) {
+          const reachR = this.radius + (titan ? p.titan.def.radius : 1.5) + 2;
+          if (dist < reachR && dy < this.h) {
+            this.rushHit = true;
+            p.takeHit((this.type.dmg + this.h * 1.2) * CFG.giantPower.dmg * 0.9, this.pos, 30);
+            game.shakeCam(0.8);
+          }
+        }
+        if (Math.random() < 0.5) game.particles.emit(this.pos.x, this.pos.y + 1, this.pos.z, 0, 4, 0, 0.8, 0xa39a86);
+        if (this.stateT > this.rushTime) this.setState('recover');
         break;
       }
       case 'grab': {
@@ -482,7 +566,7 @@ export class Giant {
           v.set(this.pos.x, this.pos.y + this.h * 0.6, this.pos.z);
           if (v.distanceTo(p.pos) < this.h * 0.45 + 1.4) {
             this.leapHit = true;
-            p.takeHit(this.type.dmg + this.h, this.pos, 16);
+            p.takeHit((this.type.dmg + this.h) * CFG.giantPower.dmg, this.pos, 16);
           }
         }
         const gy = game.world.heightAt(this.pos.x, this.pos.z);
@@ -564,7 +648,185 @@ export class Giant {
     }
     if (this.state !== 'leap') wallPush(this.pos, this.radius, 0);
     b.root.rotation.y = this.yaw;
+    // Baş avına döner: kovalarken ve saldırırken ona bakar.
+    const hunting = this.state === 'chase' || this.state === 'windup' || this.state === 'recover';
+    this.lookYaw = hunting && dist < 300 ? Math.max(-0.7, Math.min(0.7, angDiff(Math.atan2(dx, dz), this.yaw))) : Math.sin(this.phase * 0.21 + this.stateT * 0.4) * 0.35;
     this.animate(dt, dy, dist);
+  }
+
+  // ---------------------------------------------------------------- dönüşümcü
+  /** Mesafeye uyan güçlerden birini seçer; uyan yoksa null (yürür ya da yumruklar). */
+  private pickPower(dist: number): Ability | null {
+    const f = this.form;
+    if (!f) return null;
+    const fits = [f.q, f.e].filter((ab) => {
+      switch (ab.kind) {
+        case 'stun':
+          return dist < ab.radius * 0.6;
+        case 'buff':
+          return this.buffT <= 0 && dist < 90;
+        case 'rush':
+          return dist > 18 && dist < 120;
+        case 'burst':
+          return dist < ab.radius * 0.8 + 4;
+        case 'beam':
+          return dist > 15 && dist < ab.length * 0.9;
+        case 'throw':
+          return dist > 35 && dist < 200;
+      }
+      return false;
+    });
+    return fits.length ? fits[Math.floor(Math.random() * fits.length)] : null;
+  }
+
+  /** Gücün vuruş anı. Durum değiştiyse (atılım) true döner. */
+  private castPower(game: Game, dmg: number, dist: number, dx: number, dz: number, titan: boolean) {
+    const ab = this.power;
+    const f = this.form;
+    if (!ab || !f) return false;
+    const p = game.player;
+    this.powerCd = ab.cd * 1.6 + 3 + Math.random() * 3;
+    const near = Math.max(0, 1 - dist / 260);
+    const bodyR = titan ? p.titan.def.radius : 1;
+    switch (ab.kind) {
+      case 'stun': {
+        // Kükreme: sarsıcı ses dalgası avı savurur, kancaları koparır.
+        const r = ab.radius * 0.6;
+        game.audio.roar();
+        game.shakeCam(0.4 + near);
+        game.rings.spawn(this.pos.x, this.pos.y, this.pos.z, r, f.color, 0.7);
+        this.head(v);
+        game.particles.burst(v, 40, 30, 0.8, f.color, 2);
+        if (dist < r + bodyR) p.takeHit(dmg * 0.4, this.pos, 26);
+        break;
+      }
+      case 'buff':
+        // Taş deri: kollar sertleşir, bir süre daha ağır vurur.
+        this.buffT = ab.dur;
+        game.audio.clang();
+        this.head(v);
+        game.particles.burst(v, 30, 14, 0.8, 0xbfe0ff, this.h * 0.1);
+        break;
+      case 'rush':
+        this.yaw = Math.atan2(dx, dz);
+        this.rushSpeed = Math.max(40, ab.speed * 0.7);
+        this.rushTime = Math.min(1.6, Math.max(0.4, dist / this.rushSpeed + 0.2));
+        this.rushHit = false;
+        game.audio.gas();
+        game.audio.swing();
+        this.setState('rush');
+        return true;
+      case 'burst': {
+        const r = ab.radius * 0.8;
+        game.audio.stomp();
+        game.shakeCam(0.4 + near);
+        game.rings.spawn(this.pos.x, this.pos.y, this.pos.z, r, f.color, 0.6);
+        game.rings.spawn(this.pos.x, this.pos.y, this.pos.z, r * 0.6, 0xa39a86, 0.5);
+        const n = Math.round(40 + r);
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          game.particles.emit(this.pos.x, this.pos.y + 1, this.pos.z, Math.sin(a) * r * 1.1, 3, Math.cos(a) * r * 1.1, 1.1, f.color);
+        }
+        if (dist < r + bodyR && (titan || p.pos.y - this.pos.y < this.h * 0.6)) p.takeHit(dmg * 0.8, this.pos, 26);
+        break;
+      }
+      case 'beam': {
+        // Işın: ağızdan baktığı yöne uzun, dar bir hat.
+        const yaw = this.yaw;
+        const sx = Math.sin(yaw);
+        const sz = Math.cos(yaw);
+        this.head(v);
+        const y = v.y;
+        for (let i = 0; i < 90; i++) {
+          const d = 3 + (i / 90) * ab.length;
+          game.particles.emit(this.pos.x + sx * d, y - d * 0.04 + (Math.random() - 0.5) * 2, this.pos.z + sz * d, sx * 30, (Math.random() - 0.5) * 6, sz * 30, 0.5 + Math.random() * 0.4, i % 3 === 0 ? 0xffffff : f.color);
+        }
+        game.audio.beam();
+        game.shakeCam(0.3 + near * 0.7);
+        const along = dx * sx + dz * sz;
+        const side = Math.abs(dx * sz - dz * sx);
+        if (along > 0 && along < ab.length && side < ab.width / 2 + bodyR + 1) {
+          p.takeHit(dmg, this.pos, 22);
+          game.hud.flash('#ffffff', 0.2, 0.3);
+        }
+        break;
+      }
+      case 'throw': {
+        this.handWorld(v);
+        v.y += this.h * 0.2;
+        const lead = Math.min(1.3, dist / 60);
+        game.boulders.throw(v, p.pos.x + p.vel.x * lead * 0.7, p.pos.z + p.vel.z * lead * 0.7, dmg * 0.8, game);
+        game.audio.swing();
+        break;
+      }
+    }
+    return false;
+  }
+
+  /** Güç hazırlanırken gövdeden formun renginde kıvılcımlar, ışında ağızda toplanan ışık. */
+  private telegraph(game: Game) {
+    const f = this.form;
+    if (!f) return;
+    if (this.power?.kind === 'beam') {
+      this.mouth(v);
+      game.particles.emit(v.x, v.y, v.z, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, 0.3, Math.random() < 0.5 ? 0xffffff : f.color, 0, 1.6);
+    } else if (Math.random() < 0.6) {
+      game.particles.emit(this.pos.x + (Math.random() - 0.5) * this.radius * 2, this.pos.y + Math.random() * this.h, this.pos.z + (Math.random() - 0.5) * this.radius * 2, 0, 6, 0, 0.6, f.color, 2);
+    }
+  }
+
+  private head(out: THREE.Vector3) {
+    return this.body.head.getWorldPosition(out);
+  }
+  private mouth(out: THREE.Vector3) {
+    return this.body.head.localToWorld(out.copy(MOUTH));
+  }
+
+  /** Dönüşümcünün ağzından sızan duman (yakındaysa). */
+  private mouthSmoke(dt: number, game: Game) {
+    this.smokeT -= dt;
+    if (this.smokeT > 0) return;
+    this.smokeT = this.introT > 0 && this.introT < 1.8 ? 0.03 : 0.14;
+    const p = game.player.pos;
+    if (Math.hypot(p.x - this.pos.x, p.z - this.pos.z) > 260) return;
+    this.mouth(v);
+    const roar = this.introT > 0 && this.introT < 1.8;
+    const sp = (roar ? 8 : 1.2) + this.h * (roar ? 0.8 : 0.12);
+    const n = roar ? 3 : 1;
+    for (let i = 0; i < n; i++) {
+      const k = 0.6 + Math.random() * 0.6;
+      game.smoke.emit(v.x, v.y, v.z, Math.sin(this.yaw) * sp * k + (Math.random() - 0.5) * 2, sp * 0.25 * k + Math.random(), Math.cos(this.yaw) * sp * k + (Math.random() - 0.5) * 2, 1.4 + Math.random(), Math.random() < 0.4 ? 0xd2d0cc : 0xa9a6a1, 2 + this.h * 0.08, (0.6 + this.h * 0.06) * (roar ? 1.6 : 1), 2.4);
+    }
+  }
+
+  /** Doğuş: yıldırımın düştüğü yerde gövde buharın içinden büyür, sonra yerinde kükrer. */
+  private intro(dt: number, game: Game) {
+    const before = this.introT;
+    this.introT -= dt;
+    const grow = Math.min(1, (2.8 - this.introT) / 1);
+    const c = 1.9;
+    const back = 1 + (c + 1) * Math.pow(grow - 1, 3) + c * Math.pow(grow - 1, 2);
+    this.body.root.scale.setScalar(this.h * (0.06 + 0.94 * back));
+    if (grow < 0.9 && Math.random() < 0.7) {
+      const a = Math.random() * Math.PI * 2;
+      const r = this.radius * (1.1 + Math.random());
+      game.particles.emit(this.pos.x + Math.sin(a) * r, this.pos.y + Math.random() * this.h * 0.6, this.pos.z + Math.cos(a) * r, Math.sin(a) * 5, 4 + Math.random() * this.h * 0.4, Math.cos(a) * 5, 1.2, 0x6e6e6e, 5, 1 + this.h * 0.07, 1.6);
+    }
+    if (before > 1.8 && this.introT <= 1.8) {
+      this.say('growl', 3);
+      const p = game.player.pos;
+      game.shakeCam(Math.max(0, 1 - Math.hypot(p.x - this.pos.x, p.z - this.pos.z) / 300));
+      game.rings.spawn(this.pos.x, this.pos.y, this.pos.z, this.h * 2.4 + 20, 0xd8cdb4, 0.8);
+    }
+    this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
+    const p = game.player.pos;
+    this.yaw = turnToward(this.yaw, Math.atan2(p.x - this.pos.x, p.z - this.pos.z), 2 * dt);
+    this.body.root.rotation.y = this.yaw;
+    if (this.introT <= 0) {
+      this.body.root.scale.setScalar(this.h);
+      this.setState('chase');
+    }
+    this.animate(dt, 0, 999, this.introT < 1.8 ? 'roar' : 'rise');
   }
 
   /**
@@ -670,7 +932,7 @@ export class Giant {
     }
   }
 
-  private animate(dt: number, dy: number, dist: number) {
+  private animate(dt: number, dy: number, dist: number, intro?: 'rise' | 'roar') {
     const b = this.body;
     let aL = 0;
     let aR = 0;
@@ -764,6 +1026,64 @@ export class Giant {
         lL = lR = 0.6;
         tiltX = 0.5;
         break;
+      case 'rush':
+        // Atılım: omuz önde, kollar geride, uzun adımlar.
+        tiltX = 0.55;
+        aL = aR = 0.9;
+        lL = Math.sin(this.phase) * 0.9;
+        lR = -lL;
+        break;
+    }
+    if (this.state === 'windup' && this.attackKind === 'power' && this.power) {
+      // Güç hazırlığı: her güç kendi duruşuyla belli olur.
+      switch (this.power.kind) {
+        case 'stun':
+          headX = -0.55;
+          jawOpen = 0.95;
+          aL = aR = 0.45;
+          tiltX = -0.12;
+          break;
+        case 'burst':
+          aL = aR = -2.8;
+          tiltX = -0.1;
+          lL = lR = 0;
+          break;
+        case 'beam':
+          headX = 0.12;
+          jawOpen = 1;
+          tiltX = 0.18;
+          aL = aR = 0.5;
+          break;
+        case 'rush':
+          tiltX = 0.5;
+          aL = aR = 0.9;
+          lL = -0.45;
+          lR = 0.3;
+          break;
+        case 'buff':
+          aL = aR = -1.3;
+          headX = -0.2;
+          jawOpen = 0.7;
+          break;
+        case 'throw':
+          aR = -2.8;
+          tiltX = -0.08;
+          break;
+      }
+    }
+    if (intro) {
+      lL = lR = 0;
+      if (intro === 'rise') {
+        tiltX = 0.6;
+        headX = 0.5;
+        aL = aR = 0.6;
+      } else {
+        const shiver = Math.sin(this.stateT * 60) * 0.03;
+        tiltX = -0.22 + shiver;
+        headX = -0.6 + shiver;
+        jawOpen = 1;
+        aL = aR = 0.55;
+      }
     }
     let kneeL: number | undefined;
     let kneeR: number | undefined;
@@ -798,6 +1118,13 @@ export class Giant {
     b.tilt.rotation.x = lerp(b.tilt.rotation.x, tiltX, 1 - Math.exp(-dt * tiltRate));
     b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
     b.armR.rotation.z = lerp(b.armR.rotation.z, armInR, k);
+    // Ağırlık: her adımda gövde biraz iner kalkar ve yükü taşıyan bacağa doğru yana yatar; baş avına döner.
+    const walking = this.moving && !this.type.crawl && this.state !== 'downed';
+    const heavyK = Math.min(1, this.h / 14);
+    b.tilt.position.y = lerp(b.tilt.position.y, walking ? -Math.abs(Math.sin(this.phase)) * 0.014 * heavyK : 0, k);
+    b.tilt.rotation.z = lerp(b.tilt.rotation.z, walking ? Math.sin(this.phase) * 0.05 * heavyK : 0, k);
+    b.head.rotation.z = lerp(b.head.rotation.z, walking ? -Math.sin(this.phase) * 0.04 : 0, k);
+    b.head.rotation.y = lerp(b.head.rotation.y, this.state === 'downed' || this.type.crawl ? 0 : this.lookYaw, 1 - Math.exp(-dt * 3));
     b.jaw.rotation.x = lerp(b.jaw.rotation.x, jawOpen, jawRate > 0 ? 1 - Math.exp(-dt * jawRate) : k);
     autoBend(b, k, { elbowR, kneeL, kneeR });
   }

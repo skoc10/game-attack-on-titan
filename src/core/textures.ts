@@ -231,3 +231,49 @@ export function grassTuftTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+
+/**
+ * Deri dokusu (tek, paylaşılan): hafif lekeler, kılcal damar izleri ve gözenekler.
+ * Renk haritası beyaza yakındır, malzeme rengiyle çarpılır; aynı doku kabartma haritası olarak da kullanılır.
+ */
+let skinTex: THREE.CanvasTexture | null = null;
+export function skinTexture() {
+  if (skinTex) return skinTex;
+  const S = 256;
+  const { c, g } = canvas(S, S);
+  const rng = mulberry32(4242);
+  g.fillStyle = '#f2ece8';
+  g.fillRect(0, 0, S, S);
+  // Geniş, yumuşak renk lekeleri (kızarıklık ve solgunluk)
+  for (let i = 0; i < 70; i++) {
+    const x = rng() * S;
+    const y = rng() * S;
+    const r = 14 + rng() * 40;
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    const warm = rng() < 0.55;
+    grad.addColorStop(0, warm ? 'rgba(205,165,150,0.13)' : 'rgba(255,250,240,0.16)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    // Kenarlarda kesilmesin diye dört köşeye de çizilir (döşenebilir doku).
+    for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) g.fillRect(x - r + ox, y - r + oy, r * 2, r * 2);
+  }
+  // İnce damar izleri
+  g.lineWidth = 0.8;
+  for (let i = 0; i < 26; i++) {
+    g.strokeStyle = `rgba(150,115,125,${0.05 + rng() * 0.06})`;
+    g.beginPath();
+    let x = rng() * S;
+    let y = rng() * S;
+    g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) {
+      x += (rng() - 0.5) * 30;
+      y += (rng() - 0.5) * 30;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // Gözenekler ve küçük benekler
+  speckle(g, rng, S, S, 1500, ['#d2bfb6', '#c4aca2', '#ffffff'], 0.6, 1.6);
+  skinTex = finish(c, 2, 2);
+  return skinTex;
+}

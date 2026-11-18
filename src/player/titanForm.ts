@@ -11,6 +11,9 @@ import { animateCollapse, newCollapse, resetPose, type Collapse } from '../enemi
 const v = new THREE.Vector3();
 const look = new THREE.Vector3();
 const BOULDER_G = 40;
+/** Dönüşüm: gövde buharın içinden RISE saniyede yükselir, ardından ROAR saniye kükrer. */
+export const EMERGE = { rise: 1, roar: 0.9 };
+const mouthOff = new THREE.Vector3(0, 0.042, 0.085);
 
 interface Body {
   model: Humanoid;
@@ -33,12 +36,22 @@ export class TitanForm {
   rushT = 0;
   rushSpeed = 0;
   jumped = false;
+  /** Buhar (R): kalan süre ve bekleme süresi. */
+  steamT = 0;
+  steamCd = 0;
+  private steamTick = 0;
   /** Isırık: süren animasyonun zamanı (yoksa -1) ve bekleme süresi. */
   biteT = -1;
   biteCd = 0;
   private biteDone = false;
   private biteVictim: Giant | null = null;
   private ventT = 0;
+  /** Dönüşümden bu yana geçen süre; yükseliş ve kükreyiş bitince -1. */
+  emergeT = -1;
+  /** Ağızdan çıkan dumanın zamanlayıcısı ve soluk döngüsü. */
+  private smokeT = 0;
+  private breathT = 0;
+  private exhaling = false;
   private buffMult = 1;
   private rush: Extract<Ability, { kind: 'rush' }> | null = null;
   private readonly rushHit = new Set<Giant>();
@@ -98,15 +111,120 @@ export class TitanForm {
     this.slamCd = 0;
     this.biteT = -1;
     this.biteCd = 0;
+    this.steamT = 0;
+    this.steamCd = 0;
     this.jumped = false;
+    this.emergeT = 0;
+    this.breathT = 0;
     this.setStone(false);
+  }
+
+  /** Dönüşüm sürüyor mu (gövde yükselir ve kükrer; bu sırada hareket ve güç yok). */
+  get emerging() {
+    return this.emergeT >= 0;
+  }
+
+  /** Yükselişin 0..1 boyutu: hızlı büyür, sona doğru hafifçe taşıp yerine oturur. */
+  private emergeScale() {
+    const t = Math.min(1, this.emergeT / EMERGE.rise);
+    const c = 1.9;
+    const back = 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+    return 0.06 + 0.94 * back;
+  }
+
+  /** Ağzın dünyadaki konumu (v'ye yazar). */
+  private mouth() {
+    return this.body.head.localToWorld(v.copy(mouthOff));
+  }
+
+  /** Ağızdan duman: ileri ve yukarı savrulup yayılan gri buhar. */
+  private puff(p: Player, n: number, speed: number, size: number) {
+    const d = this.def;
+    const m = this.mouth();
+    const fx = Math.sin(p.faceYaw);
+    const fz = Math.cos(p.faceYaw);
+    for (let i = 0; i < n; i++) {
+      const sp = speed * (0.6 + Math.random() * 0.6);
+      const spread = speed * 0.25;
+      this.game.smoke.emit(
+        m.x + (Math.random() - 0.5) * d.height * 0.02,
+        m.y,
+        m.z + (Math.random() - 0.5) * d.height * 0.02,
+        fx * sp + (Math.random() - 0.5) * spread,
+        sp * 0.25 + Math.random() * spread * 0.5,
+        fz * sp + (Math.random() - 0.5) * spread,
+        1.4 + Math.random() * 1.2,
+        Math.random() < 0.4 ? 0xd2d0cc : 0xa9a6a1,
+        2 + d.height * 0.08,
+        size * (0.7 + Math.random() * 0.6),
+        2.4,
+      );
+    }
+  }
+
+  /** Dönüşüm sahnesi: buhar sütunu, gövdeden çatırdayan kıvılcımlar, sonra ağızdan fışkıran duman. */
+  private updateEmerge(dt: number, p: Player) {
+    const g = this.game;
+    const d = this.def;
+    const before = this.emergeT;
+    this.emergeT += dt;
+    const t = this.emergeT;
+    const s = this.emergeScale();
+    if (t < EMERGE.rise * 0.85) {
+      // Gövdeyi saran buhar: dışa doğru açılır ki dev içinden görünsün.
+      const n = Math.random() < 0.5 ? 2 : 1;
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = d.radius * (1.1 + Math.random() * 0.9);
+        g.particles.emit(p.pos.x + Math.sin(a) * r, p.pos.y + Math.random() * d.height * s * 0.7, p.pos.z + Math.cos(a) * r, Math.sin(a) * (4 + d.height * 0.3), 3 + Math.random() * d.height * 0.4, Math.cos(a) * (4 + d.height * 0.3), 0.9 + Math.random() * 0.6, 0x6e6e6e, 4 + d.height * 0.15, 1 + d.height * 0.07, 1.6);
+      }
+      // Formun renginde çatırdayan kıvılcımlar.
+      if (Math.random() < 0.35) {
+        v.set(p.pos.x + (Math.random() - 0.5) * d.radius * 2, p.pos.y + Math.random() * d.height * s, p.pos.z + (Math.random() - 0.5) * d.radius * 2);
+        g.particles.burst(v, 6, 14, 0.35, Math.random() < 0.5 ? 0xffffff : d.color, 1, 0, 0.6, -0.5);
+      }
+    }
+    if (before < EMERGE.rise && t >= EMERGE.rise) {
+      // Kükreyiş başlar: yer sarsılır, çevrede toz halkası, ağızdan büyük bir duman bulutu.
+      g.shakeCam(1.4);
+      g.rings.spawn(p.pos.x, p.pos.y, p.pos.z, d.height * 2.4 + 20, 0xd8cdb4, 0.8);
+      g.hud.flash('#ffffff', 0.25, 0.35);
+      this.puff(p, 24, 8 + d.height * 0.9, 1.2 + d.height * 0.1);
+    }
+    if (t >= EMERGE.rise && t < EMERGE.rise + EMERGE.roar) {
+      this.puff(p, 2, 6 + d.height * 0.8, 1 + d.height * 0.08);
+      if (Math.random() < 0.3) g.shakeCam(0.25);
+    }
+    if (t >= EMERGE.rise + EMERGE.roar) {
+      this.emergeT = -1;
+      this.smokeT = 0.2;
+    }
+  }
+
+  /** Dönüştükten sonra ağızdan sürekli duman sızar; her soluk verişte bir bulut çıkar. */
+  private updateSmoke(dt: number, p: Player, resting: boolean) {
+    const d = this.def;
+    // Dinlenirken solunum yavaş ve derin, hareket ederken hızlı ve kısa.
+    this.breathT += dt * (resting ? 1.6 : 2.6);
+    const exhale = Math.sin(this.breathT) > 0.35;
+    if (exhale && !this.exhaling) {
+      this.puff(p, 10, 2 + d.height * 0.22, 0.9 + d.height * 0.07);
+      if (resting) this.game.audio.exhale(Math.min(1.4, d.height / 14));
+    }
+    this.exhaling = exhale;
+    this.smokeT -= dt;
+    if (this.smokeT > 0) return;
+    this.smokeT = exhale ? 0.05 : 0.16;
+    this.puff(p, 1, exhale ? 1.5 + d.height * 0.15 : 0.6 + d.height * 0.05, 0.6 + d.height * 0.05);
   }
 
   /** Formdan çıkış: gövde olduğu yerde kalır ve ölen bir dev gibi yıkılır. */
   exit() {
     this.setStone(false);
     this.rushT = 0;
+    this.emergeT = -1;
     const body = this.ensureBody(this.def.id);
+    body.model.root.scale.setScalar(this.def.height);
     for (const b of this.bodies.values()) b.model.root.visible = b === body;
     for (const m of body.model.mats) m.transparent = true;
     this.husk = { body, t: 0, fall: newCollapse(1), height: this.def.height };
@@ -182,7 +300,7 @@ export class TitanForm {
       if (Math.hypot(gi.pos.x - x, gi.pos.z - z) > radius + gi.radius) continue;
       once?.add(gi);
       gi.titanHit(dmg, g, armorBreak, p.pos);
-      if (stun > 0 && gi.alive) gi.stun(gi.type.kind === 'boss' ? stun * 0.5 : stun);
+      if (stun > 0 && gi.alive) gi.stun(gi.heavy ? stun * 0.5 : stun);
       v.set(gi.pos.x, gi.pos.y + Math.min(gi.h, this.def.height) * 0.7, gi.pos.z);
       g.particles.burst(v, 22, 18, 0.8, armorBreak ? 0xbfe0ff : this.def.color, 2);
       n++;
@@ -253,6 +371,64 @@ export class TitanForm {
     this.game.audio.giant('growl', this.def.height, p.pos.x, p.pos.z, 1.6);
   }
 
+  /** Buhar etki alanının yarıçapı (forma göre). */
+  get steamRadius() {
+    return this.def.height * CFG.titan.steam.radius + 8;
+  }
+
+  /**
+   * Buhar (R): gövdenin her yerinden kaynar buhar fışkırır. Süre boyunca çevredeki devler
+   * haşlanır, geri itilir ve sersemler; zırhlılar daha az etkilenir.
+   */
+  steam(p: Player) {
+    const S = CFG.titan.steam;
+    if (this.steamT > 0 || this.steamCd > 0 || !this.pay(S.cost)) return;
+    this.steamT = S.dur;
+    this.steamCd = S.cd;
+    this.steamTick = 0;
+    const g = this.game;
+    g.audio.steam(S.dur);
+    g.shakeCam(0.5);
+    g.rings.spawn(p.pos.x, p.pos.y, p.pos.z, this.steamRadius, 0xeeeeee, 0.6);
+    g.hud.toast(`${S.name.toLocaleUpperCase('tr')} — çevrendeki devler haşlanıyor`);
+  }
+
+  private updateSteam(dt: number, p: Player) {
+    const S = CFG.titan.steam;
+    if (this.steamCd > 0) this.steamCd -= dt;
+    if (this.steamT <= 0) return;
+    this.steamT -= dt;
+    const g = this.game;
+    const d = this.def;
+    const R = this.steamRadius;
+    const fade = Math.min(1, this.steamT / 0.6);
+    // Buhar gövdeden fışkırır ve dışa doğru yayılarak alanı doldurur.
+    const n = Math.round((3 + d.height * 0.18) * fade);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const y = p.pos.y + Math.random() * d.height * 0.9;
+      const r0 = d.radius * (0.4 + Math.random() * 0.6);
+      const sp = R * (0.8 + Math.random() * 0.8);
+      const sx = Math.sin(a);
+      const sz = Math.cos(a);
+      g.smoke.emit(p.pos.x + sx * r0, y, p.pos.z + sz * r0, sx * sp, 2 + Math.random() * 6, sz * sp, 1.1 + Math.random() * 0.8, Math.random() < 0.5 ? 0xf2f2f0 : 0xd6d6d2, 4, 2 + d.height * 0.12, 3);
+      if (i % 3 === 0) g.particles.emit(p.pos.x + sx * r0, y, p.pos.z + sz * r0, sx * sp * 0.7, 3, sz * sp * 0.7, 0.8, 0xbfbfbf, 6, 2 + d.height * 0.1, 2);
+    }
+    this.steamTick -= dt;
+    if (this.steamTick > 0) return;
+    this.steamTick = S.tick;
+    for (const gi of g.giants) {
+      if (!gi.alive) continue;
+      const dist = Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z);
+      if (dist > R + gi.radius) continue;
+      // Merkeze yakın olan daha çok haşlanır.
+      const k = 1 - Math.min(0.6, dist / (R + gi.radius));
+      gi.titanHit(S.dps * S.tick * k, g, false, p.pos, true);
+      gi.napeWorld(v);
+      g.particles.emit(v.x, v.y, v.z, 0, 5, 0, 0.8, 0xffffff, 6, 2.4, 1.8);
+    }
+  }
+
   /** Q ya da E gücünü kullanır. */
   cast(slot: 'q' | 'e', p: Player) {
     const ab = this.def[slot];
@@ -265,7 +441,7 @@ export class TitanForm {
     switch (ab.kind) {
       case 'stun': {
         for (const gi of g.giants) {
-          if (gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < ab.radius) gi.stun(gi.type.kind === 'boss' ? ab.stun * 0.5 : ab.stun);
+          if (gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < ab.radius) gi.stun(gi.heavy ? ab.stun * 0.5 : ab.stun);
         }
         g.audio.roar();
         g.shakeCam(1);
@@ -370,6 +546,11 @@ export class TitanForm {
   update(dt: number, p: Player) {
     const g = this.game;
     const d = this.def;
+    if (this.emerging) {
+      this.updateEmerge(dt, p);
+      return;
+    }
+    this.updateSteam(dt, p);
     if (this.qCd > 0) this.qCd -= dt;
     if (this.eCd > 0) this.eCd -= dt;
     if (this.slamCd > 0) this.slamCd -= dt;
@@ -460,6 +641,7 @@ export class TitanForm {
     const d = this.def;
     b.root.position.copy(p.pos);
     b.root.rotation.y = p.faceYaw;
+    b.root.scale.setScalar(d.height * (this.emerging ? this.emergeScale() : 1));
     const hs = Math.hypot(p.vel.x, p.vel.z);
     if (moving && p.onGround) this.phase += (hs * dt) / (d.height * 0.2);
     const swing = moving && p.onGround ? Math.sin(this.phase) * 0.7 : 0;
@@ -506,6 +688,29 @@ export class TitanForm {
         b.nape.getWorldPosition(v);
         this.game.particles.emit(v.x + (Math.random() - 0.5) * d.radius, v.y, v.z + (Math.random() - 0.5) * d.radius, 0, 1.5 + d.height * 0.05, 0, 1.8, 0x7c7c7c, 5, 1.4, 1.2);
       }
+    }
+    if (this.emerging) {
+      tiltRate = 10;
+      if (this.emergeT < EMERGE.rise) {
+        // Yükseliş: kambur, baş önde, kollar sarkık; sonra doğrulur.
+        const t = this.emergeT / EMERGE.rise;
+        tilt = lerp(0.75, 0.2, t);
+        headX = lerp(0.6, 0.1, t);
+        aL = aR = lerp(0.7, 0.2, t);
+        lL = lR = 0;
+        jaw = 0.1;
+      } else {
+        // Kükreyiş: göğüs dışarı, baş geride, çene sonuna kadar açık, kollar geriye gerilmiş.
+        const shiver = Math.sin(performance.now() * 0.06) * 0.03;
+        tilt = -0.22 + shiver;
+        headX = -0.6 + shiver;
+        jaw = 1;
+        aL = aR = 0.55;
+        lL = -0.12;
+        lR = 0.12;
+      }
+    } else if (p.mode === 'titan') {
+      this.updateSmoke(dt, p, resting);
     }
     if (this.biteT >= 0) {
       // Isırık: baş geri çekilir, çene açılır; sonra gövde öne atılır ve çene kapanır.

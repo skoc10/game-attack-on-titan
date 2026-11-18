@@ -265,6 +265,7 @@ export class Hud {
           pw('Q', d.q.name, d.q.cost, d.q.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.qCd)) +
           pw('E', d.e.name, d.e.cost, d.e.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.eCd)) +
           pw('F', 'Isırık', CFG.titan.bite.cost, cd(t.biteCd)) +
+          pw('R', CFG.titan.steam.name, CFG.titan.steam.cost, t.steamT > 0 ? ' <b>AKTİF</b>' : cd(t.steamCd)) +
           pw('Space', d.slam.name, d.slam.cost) +
           '<span><kbd>T</kbd> Çık</span>',
       );
@@ -316,7 +317,7 @@ export class Hud {
     if (boss) {
       this.text('bossName', boss.type.name.toLocaleUpperCase('tr'));
       this.width('boss', boss.hp / boss.maxHp);
-      this.text('bossHint', boss.state === 'downed' ? 'YERDE — ENSESİNE VUR!' : 'Zırhlı: bacaklarını kes ya da Taş Yumruk kullan');
+      this.text('bossHint', boss.state === 'downed' ? 'YERDE — ENSESİNE VUR!' : boss.form ? 'Dönüşümcü: ensesine iki temiz kesik ya da dev gücüyle vur — düşerse iğnesi senin' : 'Zırhlı: bacaklarını kes ya da Taş Yumruk kullan');
     }
   }
 }

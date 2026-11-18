@@ -481,7 +481,7 @@ export class Cannons {
       if (Math.abs(gi.pos.x - at.x) > gi.h + C.radius + 5 || Math.abs(gi.pos.z - at.z) > gi.h + C.radius + 5) continue;
       gi.napeWorld(n);
       giantAxis(gi, a, b);
-      const fx = blastEffect(gi.type.kind === 'boss', n.distanceTo(at), gi.napeRadius, segmentDistance(at, a, b), gi.radius);
+      const fx = blastEffect(gi.heavy, n.distanceTo(at), gi.napeRadius, segmentDistance(at, a, b), gi.radius);
       if (fx === 'kill') {
         // Zırh delen bir isabet: ensesi tek seferde düşmeyen dev için tekrarla.
         for (let k = 0; k < 4 && gi.alive; k++) if (gi.hitNape(game, true, true) === 'kill') kills++;
