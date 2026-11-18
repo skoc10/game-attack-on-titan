@@ -71,12 +71,17 @@ export function buildWalls() {
       const mid = R * Math.cos(step / 2);
       for (let i = 0; i < n; i++) {
         const th = start + step * (i + 0.5);
-        place(box(chord, W.wallH + base, W.wallT, TILE, 0.84 + rng() * 0.22), th, mid, (W.wallH - base) / 2);
-        // Yürüme yolunun dışa taşan saçağı
-        place(box(chord, 1.2, W.wallT + 1.8, TILE, 0.74), th, mid, W.wallH - 0.6);
-        // Mazgal dişleri (iki kenarda, dönüşümlü)
-        if (i % 2 === 0) place(box(chord * 0.5, 2.2, 1.4, TILE, 0.8), th, mid + HALF_T - 0.1, W.wallH + 1.1);
-        else place(box(chord * 0.5, 1.4, 1.2, TILE, 0.8), th, mid - HALF_T + 0.1, W.wallH + 0.7);
+        // Komşu parçalar kenarda üst üste biner: üst yüzleri aynı düzlemde titreşmesin diye biri azıcık yüksektir.
+        const lift = (i % 2) * 0.03;
+        place(box(chord, W.wallH + base + lift, W.wallT, TILE, 0.88 + rng() * 0.12), th, mid, (W.wallH - base + lift) / 2);
+        // Dışa taşan saçak: yürüme yolunun biraz altında biter, yolla çakışmaz.
+        place(box(chord, 1.1 + lift, W.wallT + 1.8, TILE, 0.74), th, mid, W.wallH - 0.75 + lift / 2);
+        // Dış korkuluk: kesintisiz alçak duvar ve üstünde düzenli mazgal dişleri.
+        const outer = mid + HALF_T - 0.55;
+        place(box(chord, 1.3 + lift, 1.1, TILE, 0.8), th, outer, W.wallH + 0.65 + lift / 2);
+        place(box(chord * 0.46, 1.5, 1.24, TILE, 0.82), th, outer, W.wallH + 2.05);
+        // İç korkuluk: daha alçak, dişsiz.
+        place(box(chord, 0.9 + lift, 0.8, TILE, 0.78), th, mid - HALF_T + 0.4, W.wallH + 0.45 + lift / 2);
         // Payandalar: surun ölçeğini ve derinliğini hissettirir.
         if (i % 3 === 0) {
           const bh = W.wallH - 5 + base;

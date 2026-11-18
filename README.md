@@ -50,7 +50,7 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `E` | Kutu aç · ata bin/in | Formun ikinci gücü |
 | `Q` | — | Formun birinci gücü |
 | `F` | Atı çağır | Isırık: önündeki devi dişle |
-| `R` | Sınıf yeteneği | — |
+| `R` | Sınıf yeteneği | Buhar: çevrendeki devleri haşla |
 | `I` | Çanta | Çanta |
 | `H` | Sargı sar | — |
 | `Tab` | Dönüşülecek devi seç | — |
@@ -89,6 +89,22 @@ Surların tepesinde, yürüme yolunun dış kenarında aralıklarla **toplar** d
 - **Ateş:** Tıkla (dokunmatikte **ATEŞ**). Gülle kilitli deve doğru yönünü düzeltir. Yaklaşık 10 m yarıçaplı patlamanın içinde kalan **sıradan devler ölür** (zırhlılar dahil). Bölüm sonu devi ölmez: ensesine yakın isabet ense kesiği sayılır, gövdeye isabet onu sendeletir. Top 1,6 saniyede yeniden dolar.
 - **Menzil:** yaklaşık 550 m. Top dışa bakan yönünden en çok 83° döner; daha yandaki hedef için yandaki topa geç.
 - **Ayrılmak:** `E` ya da `Space` (dokunmatikte **İN**).
+
+## Dönüşüm, buhar ve dönüşümcüler
+
+**Dönüşüm:** `T`'ye basınca gökten zikzaklı bir yıldırım düşer, gök bir an aydınlanır. Dev buharın içinden yaklaşık bir saniyede büyüyerek yükselir, ardından göğsünü şişirip kükrer; bu sırada hareket edemez ve güç kullanamazsın. Ses katmanlıdır: çakma, gök gürültüsü, kabaran buhar, kalp atışı gibi gümbürtüler, çatırdayan et ve kemik, en sonda kükreyiş. Dönüştükten sonra devin ağzından sürekli duman sızar; her soluk verişte bir bulut çıkar, dinlenirken soluğu da duyulur.
+
+**Buhar (dev formunda `R`, dokunmatikte üst tuş):** gövdenin her yerinden 3,5 saniye kaynar buhar fışkırır. Dev boyunun 1,5 katı + 8 m içindeki devler haşlanır (merkeze yakın olan daha çok), geri itilir ve sersemler. 12 bar harcar, 9 saniyede bir kullanılır.
+
+**Dönüşümcüler:** oyuncunun girebildiği dev formlarına giren düşmanlar. Oyuncu şehir dışındayken ilki yaklaşık 75 saniye sonra, sonrakiler 2–4 dakika arayla, 220–370 m uzakta doğar; aynı anda yalnızca biri dolaşır. Doğdukları yere yıldırım düşer, buharın içinden büyüyüp kükrerler. Hangi sur bölgesinde olduğuna göre farklı formlar çıkar: Demir Sur içinde Öfke, Fırtına ve Buz; Kalkan Suru içinde Kaya, Işın, Buz ve Öfke; sur ötesinde Zirve, Kaya, Işın ve Fırtına. Kendi formlarının güçlerini sana karşı kullanırlar: kükreyip savurur, atılır, çevresini sarsar, ağzından ışın atar, kaya fırlatır, kollarını taşlaştırır. Her gücün öncesinde duruşları değişir, kıvılcım saçarlar; ışından önce ağızlarında ışık toplanır. Ekranın üstünde can barları görünür. Ensede iki temiz kesik ya da dev gücüyle düşerler; düşen dönüşümcünün **iğnesi senin olur** ve dev barın dolar.
+
+## Devler, at ve görüntü
+
+- **Daha güçlü devler:** canları %40, vuruşları %30 arttı. Devlerin yaklaşık altıda biri türünün boyundan 1,35–1,8 kat iri doğar (canları da 1,6 kat); 20 m'yi aşan taşçılar ve zırhlılar görülebilir.
+- **Daha gerçekçi devler:** deri artık yumuşak, fiziksel gölgeyle çizilir: lekeli ve damarlı deri dokusu, ince kabartma, gökten yansıyan hafif parıltı, deri altından sızan sıcak kenar ışığı; konturlar inceldi. Her devin ten rengi biraz farklı; bazıları şişman ve göbekli, bazıları sıska, kol boyları değişir. Yürürken her adımda gövdeleri iner kalkar ve yükü taşıyan bacağa doğru yana yatar, başları avlarına döner.
+- **At:** yeniden yapıldı. Derin göğüslü, dolgun sağrılı, kavisli boyunlu bir doru at: yele, dökülen kuyruk, alında beyaz akıtma, iki bacakta beyaz çorap, yular, dizgin, eyer ve üzengiler. Adım, tırıs ve dörtnalda bacaklar gerçek sırasıyla basar; ön bacakta diz geriye, arka bacakta sıçrama eklemi öne kırılır. Dururken ara sıra otlanır, kuyruğunu sallar.
+- **Sur tepeleri:** yürüme yolunda üst üste binen taşların titreşmesi giderildi; dış kenarda kesintisiz mazgallı korkuluk, iç kenarda alçak bir korkuluk var.
+- **Görüntü:** masaüstünde güneş, yıldırım ve parlak ışıklar hafifçe parıldar; renkler biraz daha doygun, gölgeler serin, ışıklar sıcak; ekran kenarları hafifçe kararır. Dokunmatik cihazlarda bu işlem kapalıdır; masaüstünde adrese `?nopost` eklenerek kapatılabilir.
 
 ## Hikâye modu
 

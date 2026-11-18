@@ -1,6 +1,6 @@
 import { CFG } from './config';
 import type { TitanId } from './titans';
-import type { BossId, GiantKind } from '../enemies/giantTypes';
+import type { BossId, CommonKind, GiantKind } from '../enemies/giantTypes';
 
 /** Hikâye metinlerinde baş kahramanın adının yerini tutar; oynanan karakterin adıyla değiştirilir. */
 export const HERO = '{kahraman}';
@@ -46,7 +46,7 @@ export interface SpawnGroup {
   /** Hangi adım (sıra numarası) başlayınca doğar. */
   on: number;
   tag: string;
-  kinds?: GiantKind[];
+  kinds?: CommonKind[];
   boss?: BossId;
   /** Verilmezse oyuncunun çevresinde doğar. */
   at?: [number, number];
@@ -85,7 +85,7 @@ const OUT_G = OUT + W[2].district;
 /** Sur ötesindeki son hedef: simyacıların çağrı kulesi. */
 export const BEACON: [number, number] = [0, OUT_G + 260];
 
-const rep = (kind: GiantKind, n: number): GiantKind[] => Array.from({ length: n }, () => kind);
+const rep = (kind: CommonKind, n: number): CommonKind[] => Array.from({ length: n }, () => kind);
 
 export const CHAPTERS: Chapter[] = [
   {

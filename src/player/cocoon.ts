@@ -77,7 +77,7 @@ export class Cocoon {
     let n = 0;
     for (const gi of game.giants) {
       if (!gi.alive || Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) > C.stunRadius + gi.radius) continue;
-      gi.stun(gi.type.kind === 'boss' ? C.stun * 0.5 : C.stun);
+      gi.stun(gi.heavy ? C.stun * 0.5 : C.stun);
       n++;
     }
     p.shieldBreak();

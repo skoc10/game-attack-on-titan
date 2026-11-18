@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { lerp } from '../core/rng';
-import { toonGradient } from '../core/textures';
+import { skinTexture, toonGradient } from '../core/textures';
 
 export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob';
 export type BodyStyle = 'human' | 'giant' | 'titan';
@@ -35,7 +35,12 @@ export interface HumanoidOpts {
   outline?: number;
   /** Dev yüzü: 0 sırıtan, 1 ağzı açık, 2 küçük ağızlı iri gözlü, 3 gözleri kısık gülen. */
   face?: number;
+  /** Sarkık göbek (0 yok, 1 iri): bazı devler şişman, bazıları sıska doğar. */
+  belly?: number;
 }
+
+/** Ten malzemesi: insanlarda çizgi film gölgesi, devlerde yumuşak, gerçekçi deri. */
+export type SkinMat = THREE.MeshToonMaterial | THREE.MeshStandardMaterial;
 
 export interface Humanoid {
   root: THREE.Group;
@@ -63,8 +68,8 @@ export interface Humanoid {
   /** Saçın tamamı (kapşon giyilince gizlenir). */
   hair: THREE.Group;
   mats: THREE.Material[];
-  skinMat: THREE.MeshToonMaterial;
-  armMat: THREE.MeshToonMaterial;
+  skinMat: SkinMat;
+  armMat: SkinMat;
   height: number;
 }
 
@@ -95,6 +100,19 @@ function addRim(shader: { fragmentShader: string }) {
 }
 
 /**
+ * Deri için yumuşak kenar ışığı: ışığın derinin altından sızıyormuş gibi sıcak, geniş bir parıltı.
+ * Çizgi film ışığının keskin kenarı yerine gövdeye hacim ve canlılık katar.
+ */
+function addSkinRim(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <opaque_fragment>',
+    `float rimF = 1.0 - saturate( dot( normalize( vViewPosition ), normal ) );
+	outgoingLight += diffuseColor.rgb * vec3( 1.0, 0.78, 0.68 ) * smoothstep( 0.45, 1.0, rimF ) * 0.32;
+	#include <opaque_fragment>`,
+  );
+}
+
+/**
  * Çizgi film gölgelendirmeli, konturlu model kurucu.
  * Kontur, parçanın siyah ve içi dışına çevrilmiş hafif büyük bir kopyasıdır.
  */
@@ -102,7 +120,11 @@ export class Rig {
   readonly mats: THREE.Material[] = [];
   readonly outlineMat: THREE.MeshBasicMaterial;
 
-  constructor(readonly thickness: number) {
+  /** `soft`: deri ve kas malzemeleri gerçekçi (fiziksel) gölgelenir; dev gövdeleri için. */
+  constructor(
+    readonly thickness: number,
+    readonly soft = false,
+  ) {
     this.outlineMat = new THREE.MeshBasicMaterial({ color: 0x17120f, side: THREE.BackSide });
     this.mats.push(this.outlineMat);
   }
@@ -111,6 +133,17 @@ export class Rig {
     const m = new THREE.MeshToonMaterial({ color, gradientMap: toonGradient() });
     m.onBeforeCompile = addRim;
     m.customProgramCacheKey = () => 'rim';
+    this.mats.push(m);
+    return m;
+  }
+
+  /** Ten/kas malzemesi: yumuşak kipte pürüzlü deri, değilse çizgi film. */
+  surf(color: number, rough = 0.78): SkinMat {
+    if (!this.soft) return this.toon(color);
+    const tex = skinTexture();
+    const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0, map: tex, bumpMap: tex, bumpScale: 0.6, envMapIntensity: 0.55 });
+    m.onBeforeCompile = addSkinRim;
+    m.customProgramCacheKey = () => 'skinrim';
     this.mats.push(m);
     return m;
   }
@@ -170,21 +203,22 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
   const sb = Math.sqrt(B);
   const hs = o.head ?? 1;
   const armK = o.arm ?? 1;
-  const rig = new Rig(o.outline ?? 0.004);
-
-  const skinMat = rig.toon(pal.skin);
-  const armMat = rig.toon(pal.sleeve ?? pal.skin);
-  const topMat = rig.toon(pal.top);
-  const legMat = rig.toon(pal.legs);
-  const bootMat = pal.boots !== undefined ? rig.toon(pal.boots) : legMat;
-  const darkMat = rig.toon(0x1a1210);
-  const whiteMat = rig.toon(0xf4efe6);
-  const glowMat = pal.glow !== undefined ? rig.basic(pal.glow) : null;
   const big = style !== 'human';
+  // Dev gövdeleri yumuşak gölgeli deriyle ve ince konturla çizilir: daha gerçekçi, daha az çizgi film.
+  const rig = new Rig((o.outline ?? 0.004) * (big ? 0.5 : 1), big);
+
+  const skinMat = rig.surf(pal.skin);
+  const armMat = rig.surf(pal.sleeve ?? pal.skin);
+  const topMat = rig.surf(pal.top);
+  const legMat = rig.surf(pal.legs);
+  const bootMat = pal.boots !== undefined ? rig.surf(pal.boots) : legMat;
+  const darkMat = rig.surf(0x1a1210, 0.5);
+  const whiteMat = rig.surf(0xf4efe6, 0.35);
+  const glowMat = pal.glow !== undefined ? rig.basic(pal.glow) : null;
   // Kas ve yüz çizgileri için tenin koyu tonu; giysi dikişleri için kumaşın koyu tonu.
-  const inkMat = rig.toon(shade(pal.skin, 0.6));
-  const trimMat = rig.toon(shade(pal.top, 0.68));
-  const lipMat = rig.toon(blend(pal.skin, 0x9a3a34, 0.42));
+  const inkMat = rig.surf(shade(pal.skin, big ? 0.72 : 0.6));
+  const trimMat = rig.surf(shade(pal.top, 0.68));
+  const lipMat = rig.surf(blend(pal.skin, 0x9a3a34, 0.42), 0.45);
 
   const root = new THREE.Group();
   root.scale.setScalar(height);
@@ -197,6 +231,11 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
   rig.part(tilt, GEO.taper, topMat, 0.128 * B * S, 0.25, 0.086 * B * S, 0, 0.655, 0);
   rig.part(tilt, GEO.sphere, topMat, 0.15 * B * S, 0.045, 0.082 * B * S, 0, 0.765, 0);
   if (B > 1.15) rig.part(tilt, GEO.sphere, topMat, 0.13 * B, 0.12, 0.105 * B, 0, 0.6, 0.03);
+  if (o.belly && o.belly > 0) {
+    // Sarkık göbek: karnın önünde aşağı doğru sarkan yumuşak bir kütle.
+    const k = o.belly;
+    rig.part(tilt, GEO.sphere, topMat, 0.1 * B * (1 + k * 0.25), 0.085 + k * 0.03, 0.06 * B + k * 0.05, 0, 0.575 - k * 0.012, 0.035 + k * 0.03, false);
+  }
   rig.part(tilt, GEO.capsule, skinMat, 0.034, 0.02, 0.034, 0, 0.815, 0, false);
   if (big) {
     // Kas yapısı: göğüs, köprücük kemikleri, omuz üstü ve kürek kemikleri.
@@ -460,7 +499,8 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
   const lR = mkLeg(1);
 
   if (o.armor) {
-    const plate = rig.toon(o.plateColor ?? 0xa3a8b0);
+    // Zırh: kemik gibi sert, hafif parlak plakalar (yumuşak kipte deriden daha pürüzsüz).
+    const plate = big ? rig.surf(o.plateColor ?? 0x8f8a80, 0.42) : rig.toon(o.plateColor ?? 0xa3a8b0);
     rig.part(tilt, GEO.box, plate, 0.13, 0.1, 0.03, 0, 0.803, -0.05 - 0.012 * B);
     rig.part(tilt, GEO.sphere, plate, 0.11 * B, 0.1, 0.03, 0, 0.68, 0.078 * B);
     for (const a of [aL, aR]) {

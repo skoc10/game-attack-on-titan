@@ -49,7 +49,7 @@ export interface TouchCtx {
   abilityCd: number;
   cocoonCd: number;
   sargi: number;
-  titan?: { meter: number; punch: Power; q: Power; e: Power; slam: Power; bite: Power };
+  titan?: { meter: number; punch: Power; q: Power; e: Power; slam: Power; bite: Power; steam?: Power };
   /** Sur topunun başında: yeniden dolma süresi ve hedefin vurulabilir olup olmadığı. */
   cannon?: { cd: number; ready: boolean };
 }
@@ -97,7 +97,9 @@ export function touchLayout(c: TouchCtx): Partial<Record<Slot, TouchBtn>> {
       sub: p.cd > 0 ? secs(p.cd) : `−${String(p.cost).replace('.', ',')}`,
       off: p.cd > 0 || t.meter < p.cost,
     });
-    return { atk: pw(t.punch), r2: pw(t.q), r3: pw(t.e), o2: pw(t.bite), jump: pw(t.slam), o1: { label: 'ÇIK', sub: 'formdan', off: false } };
+    const out: Partial<Record<Slot, TouchBtn>> = { atk: pw(t.punch), r2: pw(t.q), r3: pw(t.e), o2: pw(t.bite), jump: pw(t.slam), o1: { label: 'ÇIK', sub: 'formdan', off: false } };
+    if (t.steam) out.r1 = pw(t.steam);
+    return out;
   }
   const out: Partial<Record<Slot, TouchBtn>> = {
     atk: c.hooked

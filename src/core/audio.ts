@@ -352,16 +352,75 @@ export class GameAudio {
       this.tone('sawtooth', f / 2, f / 2, 0.3, 0.08, i * 0.11);
     });
   }
-  /** Dönüşüm: yıldırım çatırtısı, ardından uzun gök gürültüsü. */
-  transform() {
-    this.noise(0.12, 1, 9000, 1500, 0.7, 0, this.bus, 'highpass');
-    this.noise(1.6, 1, 5000, 120, 0.5, 0.05);
-    this.tone('sawtooth', 58, 22, 1.8, 0.9);
-    this.tone('square', 2000, 80, 0.5, 0.3);
-    this.noise(2.6, 0.6, 180, 40, 0.6, 0.3, this.bus, 'lowpass');
-    this.tone('sine', 44, 30, 2.4, 0.8, 0.2);
+  /** Kabaran gürültü: yavaşça yükselip söner (buhar fışkırması, uzayan tıslama). */
+  private swell(dur: number, vol: number, f0: number, f1: number, q = 1, delay = 0, peak = 0.6, type: BiquadFilterType = 'bandpass') {
+    if (!this.ctx || !this.bus || !this.noiseBuf) return;
+    const t = this.ctx.currentTime + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    const f = this.ctx.createBiquadFilter();
+    f.type = type;
+    f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur * peak);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(this.bus);
+    src.start(t, Math.random() * 0.4, dur + 0.05);
   }
-  /** Oyuncunun dev formundaki kükremesi. */
+
+  /**
+   * Dönüşüm: yıldırım çatırtısı ve gök gürültüsü; ardından kabaran buhar, kalp atışı gibi gümbürtüler,
+   * çatırdayan et ve kemik, en sonda devin ilk kükreyişi. Toplam ~3 sn; kükreme `roarAt` saniyede gelir.
+   */
+  transform(roarAt = 1, k = 1) {
+    // Çakma
+    this.noise(0.12, 1 * k, 9000, 1500, 0.7, 0, this.bus, 'highpass');
+    this.tone('square', 2000, 80, 0.5, 0.3 * k);
+    this.noise(0.35, 0.8 * k, 3200, 400, 0.6, 0.02);
+    // Gök gürültüsü
+    this.noise(1.6, 1 * k, 5000, 120, 0.5, 0.05);
+    this.tone('sawtooth', 58, 22, 1.8, 0.9 * k);
+    this.noise(2.6, 0.6 * k, 180, 40, 0.6, 0.3, this.bus, 'lowpass');
+    this.tone('sine', 44, 30, 2.4, 0.8 * k, 0.2);
+    // Dev gövdesi buharın içinde kabarır.
+    this.swell(roarAt + 0.6, 0.55 * k, 700, 4200, 0.7, 0.08, 0.7);
+    this.swell(roarAt + 1.2, 0.35 * k, 260, 90, 0.8, 0.1, 0.55, 'lowpass');
+    for (const d of [0.22, 0.5, 0.74]) {
+      this.tone('sine', 78, 34, 0.32, 0.85 * k, d);
+      this.noise(0.18, 0.4 * k, 260, 60, 0.9, d, this.bus, 'lowpass');
+    }
+    // Çatırdayan et ve kemik
+    for (let i = 0; i < 14; i++) {
+      const d = 0.12 + Math.random() * (roarAt - 0.2);
+      this.noise(0.04 + Math.random() * 0.05, (0.35 + Math.random() * 0.3) * k, 1800 + Math.random() * 1600, 300, 1.4, d);
+    }
+    // İlk kükreyiş: iki katmanlı ses ve yere inen gümbürtü
+    this.vocal(70, { dur: 2.1, f: [[0, 0.9], [0.12, 1.45], [0.55, 1.25], [1, 0.55]], vol: k, formants: [480, 1050], tremHz: 27, breath: 0.6 }, 0, roarAt);
+    this.vocal(142, { dur: 1.8, f: [[0, 1], [0.15, 1.35], [1, 0.7]], vol: 0.35 * k, formants: [700, 1600], tremHz: 40, breath: 0.8 }, 0, roarAt + 0.05);
+    this.tone('sawtooth', 55, 28, 2, 0.7 * k, roarAt);
+    this.noise(1.9, 0.55 * k, 900, 200, 0.6, roarAt);
+    this.tone('sine', 50, 26, 1.2, 0.9 * k, roarAt);
+    this.swell(1.4, 0.4 * k, 2600, 900, 0.6, roarAt + 0.3, 0.3);
+  }
+
+  /** Buhar gücü: güçlü bir fışkırma, ardından süre boyunca kaynayan tıslama ve kaynama gürültüsü. */
+  steam(dur = 3) {
+    this.noise(0.5, 0.7, 6000, 1800, 0.6, 0, this.bus, 'highpass');
+    this.swell(dur + 0.4, 0.5, 3800, 1600, 0.5, 0.05, 0.2);
+    this.swell(dur + 0.2, 0.35, 900, 300, 0.7, 0.1, 0.3);
+    this.swell(dur, 0.25, 220, 80, 0.8, 0.1, 0.4, 'lowpass');
+    for (let i = 0; i < 10; i++) this.noise(0.06, 0.2 + Math.random() * 0.2, 1200 + Math.random() * 1800, 400, 1.6, 0.2 + Math.random() * dur);
+  }
+
+  /** Dev formunun ağzından çıkan buharlı soluk: hafif bir tıslama ve hırıltı. */
+  exhale(size = 1) {
+    this.swell(1.1, 0.12 * size, 2400, 900, 0.7, 0, 0.25);
+    this.swell(0.9, 0.08 * size, 300, 120, 0.8, 0.05, 0.3, 'lowpass');
+  }
+
   roar() {
     this.vocal(92, { dur: 1.7, f: [[0, 1.2], [0.15, 1.5], [1, 0.6]], vol: 0.9, formants: [520, 1150], tremHz: 31, breath: 0.5 }, 0);
     this.tone('sawtooth', 68, 38, 1.6, 0.6);

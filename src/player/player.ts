@@ -304,10 +304,15 @@ export class Player {
       this.moveHold = 0;
     }
     if (this.mode === 'titan') {
+      if (this.titan.emerging) {
+        this.moveTarget = null; // dönüşüm sahnesinde gövde kükrer; hareket ve güç yok
+        return;
+      }
       if (inp.mousePressed(0)) this.titan.punch(this);
       if (inp.pressed('KeyQ')) this.titan.cast('q', this);
       if (inp.pressed('KeyE')) this.titan.cast('e', this);
       if (inp.pressed('KeyF')) this.titan.bite(this);
+      if (inp.pressed('KeyR')) this.titan.steam(this);
       if (inp.pressed('Space') && this.onGround) {
         if (this.titan.def.jump > 0) {
           this.vel.y = this.titan.def.jump;
@@ -955,6 +960,12 @@ export class Player {
   private stepTitan(dt: number, sprint: boolean) {
     const g = this.game;
     const T = this.titan.def;
+    if (this.titan.emerging) {
+      this.vel.set(0, 0, 0);
+      this.titanResting = true;
+      this.titan.update(dt, this);
+      return;
+    }
     const sp = sprint ? T.sprint : T.speed;
     const rate = (this.onGround ? 46 : 10) * dt;
     const ddx = wish.x * sp - this.vel.x;

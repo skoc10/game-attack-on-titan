@@ -5,6 +5,8 @@ import { GameAudio } from './core/audio';
 import { Particles } from './core/particles';
 import { SlashFx } from './core/slashfx';
 import { Shockwaves } from './core/shockwave';
+import { Lightning } from './core/lightning';
+import { PostFx } from './core/post';
 import { Spears } from './player/spears';
 import { Cannons } from './world/cannons';
 import { Boulders } from './enemies/boulders';
@@ -19,9 +21,9 @@ import { World } from './world/world';
 import { crateColor, Crates, type Crate } from './world/crates';
 import { Spawner } from './world/spawner';
 import { Stations } from './world/stations';
-import { TITAN_IDS, TITANS } from './data/titans';
+import { TITAN_IDS, TITANS, type TitanId } from './data/titans';
 import { Grass } from './world/grass';
-import { SUN_DIR } from './world/terrain';
+import { SUN_DIR, buildEnvironment } from './world/terrain';
 import { spawnable, zoneName } from './world/layout';
 import { Player } from './player/player';
 import { Horse } from './player/horse';
@@ -52,6 +54,8 @@ export class Game {
   readonly meter = new TitanMeter();
   readonly world: World;
   readonly particles: Particles;
+  /** Işık saçmayan duman parçacıkları (dev formunun ağzından çıkan duman). */
+  readonly smoke: Particles;
   readonly slashes: SlashFx;
   readonly rings: Shockwaves;
   readonly spears: Spears;
@@ -114,8 +118,12 @@ export class Game {
   private slowT = 0;
   private shake = 0;
   private loadoutDirty = false;
-  private readonly bolt: THREE.Mesh;
-  private boltT = 0;
+  private readonly bolt: Lightning;
+  /** Masaüstünde parıltı ve renk düzenlemesi (dokunmatik cihazlarda yok: doğrudan çizilir). */
+  private readonly post: PostFx | null;
+  /** Dönüşüm çakmasında gök ışığı bir an parlar. */
+  private readonly hemi: THREE.HemisphereLight;
+  private skyFlashT = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.debug = new URLSearchParams(location.search).has('debug');
@@ -130,7 +138,10 @@ export class Game {
     const fogColor = new THREE.Color(0xbfd0de);
     this.scene.background = fogColor;
     this.scene.fog = new THREE.Fog(fogColor, 160, 2200);
-    this.scene.add(new THREE.HemisphereLight(0xd4e4f4, 0x6a6048, 1.15));
+    this.hemi = new THREE.HemisphereLight(0xd4e4f4, 0x6a6048, 1.15);
+    this.scene.add(this.hemi);
+    this.scene.environment = buildEnvironment(this.renderer);
+    this.post = lowPower || new URLSearchParams(location.search).has('nopost') ? null : new PostFx(this.renderer, this.scene, this.camera);
     // Güneş: gölge haritası oyuncuyu izleyen ~220 m'lik bir alanı kapsar.
     this.sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
     this.sun.castShadow = true;
@@ -149,6 +160,7 @@ export class Game {
     this.save = loadSave();
     this.world = new World(this.scene, fogColor);
     this.particles = new Particles(this.scene);
+    this.smoke = new Particles(this.scene, 900, true);
     this.slashes = new SlashFx(this.scene, 16);
     this.rings = new Shockwaves(this.scene);
     this.spears = new Spears(this.scene);
@@ -176,12 +188,7 @@ export class Game {
     this.player.applyLoadout();
     if (!this.save.bossDefeated) this.spawner.spawnBoss(this);
 
-    this.bolt = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.6, 500, 6),
-      new THREE.MeshBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.9, fog: false }),
-    );
-    this.bolt.visible = false;
-    this.scene.add(this.bolt);
+    this.bolt = new Lightning(this.scene);
 
     // Sağ tıkla verilen yürüme hedefini gösteren halka.
     const ring = new THREE.RingGeometry(0.55, 0.85, 24);
@@ -232,6 +239,7 @@ export class Game {
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.renderer.setSize(w, h, false);
+    this.post?.setSize(w, h, this.renderer.getPixelRatio());
     this.camera.aspect = w / Math.max(1, h);
     this.camera.updateProjectionMatrix();
   }
@@ -336,7 +344,7 @@ export class Game {
     let best: Giant | null = null;
     let bd = 340;
     for (const g of this.giants) {
-      if (g.type.kind !== 'boss' || !g.alive) continue;
+      if (!g.heavy || !g.alive) continue;
       const d = Math.hypot(g.pos.x - p.x, g.pos.z - p.z);
       if (d < bd) {
         bd = d;
@@ -445,6 +453,14 @@ export class Game {
     const coins = Math.round(coinsFor(g.type.xp) * mult);
     this.save.coins += coins;
     this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP · +${coins} puan${mult > 1 ? ` (seri ×${mult.toFixed(2).replace(/0$/, '')})` : ''}`);
+    if (g.form) {
+      // Dönüşümcü düştü: ensesinden kendi formunun iğnesi çıkar.
+      const id = g.form.id;
+      if ((TITAN_IDS as string[]).includes(id)) {
+        this.meter.addNeedle(id as TitanId);
+        this.hud.banner(`${g.form.name.toLocaleUpperCase('tr')} DÜŞTÜ`, `${g.form.needle} senin — T ile bu deve dönüşebilirsin`);
+      } else this.hud.banner(`${g.form.name.toLocaleUpperCase('tr')} DÜŞTÜ`, 'Dev barın doldu');
+    }
     if (g.type.kind === 'boss') {
       this.meter.value = this.meter.max;
       if (g.tag === 'gate') this.save.bossDefeated = true;
@@ -638,17 +654,33 @@ export class Game {
     const def = this.player.titan.def;
     this.hud.banner(def.name.toLocaleUpperCase('tr'), def.tagline);
     this.shakeCam(1.2);
-    this.bolt.position.set(p.x, p.y + 250, p.z);
-    this.bolt.visible = true;
-    this.boltT = 0.35;
-    target.set(p.x, p.y + 8, p.z);
-    this.particles.burst(target, 160, 40, 1.6, def.color, 8, 6);
-    this.rings.spawn(p.x, p.y, p.z, 34, def.color, 0.7);
+    this.bolt.strike(p.x, p.y, p.z, 260 + def.height * 4);
+    this.skyFlashT = 0.5;
+    // Çakma anında yerde patlayan ışık ve toz; dev bundan sonra buharın içinden yükselir.
+    target.set(p.x, p.y + 4, p.z);
+    this.particles.burst(target, 90, 40, 1.2, def.color, 8, 6);
+    this.particles.burst(target, 30, 30, 0.4, 0xffffff, 3, 0, 1);
+    this.particles.burst(target, 40, 24, 1.3, 0x7d7564, def.radius * 2, 2, 2.4, 1.4);
+    this.rings.spawn(p.x, p.y, p.z, 34 + def.height, def.color, 0.7);
     this.rings.spawn(p.x, p.y, p.z, 20, 0xffffff, 0.45);
     for (const g of this.giants) {
       if (g.alive && Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 32) g.stun(2);
     }
     this.storyEvent({ type: 'transform', form: def.id });
+  }
+
+  /** Uzakta bir dönüşüm: gökten yıldırım düşer, gök gürler; ses uzaklıkla kısılır. */
+  strikeAt(x: number, y: number, z: number, height: number, color: number) {
+    this.bolt.strike(x, y, z, 260 + height * 4);
+    const p = this.player.pos;
+    const d = Math.hypot(x - p.x, z - p.z);
+    const k = Math.max(0.25, 1 - d / 700);
+    this.skyFlashT = 0.35 * k + 0.1;
+    this.audio.transform(1, k);
+    this.shakeCam(0.9 * k);
+    target.set(x, y + 4, z);
+    this.particles.burst(target, 80, 40, 1.2, color, 8, 6);
+    this.rings.spawn(x, y, z, 30 + height, color, 0.7);
   }
 
   /** Çığırtkan avını gördü: yakındaki devler uyanır, çevrede yenileri belirir. */
@@ -705,7 +737,8 @@ export class Game {
       if (!portraitHold) this.update(dt);
     } else this.idleCamera(dt);
     this.updateEnvironment(dt);
-    this.renderer.render(this.scene, this.camera);
+    if (this.post) this.post.render();
+    else this.renderer.render(this.scene, this.camera);
     requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -839,6 +872,7 @@ export class Game {
     if (mt) this.marker.position.set(mt.x, this.world.heightAt(mt.x, mt.z) + 0.15, mt.z);
     this.player.animate(sdt);
     this.particles.update(sdt);
+    this.smoke.update(sdt);
     this.slashes.update(sdt);
     this.rings.update(sdt);
     this.spears.update(sdt, this);
@@ -858,10 +892,10 @@ export class Game {
     this.waypoint.visible = wpOn;
     if (wp && wpOn) this.waypoint.position.set(wp[0], this.world.heightAt(wp[0], wp[1]) + 90, wp[1]);
 
-    if (this.boltT > 0) {
-      this.boltT -= dt;
-      (this.bolt.material as THREE.MeshBasicMaterial).opacity = Math.max(0, this.boltT / 0.35);
-      if (this.boltT <= 0) this.bolt.visible = false;
+    this.bolt.update(dt);
+    if (this.skyFlashT > 0) {
+      this.skyFlashT = Math.max(0, this.skyFlashT - dt);
+      this.hemi.intensity = 1.15 + this.skyFlashT * 7 * (0.6 + 0.4 * Math.abs(Math.sin(this.skyFlashT * 60)));
     }
 
     const z = zoneName(this.player.pos.x, this.player.pos.z);

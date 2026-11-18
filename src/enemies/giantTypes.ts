@@ -1,6 +1,9 @@
-import type { MeterKind } from '../data/config';
+import { CFG, type MeterKind } from '../data/config';
+import type { TitanDef } from '../data/titans';
 
-export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'crawler' | 'thrower' | 'screamer' | 'boss';
+export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'crawler' | 'thrower' | 'screamer' | 'boss' | 'shifter';
+/** Kendiliğinden doğan sıradan türler (dönüşümcüler dev formlarından kurulur). */
+export type CommonKind = Exclude<GiantKind, 'shifter'>;
 
 export interface GiantType {
   kind: GiantKind;
@@ -33,7 +36,7 @@ export interface GiantType {
   screamer?: boolean;
 }
 
-export const GIANT_TYPES: Record<GiantKind, GiantType> = {
+export const GIANT_TYPES: Record<CommonKind, GiantType> = {
   normal: {
     kind: 'normal',
     name: 'Dev',
@@ -247,3 +250,33 @@ export const BOSSES: Record<BossId, GiantType> = {
     skins: [0x5a4a52],
   },
 };
+
+/**
+ * Düşman dönüşümcü: oyuncunun girebildiği bir dev formuna dönüşmüş bir düşman.
+ * Formun boyu ve rengiyle doğar, o formun Q/E güçlerini oyuncuya karşı kullanır.
+ */
+export function shifterType(form: TitanDef): GiantType {
+  const armored = !!form.opts.armor;
+  return {
+    kind: 'shifter',
+    name: form.name,
+    minH: form.height,
+    maxH: form.height,
+    speed: form.speed * 0.42,
+    turn: 2.4,
+    hpBase: armored ? CFG.shifter.armoredHp : CFG.shifter.hp,
+    hpPerM: 0,
+    legCuts: 3,
+    napeCuts: 2,
+    aggro: 380,
+    dmg: 26,
+    armored,
+    meter: 'boss',
+    xp: 350,
+    bulk: [form.opts.bulk ?? 1, form.opts.bulk ?? 1],
+    head: [form.opts.head ?? 1, form.opts.head ?? 1],
+    arm: form.opts.arm ?? 1,
+    skins: [form.palette.skin],
+    downTime: 6,
+  };
+}

@@ -75,7 +75,7 @@ describe('sözleşmeler', () => {
         ids.add(c.id);
         expect(c.goal).toBeGreaterThan(0);
         expect(c.reward.coins).toBeGreaterThan(0);
-        if (c.need.kind === 'kill' && c.need.giant) expect(GIANT_TYPES[c.need.giant]).toBeDefined();
+        if (c.need.kind === 'kill' && c.need.giant && c.need.giant !== 'shifter') expect(GIANT_TYPES[c.need.giant]).toBeDefined();
         if (c.need.kind === 'streak') expect(c.goal).toBe(1);
       }
     }

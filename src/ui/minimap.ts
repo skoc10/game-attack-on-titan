@@ -141,9 +141,9 @@ export class Minimap {
     for (const gi of g.giants) {
       if (!gi.alive) continue;
       const [x, y] = map(gi.pos.x, gi.pos.z);
-      c.fillStyle = gi.marked ? '#ff3b2f' : gi.isElite ? '#e0733a' : '#c9564c';
+      c.fillStyle = gi.marked ? '#ff3b2f' : gi.form ? `#${gi.form.color.toString(16).padStart(6, '0')}` : gi.isElite ? '#e0733a' : '#c9564c';
       c.beginPath();
-      c.arc(x, y, gi.type.kind === 'boss' ? 6 : 2 + gi.h * 0.14, 0, Math.PI * 2);
+      c.arc(x, y, gi.heavy ? 6 : 2 + gi.h * 0.14, 0, Math.PI * 2);
       c.fill();
     }
 
