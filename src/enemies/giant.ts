@@ -11,7 +11,13 @@ import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid
 import type { GiantType } from './giantTypes';
 import type { Ability, TitanDef } from '../data/titans';
 
-export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'dead';
+export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'guard' | 'dead';
+/** Dev formundaki oyuncunun vuruşunun nitelikleri: yakın dövüş mü (gard yalnızca buna işler), gardı kırar mı, ne kadar iter. */
+export interface TitanHitOpts {
+  melee?: boolean;
+  guardBreak?: boolean;
+  push?: number;
+}
 export type NapeResult = 'kill' | 'hit' | 'blocked' | 'dull' | 'none';
 export type LegResult = 'down' | 'hit' | 'dull' | 'none';
 
@@ -43,7 +49,11 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'power' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'power' = 'swipe';
+  /** Dev formundaki oyuncunun yumruğuna gard alma olasılığı, gardın süresi ve yeniden gard için bekleme. */
+  private guardChance = 0;
+  private guardDur = 0;
+  private guardCd = 0;
   /** Türünün olağan boyundan iri doğdu. */
   readonly big: boolean = false;
   /** Düşman dönüşümcünün formu (sıradan devlerde null). */
@@ -153,8 +163,30 @@ export class Giant {
     this.eatTime = CFG.grab.eatBase + CFG.grab.eatPerM * this.h;
     // Büyük devler daha sık yakalar; bölüm sonu devi yakalamaz.
     this.grabChance = type.kind === 'boss' || form || type.crawl || this.h < CFG.grab.minHeight ? 0 : Math.min(0.85, 0.3 + (this.h - CFG.grab.minHeight) * 0.07);
+    // Gard: sürünenler alamaz; ağır devler ve zırhlılar sık, çevikler seyrek alır.
+    const GG = CFG.giantGuard;
+    const k = type.kind;
+    this.guardChance = type.crawl ? 0 : this.heavy ? GG.heavy : type.armored ? GG.armored : k === 'runner' || k === 'leaper' || k === 'screamer' ? GG.fast : GG.normal;
+    if (this.big && this.guardChance > 0) this.guardChance += 0.1;
     this.body.root.traverse((o) => (o.userData.giant = this));
     game.scene.add(this.body.root);
+  }
+
+  /** Dev formundaki oyuncu önünde yumruk savurdu: dev belli bir olasılıkla gardını alır. */
+  threat(game: Game) {
+    if (!this.alive || this.guardCd > 0 || this.guardChance <= 0 || game.player.mode !== 'titan') return;
+    if (this.state !== 'chase' && this.state !== 'recover') return;
+    this.guardCd = 0.6; // aynı seride her yumrukta yeniden zar atılmasın
+    if (Math.random() >= this.guardChance) return;
+    const G = CFG.giantGuard;
+    this.guardDur = G.dur[0] + Math.random() * (G.dur[1] - G.dur[0]);
+    this.guardCd = this.guardDur + G.cd[0] + Math.random() * (G.cd[1] - G.cd[0]);
+    this.setState('guard');
+  }
+
+  /** Gardda mı ve darbe önden mi geliyor. */
+  private guardsFrom(from: THREE.Vector3) {
+    return this.state === 'guard' && Math.abs(angDiff(Math.atan2(from.x - this.pos.x, from.z - this.pos.z), this.yaw)) < 1.6;
   }
 
   get alive() {
@@ -267,10 +299,34 @@ export class Giant {
     return 'hit';
   }
 
-  /** Dev formundaki oyuncunun yumruğu/ezmesi. */
-  titanHit(dmg: number, game: Game, armorBreak: boolean, from: THREE.Vector3, quiet = false) {
-    if (!this.alive) return;
+  /**
+   * Dev formundaki oyuncunun yumruğu/ezmesi. Gardlı dev önden gelen yakın dövüş darbesinin çoğunu engeller ('blocked');
+   * tekme ya da seri bitirici gardı kırar ve devi sersemletir.
+   */
+  titanHit(dmg: number, game: Game, armorBreak: boolean, from: THREE.Vector3, quiet = false, hit: TitanHitOpts = {}): 'hit' | 'blocked' | 'none' {
+    if (!this.alive) return 'none';
     let d = dmg;
+    let broke = false;
+    if (hit.melee && this.guardsFrom(from)) {
+      if (hit.guardBreak) {
+        broke = true;
+        this.guardCd = 3;
+        game.audio.block();
+        game.hud.callout('GARD KIRILDI');
+      } else {
+        // Taş yumruk gardı kısmen deler.
+        d *= 1 - CFG.giantGuard.block * (armorBreak ? 0.6 : 1);
+        this.flash(0.08);
+        this.hp -= d;
+        game.audio.block();
+        this.chestWorld(v, from);
+        game.particles.burst(v, 14, 8 + this.h * 0.4, 0.45, 0xfff0d0, this.h * 0.05);
+        game.smoke.burst(v, 4, 4, 1.1, 0x9a948a, this.h * 0.05, 2, 1.5 + this.h * 0.12, 1.2);
+        if (!this.heavy) this.shove(from, 1);
+        if (this.hp <= 0) this.die(game, 'titan', from);
+        return 'blocked';
+      }
+    }
     if (this.type.armored && !armorBreak && this.state !== 'downed') {
       d *= 0.2;
       if (!quiet) game.audio.clang();
@@ -279,18 +335,34 @@ export class Giant {
     this.hp -= d;
     if (this.hp <= 0) {
       this.die(game, 'titan', from);
-      return;
+      return 'hit';
     }
     if (this.heavy) {
       if (armorBreak) this.hitLeg(true, true);
+      if (hit.push) this.shove(from, hit.push * 0.35);
+      if (broke && this.state !== 'downed') this.stun(1.2);
     } else {
-      const dx = this.pos.x - from.x;
-      const dz = this.pos.z - from.z;
-      const l = Math.hypot(dx, dz) || 1;
-      this.pos.x += (dx / l) * 3;
-      this.pos.z += (dz / l) * 3;
-      if (this.state !== 'downed') this.stun(1);
+      this.shove(from, hit.push ?? 3);
+      if (this.state !== 'downed') this.stun(broke ? 2 : 1);
     }
+    return 'hit';
+  }
+
+  /** Vuranın tersine doğru iter. */
+  private shove(from: THREE.Vector3, m: number) {
+    const dx = this.pos.x - from.x;
+    const dz = this.pos.z - from.z;
+    const l = Math.hypot(dx, dz) || 1;
+    this.pos.x += (dx / l) * m;
+    this.pos.z += (dz / l) * m;
+  }
+
+  /** Göğsün, vurana bakan yüzeyindeki nokta (engel kıvılcımları için). */
+  private chestWorld(out: THREE.Vector3, from: THREE.Vector3) {
+    const dx = from.x - this.pos.x;
+    const dz = from.z - this.pos.z;
+    const l = Math.hypot(dx, dz) || 1;
+    return out.set(this.pos.x + (dx / l) * this.radius * 1.3, this.pos.y + this.h * 0.72, this.pos.z + (dz / l) * this.radius * 1.3);
   }
 
   private die(game: Game, source: 'blade' | 'titan', from?: THREE.Vector3) {
@@ -362,6 +434,19 @@ export class Giant {
       }
       return false;
     }
+    if (this.attackKind === 'kick') {
+      // Tekme: önündeki ava bacağıyla uzanır; yerdekini fırlatır, gardı kısmen deler.
+      const K = CFG.giantKick;
+      const front = dist > 0.01 ? (dx * Math.sin(this.yaw) + dz * Math.cos(this.yaw)) / dist : 1;
+      if (dist < 140) game.audio.kick();
+      v.set(this.pos.x + Math.sin(this.yaw) * this.h * 0.35, this.pos.y + 0.5, this.pos.z + Math.cos(this.yaw) * this.h * 0.35);
+      game.smoke.burst(v, 4, 5, 1, 0xa39a86, this.h * 0.08, 1.5, 1.5 + this.h * 0.12, 1.3);
+      if (front > 0.3 && dist < this.reach(titan) * 1.3 && (titan || dy < this.h * 0.45)) {
+        p.takeHit(dmg * K.dmg, this.pos, K.knock, K.pierce);
+        game.shakeCam(Math.max(0.3, 0.9 - dist / 80));
+      }
+      return false;
+    }
     if (this.attackKind === 'stomp') {
       game.audio.stomp();
       game.shakeCam(Math.max(0, 1.2 - dist / 120));
@@ -393,6 +478,7 @@ export class Giant {
     }
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.leapCd > 0) this.leapCd -= dt;
+    if (this.guardCd > 0) this.guardCd -= dt;
     if (this.form) {
       if (this.powerCd > 0) this.powerCd -= dt;
       if (this.buffT > 0) {
@@ -487,8 +573,8 @@ export class Giant {
           this.setState('windup');
           this.say('grunt');
         } else if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
-          if (this.heavy) this.attackKind = titan || dy < 8 ? 'stomp' : 'swipe';
-          else this.attackKind = pickMelee({ crawl: !!this.type.crawl, titan, low: dy < this.h * 0.5, grabChance: this.grabChance, grabRoll: Math.random(), biteRoll: Math.random() });
+          if (this.heavy) this.attackKind = titan || dy < 8 ? (Math.random() < 0.35 ? 'kick' : 'stomp') : 'swipe';
+          else this.attackKind = pickMelee({ crawl: !!this.type.crawl, titan, low: dy < this.h * 0.5, grabChance: this.grabChance, grabRoll: Math.random(), biteRoll: Math.random(), kickRoll: Math.random() });
           this.setState('windup');
           this.say(this.attackKind === 'bite' ? 'growl' : 'grunt');
         } else if (this.type.kind === 'leaper' && this.leapCd <= 0 && !p.onGround && p.mode === 'foot' && dist > 12 && dist < 60) {
@@ -505,11 +591,21 @@ export class Giant {
       }
       case 'windup': {
         moveYaw = Math.atan2(dx, dz);
-        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : 0.75;
+        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : 0.75;
         if (this.attackKind === 'power') this.telegraph(game);
         if (this.stateT > wind) {
           this.attackCd = this.heavy ? 2.4 : 1.5;
           if (!this.strike(game)) this.setState('recover');
+        }
+        break;
+      }
+      case 'guard': {
+        // Gard: kollar yüzün önünde, avına dönük; yavaşça yaklaşır. Gardı indirince hemen karşılık verir.
+        moveYaw = Math.atan2(dx, dz);
+        if (dist > this.reach(titan) * 0.9) move = speed * 0.35;
+        if (this.stateT > this.guardDur || !titan) {
+          this.attackCd = 0;
+          this.setState('chase');
         }
         break;
       }
@@ -649,7 +745,7 @@ export class Giant {
     if (this.state !== 'leap') wallPush(this.pos, this.radius, 0);
     b.root.rotation.y = this.yaw;
     // Baş avına döner: kovalarken ve saldırırken ona bakar.
-    const hunting = this.state === 'chase' || this.state === 'windup' || this.state === 'recover';
+    const hunting = this.state === 'chase' || this.state === 'windup' || this.state === 'recover' || this.state === 'guard';
     this.lookYaw = hunting && dist < 300 ? Math.max(-0.7, Math.min(0.7, angDiff(Math.atan2(dx, dz), this.yaw))) : Math.sin(this.phase * 0.21 + this.stateT * 0.4) * 0.35;
     this.animate(dt, dy, dist);
   }
@@ -941,7 +1037,11 @@ export class Giant {
     let tiltX = 0;
     let headX = 0;
     let elbowR: number | undefined;
+    let elbowL: number | undefined;
+    let kneeR: number | undefined;
     let armInR = 0;
+    let twistL = 0;
+    let twistR = 0;
     let jawOpen = 0;
     let tiltRate = 6;
     let jawRate = 0;
@@ -977,6 +1077,14 @@ export class Giant {
             tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
             headX = 0.3;
           }
+        } else if (this.attackKind === 'kick') {
+          // Tekme hazırlığı: diz göğse çekilir, gövde geriye yaslanır, kollar dengeyi tutar.
+          lR = -1.15;
+          kneeR = 1.9;
+          lL = 0.1;
+          tiltX = -0.12;
+          aL = -0.6;
+          aR = 0.45;
         } else if (this.attackKind === 'grab') {
           // Uzanıp kapma: kol öne ve aşağı.
           aR = -1.1;
@@ -998,9 +1106,29 @@ export class Giant {
         aL = 0.2;
         break;
       }
+      case 'guard':
+        // Gard: yumruklar çenenin önünde, dirsekler kapalı, çene göğüste.
+        aL = aR = -1.15;
+        elbowL = elbowR = -2.15;
+        twistL = 0.55;
+        twistR = -0.55;
+        headX = 0.22;
+        tiltX = 0.14;
+        lL *= 0.6;
+        lR *= 0.6;
+        break;
       case 'recover':
         if (this.attackKind === 'swipe') aR = -0.5;
         tiltX = 0.2;
+        if (this.attackKind === 'kick' && this.stateT < 0.35) {
+          // Bacak ileri açılmış, gövde geride.
+          lR = -1.55;
+          kneeR = 0.04;
+          lL = 0.12;
+          tiltX = -0.22;
+          aL = -0.6;
+          aR = 0.45;
+        }
         if (this.attackKind === 'bite' && this.stateT < 0.35) {
           // Çene şak diye kapanır; gövde bir an eğik kalır.
           tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
@@ -1086,7 +1214,6 @@ export class Giant {
       }
     }
     let kneeL: number | undefined;
-    let kneeR: number | undefined;
     if (this.screamT > 0 && this.state === 'chase') {
       // Çığlık: baş geride, ağız sonuna kadar açık, kollar yana açılmış.
       headX = -0.55;
@@ -1118,6 +1245,8 @@ export class Giant {
     b.tilt.rotation.x = lerp(b.tilt.rotation.x, tiltX, 1 - Math.exp(-dt * tiltRate));
     b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
     b.armR.rotation.z = lerp(b.armR.rotation.z, armInR, k);
+    b.armL.rotation.y = lerp(b.armL.rotation.y, twistL, k);
+    b.armR.rotation.y = lerp(b.armR.rotation.y, twistR, k);
     // Ağırlık: her adımda gövde biraz iner kalkar ve yükü taşıyan bacağa doğru yana yatar; baş avına döner.
     const walking = this.moving && !this.type.crawl && this.state !== 'downed';
     const heavyK = Math.min(1, this.h / 14);
@@ -1126,7 +1255,7 @@ export class Giant {
     b.head.rotation.z = lerp(b.head.rotation.z, walking ? -Math.sin(this.phase) * 0.04 : 0, k);
     b.head.rotation.y = lerp(b.head.rotation.y, this.state === 'downed' || this.type.crawl ? 0 : this.lookYaw, 1 - Math.exp(-dt * 3));
     b.jaw.rotation.x = lerp(b.jaw.rotation.x, jawOpen, jawRate > 0 ? 1 - Math.exp(-dt * jawRate) : k);
-    autoBend(b, k, { elbowR, kneeL, kneeR });
+    autoBend(b, k, { elbowR, elbowL, kneeL, kneeR });
   }
 
   dispose(scene: THREE.Scene) {

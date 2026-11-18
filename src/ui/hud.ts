@@ -266,6 +266,8 @@ export class Hud {
           pw('E', d.e.name, d.e.cost, d.e.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.eCd)) +
           pw('F', 'Isırık', CFG.titan.bite.cost, cd(t.biteCd)) +
           pw('R', CFG.titan.steam.name, CFG.titan.steam.cost, t.steamT > 0 ? ' <b>AKTİF</b>' : cd(t.steamCd)) +
+          pw('V', 'Tekme', CFG.kick.cost, cd(t.kickCd)) +
+          `<span><kbd>G</kbd> Gard${t.guarding ? (t.combo > 1 ? ` <b>SERİ ×${t.combo}</b>` : ' <b>AÇIK</b>') : ''}</span>` +
           pw('Space', d.slam.name, d.slam.cost) +
           '<span><kbd>T</kbd> Çık</span>',
       );

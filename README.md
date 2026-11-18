@@ -51,6 +51,8 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `Q` | — | Formun birinci gücü |
 | `F` | Atı çağır | Isırık: önündeki devi dişle |
 | `R` | Sınıf yeteneği | Buhar: çevrendeki devleri haşla |
+| `G` | — | Gard (basılı tut): önden gelen darbeleri karşıla; gardda sol tık basılı tutulursa yumruklar seri çıkar |
+| `V` | — | Tekme: devi iter, sersemletir, gardını kırar |
 | `I` | Çanta | Çanta |
 | `H` | Sargı sar | — |
 | `Tab` | Dönüşülecek devi seç | — |
@@ -89,6 +91,16 @@ Surların tepesinde, yürüme yolunun dış kenarında aralıklarla **toplar** d
 - **Ateş:** Tıkla (dokunmatikte **ATEŞ**). Gülle kilitli deve doğru yönünü düzeltir. Yaklaşık 10 m yarıçaplı patlamanın içinde kalan **sıradan devler ölür** (zırhlılar dahil). Bölüm sonu devi ölmez: ensesine yakın isabet ense kesiği sayılır, gövdeye isabet onu sendeletir. Top 1,6 saniyede yeniden dolar.
 - **Menzil:** yaklaşık 550 m. Top dışa bakan yönünden en çok 83° döner; daha yandaki hedef için yandaki topa geç.
 - **Ayrılmak:** `E` ya da `Space` (dokunmatikte **İN**).
+
+## Gard, seri yumruk ve tekme
+
+**Gard (dev formunda `G` basılı, dokunmatikte GARD):** kollar çenenin önüne kalkar, gövde nişan yönüne döner, yavaş yürürsün. Önden (yaklaşık 100° içinden) gelen darbelerin %75'i engellenir; bar çok daha az düşer. Arkadan ya da yandan gelen darbeye gard işlemez. Tekme gardı yarı yarıya deler.
+
+**Seri yumruk:** gardda atılan yumruklar daha kısa sürer ve birbirine bağlanır. Sol tık basılı tutulursa kendiliğinden sağlı sollu çıkar. Serideki her yumruk bir öncekinden %15 sert vurur; her dördüncüsü bir **aparkattır**: yukarı doğru savrulur, ek ×1,4 vurur, gardı kırar ve devi sersemletir. Bir darbeyi gardla karşıladıktan sonraki 1,5 saniyede yumruklar ×1,5 vurur (karşı saldırı). Seri, yumruklar arasında 0,9 saniyeden fazla ara verirsen sıfırlanır.
+
+**Tekme (dev formunda `V`):** diz göğse çekilir, bacak ileri açılır. Yumruktan uzağa uzanır, yumruğun 1,5 katı vurur, devi geri iter, sersemletir ve gardını kırar. 2 bar harcar, 1,3 saniyede bir atılır.
+
+**Devlerin gardı ve tekmesi:** dev formundayken önüne yumruk savurduğunda devler gardını alabilir: ağır devler ve dönüşümcüler en sık, zırhlılar sık, çevik devler seyrek, sürünenler hiç. Gardlı dev önden gelen yumruğun %75'ini engeller (taş yumruk gardı kısmen deler), gardı indirince hemen karşılık verir. Gardı tekme ya da aparkat kırar. Devler de tekme atar: diz göğse çekilir, sonra bacak ileri açılır. Yerdeki insanı fırlatır, dev formunu iter ve gardını yarı yarıya deler.
 
 ## Dönüşüm, buhar ve dönüşümcüler
 

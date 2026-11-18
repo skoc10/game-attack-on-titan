@@ -17,6 +17,8 @@ const CONTROLS: [string, string][] = [
   ['E', 'Kutu aç · ata bin/in · konuş'],
   ['F', 'Atı çağır (dev formunda: ısır)'],
   ['R', 'Sınıf yeteneği (dev formunda: buhar — çevredeki devleri haşlar)'],
+  ['G (dev formunda)', 'Gard: önden gelen darbeleri karşıla · gardda sol tık basılı: seri yumruk'],
+  ['V (dev formunda)', 'Tekme: iter, sersemletir, gardı kırar'],
   ['Q', 'Patlar mızrak fırlat (dev formunda: güç)'],
   ['C', 'Billur koza: 6 sn dokunulmaz ol'],
   ['I', 'Çanta: kapşonu giy/çıkar, sargı kullan'],

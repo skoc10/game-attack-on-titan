@@ -275,6 +275,17 @@ export class GameAudio {
     this.tone('sawtooth', 170, 55, 0.22, 0.3);
     this.tone('triangle', 2400, 1700, 0.12, 0.12);
   }
+  /** Gardda karşılanan darbe: tok bir et ve kemik vuruşu. */
+  block() {
+    this.tone('sine', 140, 55, 0.25, 0.7);
+    this.noise(0.14, 0.6, 900, 200, 1.2, 0, this.bus, 'lowpass');
+    this.tone('triangle', 420, 260, 0.1, 0.18);
+  }
+  /** Tekme savruluşu: ağır, alçak bir hışırtı. */
+  kick() {
+    this.noise(0.3, 0.5, 1400, 260, 1.2);
+    this.tone('sine', 90, 50, 0.25, 0.25, 0.05);
+  }
   clang() {
     this.tone('square', 1500, 950, 0.16, 0.22);
     this.tone('triangle', 2250, 1600, 0.3, 0.2);

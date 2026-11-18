@@ -64,6 +64,18 @@ export const CFG = {
   // drainMult: dev formunda hareket ederken barın azalma hızının ortak çarpanı (tüm formlara uygulanır).
   // bite: dev formunun ısırığı (F). Tek hedefe ağır, zırh delen hasar; öldürürse bar geri kazanılır.
   titan: { hitDrain: 3, drainMult: 0.5, steam: { name: 'Buhar', cost: 12, cd: 9, dur: 3.5, radius: 1.5, dps: 180, tick: 0.25 }, bite: { cost: 4, cd: 2.5, dmgMult: 2.6, time: 0.55, refund: 8 } },
+  // Gard ve dövüş (dev formu ve devler): block önden gelen hasarın engellenen oranı, arc kalkanın kapsadığı açının
+  // yarısı (rad), slow gardda yürüme hızı. Gardda yumruk seriye bağlanır: punchTime yumruğun süre çarpanı, window seriyi
+  // sürdürmek için süre, step her seri vuruşun ek hasarı, finisher her `finishEvery`. vuruşa (aparkat) eklenen çarpan (gard kırar, sersemletir),
+  // counter engelden sonraki `counterT` sn içinde yumrukların çarpanı.
+  guard: { block: 0.75, arc: 1.75, slow: 0.4, punchTime: 0.6, window: 0.9, step: 0.15, finishEvery: 4, finisher: 1.4, finisherStun: 1.6, counter: 1.5, counterT: 1.5 },
+  // Tekme: yumruktan uzağa uzanır, iter ve sersemletir, gardı kırar. dmg/reach/range yumruğun katları.
+  kick: { dmg: 1.5, reach: 1.25, range: 1.1, cost: 2, cd: 1.3, stun: 1.4, push: 9, minTime: 0.55, maxTime: 1 },
+  // Devlerin gardı ve tekmesi: gard olasılığı türe göre (`guardChance`), süresi ve tekrar için bekleme;
+  // gardlı dev önden gelen dev yumruğunun `block` oranını engeller. Tekme olasılığı, hasar çarpanı, itme ve hazırlık süresi;
+  // tekme gardı `pierce` oranında deler.
+  giantGuard: { normal: 0.22, armored: 0.35, heavy: 0.5, fast: 0.12, dur: [0.9, 1.7] as [number, number], cd: [2.5, 4.5] as [number, number], block: 0.75 },
+  giantKick: { chance: 0.24, titanChance: 0.3, dmg: 1.25, knock: 24, windup: 0.8, pierce: 0.5 },
   // Devlerin temposu (tür hızlarının çarpanları): walk her yürüyüşe, chase kovalarken ek olarak, turn dönüşe uygulanır.
   giantPace: { walk: 1.2, chase: 1.15, turn: 1.3 },
   // Devlerin gücü: can ve vuruş çarpanları; bazı devler (bigChance) türünün boyunun big katı kadar iri doğar.
