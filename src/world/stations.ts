@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../game';
 import type { World } from './world';
 import { CFG } from '../data/config';
-import { DISTRICTS } from './layout';
+import { DISTRICTS, GIANT_FOREST } from './layout';
 
 export interface Station {
   x: number;
@@ -92,6 +92,16 @@ export class Stations {
       add(fx * along - fz * 16, fz * along + fx * 16);
     }
     for (const v of world.villages) add(v.x, v.z);
+    // Dev ağaçlar ormanı: orman yolunun girişinde ve ortasında, iki yanda derinde birer tane.
+    const F = GIANT_FOREST;
+    for (const [dx, dz] of [
+      [18, F.r - 60],
+      [18, 0],
+      [-380, 160],
+      [380, -200],
+    ]) {
+      add(F.x + dx, F.z + dz);
+    }
   }
 
   /** En yakın ikmal noktası ve yatay uzaklığı. */

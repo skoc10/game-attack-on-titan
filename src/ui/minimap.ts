@@ -2,7 +2,7 @@ import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { hex } from '../data/titans';
 import { crateColor } from '../world/crates';
-import { ARCS, DIRS, ROAD_END } from '../world/layout';
+import { ARCS, DIRS, GIANT_FOREST, ROAD_END } from '../world/layout';
 
 /** Metre cinsinden görüş yarıçapı: yakın ve geniş (M ya da haritaya dokunarak geçilir). */
 const NEAR = 380;
@@ -53,6 +53,15 @@ export class Minimap {
     c.clip();
     c.fillStyle = 'rgba(18,20,18,0.78)';
     c.fillRect(0, 0, S, S);
+
+    // Dev ağaçlar ormanı
+    if (Math.hypot(GIANT_FOREST.x - p.x, GIANT_FOREST.z - p.z) < VIEW + GIANT_FOREST.r) {
+      const [fx, fy] = map(GIANT_FOREST.x, GIANT_FOREST.z);
+      c.fillStyle = 'rgba(30,70,34,0.8)';
+      c.beginPath();
+      c.arc(fx, fy, GIANT_FOREST.r * k, 0, Math.PI * 2);
+      c.fill();
+    }
 
     // Yollar
     c.strokeStyle = 'rgba(140,120,90,0.6)';

@@ -511,7 +511,12 @@ export class Game {
     const coins = Math.round(coinsFor(g.type.xp) * mult);
     this.save.coins += coins;
     this.hud.toast(`${g.type.name} öldürüldü  +${g.type.xp} XP · +${coins} puan${mult > 1 ? ` (seri ×${mult.toFixed(2).replace(/0$/, '')})` : ''}`);
-    if (g.form) {
+    if (g.tag === 'huntress') {
+      // Avcı Dev düştü: dev barı dolar, ek av puanı.
+      this.meter.value = this.meter.max;
+      this.grantCoins(CFG.huntress.bonus);
+      this.hud.banner('AVCI DEV DÜŞTÜ', `Ormanın avcısı yere serildi · +${CFG.huntress.bonus} puan · dev barın doldu`);
+    } else if (g.form) {
       // Dönüşümcü düştü: ensesinden kendi formunun iğnesi çıkar.
       const id = g.form.id;
       if ((TITAN_IDS as string[]).includes(id)) {
@@ -805,6 +810,7 @@ export class Game {
     const p = this.player.pos;
     this.skyTime += dt;
     this.world.sky.position.copy(this.camera.position);
+    this.world.mountains.position.set(this.camera.position.x, 0, this.camera.position.z);
     (this.world.sky.material as THREE.ShaderMaterial).uniforms.time.value = this.skyTime;
     // Gölge haritası titremesin diye merkez birkaç metrelik adımlarla kayar.
     const cx = Math.round(p.x / 6) * 6;

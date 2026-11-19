@@ -114,6 +114,19 @@ Menüde (oyunun başında ya da `Esc` ile) **BASKINLAR** düğmesi üç baskın�
 
 Kazanınca av puanı, XP ve dev barına +40 gelir; püskürtülen baskınlar menüde ✓ ile işaretlenir ve yeniden oynanabilir.
 
+## Büyük dünya ve dev ağaçlar ormanı
+
+Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uzanır, daha çok köy, ağaç ve sandık var. Dört ana yol, güneyde ormanın ortasına dek uzanır. Ufuktaki dağlar dünyanın her yerinden aynı uzaklıkta görünür.
+
+**Dev Ağaçlar Ormanı:** dünyanın güney ucunda, 900 m yarıçaplı bir orman. Yaklaşık 470 dev ağacın gövdesi 90–140 m boyunda ve 11–17 m kalınlığında. Kök payandaları, dışa açılan kalın dalları ve iri yaprak kümeleri var. Gövdelere ve dallara kanca atılır, gövdelerin arası atla geçilecek kadar geniştir. Ortasından orman yolu geçer. Orman tabanı koyu ve yosunludur. Girişte, ortada ve iki yanda birer gaz ikmal noktası var. Haritada koyu yeşil bir daire olarak görünür.
+
+**Avcı Dev:** ormana girince derinlikten biri seni fark eder.
+- **Doğuşu ve görünüşü:** yıldırım düşer, buharın içinden 22 m'lik bir dişi dev yükselir. Uzun, koyu örgülü saçlıdır; teni bronz, kolları ve baldırları ağaç kabuğu gibi koyudur, gözleri yeşil yanar.
+- **Kovalaması:** ormanın her yerinden seni görür ve öne eğilip kolları geride koşar. Yayanken kaçamazsın. Attayken dörtnala neredeyse yetişir: aradaki mesafe saniyede ancak bir metre açılır.
+- **Saldırıları:** **Av Atılımı** ile ileri fırlayıp çarpar, **Kök Sarsıntısı** ile yeri döver, tekme atar.
+- **Öldürmek:** ensesine üç temiz kesik gerekir. Bacaklarına üç kesik onu yere serer. Ağaçlara kanca atıp tepesine çıkmak en iyi yol.
+- **Ödülü ve yeniden doğuşu:** öldürünce +800 puan ve dolu dev barı. Beş dakika sonra yeniden doğar. Ormandan çok uzaklaşırsan peşini bırakır.
+
 ## Surlar ve çarpışma
 
 - **Sur üstü:** yürüme yolu iç ve dış korkuluğun arasındadır; korkulukların içinden geçilmez. Dış korkuluğun (1,3 m) üstüne zıplayan aşıp aşağı atlayabilir.

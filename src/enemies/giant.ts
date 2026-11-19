@@ -605,7 +605,7 @@ export class Giant {
         }
         // Taşçı uzaktan atar: menzile girince durur, çok yaklaşılırsa yumrukla karşılar.
         const holds = this.type.thrower === true && dist > 36 && dist < 125;
-        if (dist > reach * 0.7 && !holds) move = speed * CFG.giantPace.chase;
+        if (dist > reach * 0.7 && !holds) move = speed * CFG.giantPace.chase * (this.type.sprinter && p.mode === 'mounted' ? CFG.huntress.mountedChase : 1);
         if (holds && this.attackCd <= 0) {
           this.attackKind = 'throw';
           this.setState('windup');
@@ -1093,12 +1093,12 @@ export class Giant {
     switch (this.state) {
       case 'chase':
         if (dy > this.h * 0.9 && dist < this.h) aL = aR = -2.7;
-        else if (this.type.kind === 'runner') aL = aR = 0.9;
+        else if (this.type.kind === 'runner' || this.type.sprinter) aL = aR = 0.9;
         else {
           aL -= 0.9;
           aR -= 0.9;
         }
-        if (this.type.kind === 'runner' || this.type.kind === 'leaper') tiltX = 0.25;
+        if (this.type.kind === 'runner' || this.type.kind === 'leaper' || this.type.sprinter) tiltX = 0.25;
         break;
       case 'windup':
         if (this.attackKind === 'stomp') {

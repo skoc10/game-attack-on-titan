@@ -4,7 +4,8 @@ import { CFG } from '../data/config';
 import { Giant } from '../enemies/giant';
 import { BOSSES, GIANT_TYPES, shifterType, type BossId, type CommonKind } from '../enemies/giantTypes';
 import { TITANS, type TitanId } from '../data/titans';
-import { ringOf, spawnable } from './layout';
+import { GIANT_FOREST, inGiantForest, ringOf, spawnable } from './layout';
+import { HUNTRESS, huntressType } from '../data/huntress';
 
 const S = CFG.spawn;
 
@@ -38,6 +39,9 @@ export class Spawner {
   private timer = 0;
   /** Sıradaki dönüşümcüye kalan süre. */
   private shifterT: number = CFG.shifter.first;
+  /** Avcı Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
+  huntress: Giant | null = null;
+  private huntressT: number = CFG.huntress.first;
   boss: Giant | null = null;
 
   /** Kapı Kıran: Demir Sur kapısının önünde bekler. */
@@ -71,6 +75,45 @@ export class Spawner {
     game.strikeAt(x, g.pos.y, z, form.height, form.color);
     game.hud.banner(form.name.toLocaleUpperCase('tr'), 'Bir dönüşümcü belirdi — kendi güçleriyle saldıracak');
     return g;
+  }
+
+  /** Avcı Dev ormanın derinliklerinde doğar: yıldırım düşer, buharın içinden yükselir ve avına koşar. */
+  spawnHuntress(x: number, z: number, game: Game) {
+    const g = new Giant(huntressType(), x, z, game, HUNTRESS);
+    g.home = new THREE.Vector3(GIANT_FOREST.x, 0, GIANT_FOREST.z);
+    g.persistent = true;
+    g.tag = 'huntress';
+    g.yaw = Math.atan2(game.player.pos.x - x, game.player.pos.z - z);
+    game.giants.push(g);
+    game.strikeAt(x, g.pos.y, z, HUNTRESS.height, HUNTRESS.color);
+    game.hud.banner('AVCI DEV', 'Ormanın derinliğinden biri seni fark etti — atına bin ve kaç, ya da ensesini kes');
+    this.huntress = g;
+    return g;
+  }
+
+  /** Oyuncu dev ağaçlar ormanına girince, Avcı Dev yoksa (ve yeniden doğma süresi dolduysa) doğar. */
+  private updateHuntress(dt: number, game: Game) {
+    const h = this.huntress;
+    if (h && h.alive && !h.gone) return;
+    if (h) {
+      this.huntress = null;
+      this.huntressT = CFG.huntress.respawn;
+    }
+    if (this.huntressT > 0) this.huntressT -= dt;
+    const p = game.player;
+    if (this.huntressT > 0 || p.dead || !inGiantForest(p.pos.x, p.pos.z, 60)) return;
+    // Oyuncudan 200–280 m uzakta, ormanın içinde ve bir ağaç gövdesine denk gelmeyen bir yer.
+    for (let tries = 0; tries < 20; tries++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 200 + Math.random() * 80;
+      const x = p.pos.x + Math.sin(a) * d;
+      const z = p.pos.z + Math.cos(a) * d;
+      if (!inGiantForest(x, z, -60)) continue;
+      if (game.world.solidAt(x, game.world.heightAt(x, z) + 2, z, 8) || game.world.treeNear(x, z, 10)) continue;
+      this.spawnHuntress(x, z, game);
+      return;
+    }
+    this.huntressT = 2;
   }
 
   /** Arada bir, oyuncudan uzakta, bulunduğu sur bölgesine uygun bir dönüşümcü doğar (aynı anda yalnızca biri). */
@@ -138,6 +181,7 @@ export class Spawner {
 
     // Baskın sürerken yalnızca baskının devleri gelir.
     if (game.raid.active) return;
+    this.updateHuntress(dt, game);
     this.updateShifters(dt, game);
     this.timer -= dt;
     if (this.timer > 0 || alive >= S.maxAlive) return;

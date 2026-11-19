@@ -354,7 +354,7 @@ export class Hud {
     if (boss) {
       this.text('bossName', boss.type.name.toLocaleUpperCase('tr'));
       this.width('boss', boss.hp / boss.maxHp);
-      this.text('bossHint', boss.state === 'downed' ? 'YERDE — ENSESİNE VUR!' : boss.form ? 'Dönüşümcü: ensesine iki temiz kesik ya da dev gücüyle vur — düşerse iğnesi senin' : 'Zırhlı: bacaklarını kes ya da Taş Yumruk kullan');
+      this.text('bossHint', boss.state === 'downed' ? 'YERDE — ENSESİNE VUR!' : boss.tag === 'huntress' ? 'Atla kaç, ağaçlara kanca at; bacaklarını kes ya da ensesine üç temiz kesik vur' : boss.form ? 'Dönüşümcü: ensesine iki temiz kesik ya da dev gücüyle vur — düşerse iğnesi senin' : 'Zırhlı: bacaklarını kes ya da Taş Yumruk kullan');
     }
   }
 }

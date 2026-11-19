@@ -37,6 +37,8 @@ export interface HumanoidOpts {
   face?: number;
   /** Sarkık göbek (0 yok, 1 iri): bazı devler şişman, bazıları sıska doğar. */
   belly?: number;
+  /** Kadın gövdesi: göğüs ve daha geniş kalça. */
+  female?: boolean;
 }
 
 /** Ten malzemesi: insanlarda çizgi film gölgesi, devlerde yumuşak, gerçekçi deri. */
@@ -248,6 +250,10 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       rig.part(tilt, GEO.sphere, legMat, 0.058 * B, 0.058, 0.05 * B, s * 0.05 * B, 0.5, -0.04 * B, false); // kalça
     }
     rig.part(tilt, GEO.box, inkMat, 0.006, 0.24, 0.008, 0, 0.66, -0.079 * B, false); // omurga
+    if (o.female) {
+      for (const s of [-1, 1]) rig.part(tilt, GEO.sphere, topMat, 0.048 * B, 0.044, 0.04 * B, s * 0.046 * B, 0.716, 0.072 * B, false);
+      rig.part(tilt, GEO.sphere, legMat, 0.128 * B, 0.07, 0.088 * B, 0, 0.51, -0.004, false); // geniş kalça
+    }
     if (B <= 1.15) {
       // Karın kasları: orta çizgi ve iki yatay çizgi.
       rig.part(tilt, GEO.box, inkMat, 0.006, 0.15, 0.008, 0, 0.615, 0.077 * B, false);

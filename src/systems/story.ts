@@ -8,6 +8,9 @@ import type { Crate } from '../world/crates';
 import { spawnable } from '../world/layout';
 import { chapterAt, goal, missionAt, needleFor, nextStep, progressFor, storyDone, type StoryEvent } from './storyRules';
 
+/** Hikâyeye ait olmayan, görev değişince kaldırılmayan dev etiketleri. */
+const WORLD_TAGS = new Set(['gate', 'raid', 'huntress']);
+
 export interface ObjectiveView {
   text: string;
   state: 'done' | 'active' | 'todo';
@@ -96,10 +99,10 @@ export class Story {
     this.restart();
   }
 
-  /** Görevin doğurduğu devleri kaldırır. Kapı Kıran dünyaya aittir, kalır. */
+  /** Görevin doğurduğu devleri kaldırır. Kapı Kıran, baskın devleri ve Avcı Dev dünyaya aittir, kalır. */
   cleanup() {
     for (const gi of this.game.giants) {
-      if (gi.tag && gi.tag !== 'gate') gi.gone = true;
+      if (gi.tag && !WORLD_TAGS.has(gi.tag)) gi.gone = true;
     }
   }
 

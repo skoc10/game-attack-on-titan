@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
 import type { Rng } from '../core/rng';
 import { heightAt } from './terrain';
-import { DIRS, EDGE, ROAD_END, districtGap, onRoad, wallDist } from './layout';
+import { DIRS, EDGE, GIANT_FOREST, ROAD_END, districtGap, inGiantForest, onRoad, wallDist } from './layout';
 
 export interface Tree {
   x: number;
@@ -11,8 +11,8 @@ export interface Tree {
   y: number;
   r: number;
   h: number;
-  /** 0: çam, 1: geniş yapraklı. */
-  kind: 0 | 1;
+  /** 0: çam, 1: geniş yapraklı, 2: dev ağaç (gövdesi yüz metreyi aşar). */
+  kind: 0 | 1 | 2;
 }
 
 function validSpot(x: number, z: number) {
@@ -20,6 +20,7 @@ function validSpot(x: number, z: number) {
   if (r < 350 || r > EDGE - 60) return false;
   if (onRoad(x, z, 26)) return false; // ana yollar açık kalsın
   if (districtGap(x, z) < 12) return false; // kasabaların içi ve önü açık
+  if (inGiantForest(x, z, 40)) return false; // orada dev ağaçlar var
   return wallDist(x, z) >= 34;
 }
 
@@ -50,7 +51,8 @@ export function generateTrees(rng: Rng): Tree[] {
   const [w0, w1, w2] = CFG.world.walls;
   cluster(w0.r + w0.district + 20, w1.r - 50, 38);
   cluster(w1.r + 50, w2.r - 50, 66);
-  cluster(w2.r + 60, EDGE - 120, 34);
+  cluster(w2.r + 60, EDGE - 120, 80);
+  giantTrees(trees, rng);
   // Yol kenarı ağaçları: kapılar arası rotalarda kanca noktası sağlar.
   for (const ang of DIRS) {
     const fx = Math.sin(ang);
@@ -67,6 +69,29 @@ export function generateTrees(rng: Rng): Tree[] {
     }
   }
   return trees;
+}
+
+/** Dev ağaç gövdesinin taban yarıçapı (boyun oranı olarak). */
+const GIANT_TRUNK = 0.062;
+
+/**
+ * Dev ağaçlar ormanı: 90–140 m'lik gövdeler, aralarında atla geçilebilecek kadar boşluk.
+ * Ortasından geçen orman yolu açık kalır.
+ */
+function giantTrees(trees: Tree[], rng: Rng) {
+  const out: Tree[] = [];
+  const F = GIANT_FOREST;
+  for (let tries = 0; tries < 6000 && out.length < 520; tries++) {
+    const a = rng() * Math.PI * 2;
+    const d = Math.sqrt(rng()) * (F.r - 20);
+    const x = F.x + Math.sin(a) * d;
+    const z = F.z + Math.cos(a) * d;
+    if (onRoad(x, z, 24) || Math.hypot(x, z) > EDGE - 80) continue;
+    if (out.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < 56 * 56)) continue;
+    const h = 90 + rng() * 50;
+    out.push({ x, z, y: heightAt(x, z) - 1.5, r: h * GIANT_TRUNK, h, kind: 2 });
+  }
+  trees.push(...out);
 }
 
 /** Ağaç ve süs bölgelerinin kenar uzunluğu (m). */
@@ -142,9 +167,63 @@ function leafyGeo() {
   return mergeGeometries(parts)!;
 }
 
+/**
+ * Birim dev ağaç (boy 1, her eksende aynı ölçekle büyütülür): kök payandaları, kalın gövde,
+ * yukarı doğru açılan dallar ve dal uçlarında iri yaprak kümeleri. Dallara ve gövdeye kanca atılır.
+ */
+function giantGeo() {
+  const bark0 = new THREE.Color(0x2e2117);
+  const bark1 = new THREE.Color(0x5e4634);
+  const dark = new THREE.Color(0x26492a);
+  const light = new THREE.Color(0x6a9446);
+  const parts: THREE.BufferGeometry[] = [];
+  const trunk = new THREE.CylinderGeometry(GIANT_TRUNK * 0.48, GIANT_TRUNK, 0.92, 12, 8);
+  trunk.translate(0, 0.46, 0);
+  parts.push(paint(trunk, bark0, bark1, 0, 0.9));
+  const flare = new THREE.CylinderGeometry(GIANT_TRUNK, GIANT_TRUNK * 1.9, 0.045, 12);
+  flare.translate(0, 0.0225, 0);
+  parts.push(paint(flare, bark0, bark0, 0, 1));
+  // Kök payandaları: gövdenin dibinden toprağa yayılan kalın kökler.
+  for (let i = 0; i < 6; i++) {
+    const root = new THREE.BoxGeometry(0.11, 0.032, 0.02);
+    root.translate(0.055, 0.012, 0);
+    root.rotateZ(-0.16);
+    root.rotateY(i * 1.05 + 0.3);
+    parts.push(paint(root, bark0, bark0, 0, 1));
+  }
+  const blob = (x: number, y: number, z: number, rad: number, ry: number) => {
+    const b = new THREE.IcosahedronGeometry(1, 1);
+    b.scale(rad, ry, rad);
+    b.translate(x, y, z);
+    parts.push(paint(b, dark, light, y - ry, y + ry));
+  };
+  // Dallar: gövdenin üst yarısından dışa ve yukarı açılır, uçlarında yaprak kümesi.
+  for (let i = 0; i < 8; i++) {
+    const y = 0.42 + i * 0.058;
+    const a = i * 2.4;
+    const len = 0.17 - i * 0.009;
+    const up = 1.05 - i * 0.04;
+    const br = new THREE.CylinderGeometry(0.005, 0.013, len, 6);
+    br.translate(0, len / 2, 0);
+    br.rotateZ(-up);
+    br.rotateY(a);
+    br.translate(0, y, 0);
+    parts.push(paint(br, bark0, bark1, 0, 1));
+    const tx = Math.sin(up) * len;
+    const ty = y + Math.cos(up) * len;
+    // rotateY(a), +x yönündeki ucu (cos a, -sin a) yönüne çevirir.
+    blob(Math.cos(a) * tx, ty + 0.01, -Math.sin(a) * tx, 0.09 + (i % 3) * 0.014, 0.045);
+  }
+  // Tepe tacı
+  blob(0, 0.93, 0, 0.11, 0.06);
+  blob(0.05, 0.88, 0.04, 0.08, 0.045);
+  blob(-0.05, 0.86, -0.03, 0.085, 0.045);
+  return mergeGeometries(parts)!;
+}
+
 export function buildForest(trees: Tree[], rng: Rng) {
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-  const kinds = [pineGeo(), leafyGeo()];
+  const kinds = [pineGeo(), leafyGeo(), giantGeo()];
   const meshes: THREE.InstancedMesh[] = [];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -163,7 +242,10 @@ export function buildForest(trees: Tree[], rng: Rng) {
     const im = new THREE.InstancedMesh(kinds[list[0].kind], mat, list.length);
     list.forEach((t, i) => {
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rng() * 6.28);
-      m.compose(p.set(t.x, t.y, t.z), q, s.set(t.r, t.h, t.r));
+      // Dev ağaçlar her eksende aynı ölçeklenir (dalları yatay uzanır); diğerleri gövde yarıçapı ve boyla.
+      if (t.kind === 2) s.setScalar(t.h);
+      else s.set(t.r, t.h, t.r);
+      m.compose(p.set(t.x, t.y, t.z), q, s);
       im.setMatrixAt(i, m);
       im.setColorAt(i, c.setHSL(0.1 + rng() * 0.08, 0.12, 0.78 + rng() * 0.22));
     });
