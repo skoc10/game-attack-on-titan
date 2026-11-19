@@ -43,6 +43,11 @@ export class Spawner {
   private timer = 0;
   /** Sıradaki dönüşümcüye kalan süre. */
   private shifterT: number = CFG.shifter.first;
+  /** Çoban Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
+  shepherd: Giant | null = null;
+  private shepherdT: number = CFG.shepherd.first;
+  /** Çoban Dev'in sürüsü: o yaşadıkça uzaklaşınca kaybolmaz. */
+  private herd: Giant[] = [];
   /** Avcı Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
   huntress: Giant | null = null;
   private huntressT: number = CFG.huntress.first;
@@ -100,6 +105,44 @@ export class Spawner {
     game.hud.banner('AVCI DEV', 'Ormanın derinliğinden biri seni fark etti — atına bin ve kaç, ya da ensesini kes');
     this.huntress = g;
     return g;
+  }
+
+  /** Çoban Dev, oyuncu Kalkan Suru'nun dışındayken (orman dışında) 350–500 m uzakta doğar ve orada sürüsüyle bekler. */
+  private updateShepherd(dt: number, game: Game) {
+    const s = this.shepherd;
+    if (s && s.alive && !s.gone) return;
+    if (s) {
+      this.shepherd = null;
+      this.shepherdT = CFG.shepherd.respawn;
+      // Çoban düştü: sürüsü sıradan devler gibi dolaşır.
+      for (const h of this.herd) h.persistent = false;
+      this.herd = [];
+    }
+    if (this.shepherdT > 0) this.shepherdT -= dt;
+    const p = game.player;
+    if (this.shepherdT > 0 || p.dead || ringOf(p.pos.x, p.pos.z) < 3 || inGiantForest(p.pos.x, p.pos.z, 200)) return;
+    for (let tries = 0; tries < 20; tries++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 300 + Math.random() * 120;
+      const x = p.pos.x + Math.sin(a) * d;
+      const z = p.pos.z + Math.cos(a) * d;
+      if (ringOf(x, z) < 3 || !spawnable(x, z, 80, 60) || inGiantForest(x, z, 200)) continue;
+      const g = this.spawnBossAt('coban', x, z, game);
+      g.tag = 'coban';
+      g.yaw = Math.atan2(p.pos.x - x, p.pos.z - z);
+      this.shepherd = g;
+      // Çevresinde birkaç dev: sürüsü.
+      for (let i = 0; i < 5; i++) {
+        const b = Math.random() * Math.PI * 2;
+        const h = this.spawn(i === 4 ? 'runner' : 'normal', x + Math.sin(b) * (30 + Math.random() * 40), z + Math.cos(b) * (30 + Math.random() * 40), game);
+        h.persistent = true;
+        h.home = new THREE.Vector3(x, 0, z);
+        this.herd.push(h);
+      }
+      game.hud.banner('ÇOBAN DEV', 'Kürklü, boynuzlu bir dev sürüsüyle ufukta — dev kayalar atar, devleri buyruğuna alır');
+      return;
+    }
+    this.shepherdT = 5;
   }
 
   /** Oyuncu dev ağaçlar ormanına girince, Avcı Dev yoksa (ve yeniden doğma süresi dolduysa) doğar. */
@@ -193,6 +236,7 @@ export class Spawner {
     // Baskın sürerken yalnızca baskının devleri gelir.
     if (game.raid.active) return;
     this.updateHuntress(dt, game);
+    this.updateShepherd(dt, game);
     this.updateShifters(dt, game);
     this.timer -= dt;
     if (this.timer > 0 || alive >= S.maxAlive) return;

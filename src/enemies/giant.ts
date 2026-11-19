@@ -51,7 +51,12 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'charge' | 'power' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'charge' | 'boulder' | 'shard' | 'command' | 'power' = 'swipe';
+  /** Çoban Dev'in yeniden kükremesine kalan süre. */
+  private commandCd = 8;
+  /** Çoban Dev'in buyruğu altında kalan süre: avına koşar, hızlanır, kolay vazgeçmez. */
+  commandT = 0;
+  private readonly handsV = new THREE.Vector3();
   /** Tırmanıcının sarıldığı dev ağaç. */
   private climbTree: Tree | null = null;
   /** Toslayanın yeniden toslamasına kalan süre. */
@@ -138,7 +143,7 @@ export class Giant {
       // Ten rengi her devde biraz farklı; bazıları şişman, bazıları sıska; kol boyu da değişir.
       const skin = new THREE.Color(type.skins[Math.floor(r() * type.skins.length)]).offsetHSL((r() - 0.5) * 0.03, (r() - 0.5) * 0.12, (r() - 0.5) * 0.08).getHex();
       const hairRoll = r();
-      const hairStyle: HairStyle = type.plating || hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
+      const hairStyle: HairStyle = type.plating || type.fur || hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
       const hairColors = [0x2a2220, 0x4a3524, 0x6b5a48, 0x8a8478];
       const fat = !type.armored && type.kind !== 'runner' && r() < 0.28;
       this.body = buildHumanoid(
@@ -161,6 +166,8 @@ export class Giant {
           // Plaka zırhlı dev, sıradan zırh plakaları yerine baştan aşağı metal giyer.
           armor: type.armored && !type.plating,
           plating: type.plating,
+          fur: type.fur,
+          horns: type.horns,
           face: type.screamer ? 1 : Math.floor(r() * 4),
           belly: fat ? 0.4 + r() * 0.6 : 0,
         },
@@ -247,6 +254,8 @@ export class Giant {
   private setState(s: GiantState) {
     // Yakalama herhangi bir nedenle kesilirse (sersemleme, düşme, ölüm) oyuncu bırakılır.
     if (this.state === 'grab' && s !== 'grab') this.game.player.releaseGrab(this);
+    // Kaldırdığı kaya, saldırısı kesilirse elinden düşer.
+    if (this.state === 'windup' && s !== 'recover' && (this.attackKind === 'boulder' || this.attackKind === 'shard')) this.game.boulders.drop(this);
     // Ağaçtaki tırmanıcı sersemlerse ya da bacağı kesilirse tutunamaz, düşer.
     if (this.state === 'climb' && s !== 'climb' && s !== 'leap' && s !== 'dead') {
       this.vel.set(0, 0, 0);
@@ -264,6 +273,20 @@ export class Giant {
   /** Oyuncunun tutulduğu el konumu. */
   handWorld(out: THREE.Vector3) {
     return this.body.handR.getWorldPosition(out);
+  }
+
+  /** İki elin ortası (kaldırılan kayanın yeri). */
+  handsWorld() {
+    this.body.handL.getWorldPosition(this.handsV);
+    this.body.handR.getWorldPosition(v);
+    return this.handsV.add(v).multiplyScalar(0.5);
+  }
+
+  /** Çoban Dev'in buyruğu: `t` saniye avına koşar. */
+  command(t: number) {
+    if (!this.alive || this.heavy) return;
+    this.commandT = t;
+    if (this.state === 'wander' || this.state === 'guard') this.setState('chase');
   }
 
   /** Yerdeyken mi öldürüldü (ölüm efekti buna göre değişir). */
@@ -473,6 +496,31 @@ export class Giant {
       }
       return false;
     }
+    if (this.attackKind === 'boulder') {
+      // Dev kaya: avının birazdan olacağı yere, yüksek bir yayla.
+      game.boulders.drop(this);
+      const lead = Math.min(2.2, dist / 50);
+      game.boulders.throw(this.handsWorld(), p.pos.x + p.vel.x * lead * 0.7, p.pos.z + p.vel.z * lead * 0.7, dmg * 0.8, game, 2.4);
+      game.audio.swing();
+      this.attackCd = 4 + Math.random() * 2;
+      return false;
+    }
+    if (this.attackKind === 'shard') {
+      // Avucunda ezdiği kayanın parçalarını avının çevresine saçar.
+      game.boulders.drop(this);
+      const at = this.handsWorld();
+      game.particles.burst(at, 40, 14, 0.8, 0xa39a86, this.h * 0.05);
+      game.audio.stomp(0.7);
+      game.audio.swing();
+      game.boulders.spray(at, p.pos.x + p.vel.x * 0.6, p.pos.z + p.vel.z * 0.6, 26, 16, dmg * 0.13, game);
+      this.attackCd = 4.5 + Math.random() * 2;
+      return false;
+    }
+    if (this.attackKind === 'command') {
+      this.commandCd = 26 + Math.random() * 8;
+      game.onCommand(this);
+      return false;
+    }
     if (this.attackKind === 'charge') {
       // Tos: avının olduğu yere doğru, yönü kilitli hızlı koşu; yolundakini savurur, ağaca çarparsa sersemler.
       this.chargeCd = 7 + Math.random() * 3;
@@ -537,6 +585,12 @@ export class Giant {
     if (this.leapCd > 0) this.leapCd -= dt;
     if (this.guardCd > 0) this.guardCd -= dt;
     if (this.chargeCd > 0) this.chargeCd -= dt;
+    if (this.commandCd > 0) this.commandCd -= dt;
+    if (this.commandT > 0) {
+      this.commandT -= dt;
+      // Buyruk altındaki devin başının üstünde kızıl kıvılcımlar.
+      if (Math.random() < 0.25) game.particles.emit(this.pos.x, this.pos.y + this.h * 1.02, this.pos.z, (Math.random() - 0.5) * 2, 2, (Math.random() - 0.5) * 2, 0.7, 0xff3b2f, 0, 0.9 + this.h * 0.05, 0.3);
+    }
     if (this.form) {
       if (this.powerCd > 0) this.powerCd -= dt;
       if (this.buffT > 0) {
@@ -566,7 +620,8 @@ export class Giant {
     // Başka bir devin elindeki oyuncuya saldırılmaz.
     const targetable = !p.dead && !p.inTown && !game.cocoon.active && (p.grabbedBy === null || p.grabbedBy === this);
     const slow = this.slowT > 0 ? 0.45 : 1;
-    const speed = this.type.speed * (0.8 + this.h / 40) * CFG.giantPace.walk * slow;
+    const speed = this.type.speed * (0.8 + this.h / 40) * CFG.giantPace.walk * slow * (this.commandT > 0 ? 1.3 : 1);
+    const commanded = this.commandT > 0 && dist < 700;
     let move = 0;
     let moveYaw = this.yaw;
     this.moving = false;
@@ -606,7 +661,7 @@ export class Giant {
         // Kapşon giyen oyuncu ancak daha yakından fark edilir.
         const sight = this.type.aggro * p.sightMult;
         const aggro = this.home ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < sight : dist < sight;
-        if (targetable && aggro) {
+        if (targetable && (aggro || commanded)) {
           this.setState('chase');
           // Avını fark etti: hızlı türler çığlık atar, diğerleri kendi sesiyle seslenir.
           if (this.type.screamer && !this.screamed && dist < 170 * p.sightMult) {
@@ -623,7 +678,7 @@ export class Giant {
         const leashed = this.home !== null && Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) > this.type.aggro * 1.3;
         // Baskındaki dev uzaklaşan avın peşine düşmez, hedefine döner.
         const raidBack = this.raid !== null && dist > this.type.aggro * 0.6;
-        if (!targetable || dist > this.type.aggro * 1.7 * p.sightMult || leashed || raidBack) {
+        if (!targetable || (!commanded && (dist > this.type.aggro * 1.7 * p.sightMult || leashed || raidBack))) {
           this.setState('wander');
           break;
         }
@@ -632,6 +687,25 @@ export class Giant {
         if (this.screamT > 0) {
           this.screamT -= dt; // çığlık atarken olduğu yerde durur
           break;
+        }
+        // Çoban Dev: yakınında dev varsa kükreyip onları avına salar; uzaktan kaya atar ya da kaya ezip parça saçar.
+        if (this.type.shepherd) {
+          if (this.commandCd <= 0 && game.giants.some((o) => o !== this && o.alive && !o.heavy && Math.hypot(o.pos.x - this.pos.x, o.pos.z - this.pos.z) < 320)) {
+            this.attackKind = 'command';
+            this.setState('windup');
+            this.say('growl', 3);
+            break;
+          }
+          if (dist > 45 && dist < 280) {
+            if (this.attackCd <= 0) {
+              const big = Math.random() < 0.55;
+              this.attackKind = big ? 'boulder' : 'shard';
+              game.boulders.grip(this, big ? 2.4 : 1.3, () => this.handsWorld());
+              this.setState('windup');
+              this.say('grunt', 2);
+            }
+            break; // menzildeyken yerinde durup atar
+          }
         }
         // Tırmanıcı: avı bir dev ağacın dalındaysa ya da yapraklarının üstündeyse gövdeye koşar ve tırmanır.
         if (this.type.climber && dy > this.h * 0.9 && p.mode === 'foot') {
@@ -696,7 +770,9 @@ export class Giant {
       }
       case 'windup': {
         moveYaw = this.attackKind === 'smash' && this.raid ? Math.atan2(this.raid.x - this.pos.x, this.raid.z - this.pos.z) : Math.atan2(dx, dz);
-        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : this.attackKind === 'smash' ? (this.raid?.siege ? 1.7 : 1.05) : this.attackKind === 'charge' ? 0.9 : 0.75;
+        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : this.attackKind === 'smash' ? (this.raid?.siege ? 1.7 : 1.05) : this.attackKind === 'charge' ? 0.9 : this.attackKind === 'boulder' ? 1.8 : this.attackKind === 'shard' ? 1.4 : this.attackKind === 'command' ? 1.3 : 0.75;
+        // Kaya ezerken avucundan toz ve kırıntı dökülür.
+        if (this.attackKind === 'shard' && this.stateT > 0.8 && Math.random() < 0.4) game.particles.burst(this.handsWorld(), 3, 6, 0.6, 0xa39a86, this.h * 0.04);
         if (this.attackKind === 'power') this.telegraph(game);
         if (this.stateT > wind) {
           this.attackCd = this.heavy ? 2.4 : 1.5;
@@ -1207,6 +1283,7 @@ export class Giant {
     let armInR = 0;
     let twistL = 0;
     let twistR = 0;
+    let armZL = 0;
     let jawOpen = 0;
     let tiltRate = 6;
     let jawRate = 0;
@@ -1242,6 +1319,51 @@ export class Giant {
             tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
             headX = 0.3;
           }
+        } else if (this.attackKind === 'boulder') {
+          // Dev kaya: çömelip yerden kaldırır, başının üstüne çıkarır, geriye gerilip fırlatmaya hazırlanır.
+          const t = this.stateT;
+          tiltRate = 10;
+          if (t < 0.6) {
+            tiltX = 0.75;
+            aL = aR = -0.9;
+            elbowL = elbowR = -0.3;
+            headX = 0.3;
+            lL = lR = -0.4;
+          } else if (t < 1.3) {
+            tiltX = 0.05;
+            aL = aR = -2.7;
+            elbowL = elbowR = -0.6;
+            headX = -0.2;
+            lL = lR = 0;
+          } else {
+            tiltX = -0.22;
+            aL = aR = -3.05;
+            elbowL = elbowR = -1.1;
+            headX = -0.3;
+            lL = -0.3;
+            lR = 0.35;
+          }
+        } else if (this.attackKind === 'shard') {
+          // Kaya ezme: kaya göğsün önünde iki elin arasında; sıktıkça kollar titrer.
+          aL = aR = -1.35;
+          elbowL = elbowR = -1.5;
+          twistL = 0.5;
+          twistR = -0.5;
+          tiltX = 0.08;
+          if (this.stateT > 0.8) {
+            const j = Math.sin(this.stateT * 70) * 0.08;
+            aL += j;
+            aR -= j;
+            jawOpen = 0.5;
+          }
+        } else if (this.attackKind === 'command') {
+          // Buyruk: baş geride, ağız sonuna kadar açık, kollar iki yana açılmış.
+          headX = -0.65;
+          jawOpen = 1;
+          aL = aR = 0.35;
+          armInR = 0.9;
+          armZL = -0.9;
+          tiltX = -0.18;
         } else if (this.attackKind === 'charge') {
           // Tos hazırlığı: baş eğik, omuzlar önde, bir ayak geride toprağı eşeler.
           tiltX = 0.55;
@@ -1301,6 +1423,19 @@ export class Giant {
       case 'recover':
         if (this.attackKind === 'swipe') aR = -0.5;
         tiltX = 0.2;
+        if (this.attackKind === 'boulder' && this.stateT < 0.5) {
+          // Fırlatışın ardı: kollar öne savrulmuş, gövde öne eğik.
+          aL = aR = -1.0;
+          tiltX = 0.45;
+          lL = -0.35;
+          lR = 0.3;
+        }
+        if (this.attackKind === 'shard' && this.stateT < 0.5) {
+          // Saçışın ardı: sağ kol öne savrulmuş.
+          aR = -1.7;
+          aL = -0.4;
+          tiltX = 0.3;
+        }
         if (this.attackKind === 'smash' && this.stateT < 0.45) {
           // Kollar aşağı inmiş, gövde öne çökmüş: vuruşun ardı.
           aL = aR = -1.05;
@@ -1456,6 +1591,7 @@ export class Giant {
     b.head.rotation.x = lerp(b.head.rotation.x, headX, k);
     b.armR.rotation.z = lerp(b.armR.rotation.z, armInR, k);
     b.armL.rotation.y = lerp(b.armL.rotation.y, twistL, k);
+    b.armL.rotation.z = lerp(b.armL.rotation.z, armZL, k);
     b.armR.rotation.y = lerp(b.armR.rotation.y, twistR, k);
     // Ağırlık: her adımda gövde biraz iner kalkar ve yükü taşıyan bacağa doğru yana yatar; baş avına döner.
     const walking = this.moving && !this.type.crawl && this.state !== 'downed';
