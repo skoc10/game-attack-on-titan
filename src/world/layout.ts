@@ -80,7 +80,28 @@ export const ARCS: Arc[] = [
   ...DISTRICTS.map((d) => ({ cx: d.x, cz: d.z, r: d.r, mid: d.ang, half: districtHalf(d), gates: [d.ang] })),
 ];
 
-const onArc = (a: Arc, dx: number, dz: number) => a.half >= Math.PI || Math.abs(angDiff(Math.atan2(dx, dz), a.mid)) <= a.half;
+/** Surda açılmış gedik: hangi halka sur, gediğin açısı ve yarı açıklığı (radyan). */
+export interface Breach {
+  ring: number;
+  ang: number;
+  half: number;
+}
+/** Şu an açık olan gedikler (Demir Koç surları deler, onarılınca kalkar). */
+export const BREACHES: Breach[] = [];
+
+/** Halka surun bu açısında gedik var mı. */
+export function breachAtAngle(ring: number, phi: number) {
+  return BREACHES.some((b) => b.ring === ring && Math.abs(angDiff(phi, b.ang)) < b.half);
+}
+
+/** Nokta bir halka surun gediğinin hizasında mı (kasaba surlarında gedik açılmaz). */
+function inBreach(a: Arc, dx: number, dz: number) {
+  if (BREACHES.length === 0 || a.half < Math.PI) return false;
+  const ring = W.walls.findIndex((w) => w.r === a.r);
+  return ring >= 0 && breachAtAngle(ring, Math.atan2(dx, dz));
+}
+
+const onArc = (a: Arc, dx: number, dz: number) => (a.half >= Math.PI || Math.abs(angDiff(Math.atan2(dx, dz), a.mid)) <= a.half) && !inBreach(a, dx, dz);
 
 /** Nokta bir kapı açıklığının hizasındaysa kapıya göre yanal kayması ve kapının açısı. */
 function gateAt(a: Arc, dx: number, dz: number, dist: number) {

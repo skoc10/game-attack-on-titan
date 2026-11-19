@@ -28,6 +28,8 @@ interface Cannon extends CannonSlot {
   yaw: number;
   pitch: number;
   recoil: number;
+  /** Bulunduğu sur parçası yıkıldı: görünmez, başına geçilemez. */
+  broken?: boolean;
 }
 
 interface Shell {
@@ -135,6 +137,18 @@ export class Cannons {
     const fx = Math.sin(c.yaw);
     const fz = Math.cos(c.yaw);
     q.setFromAxisAngle(UP, c.yaw);
+    if (c.broken) {
+      // Yıkık sur parçasındaki top: görünmez (sıfır ölçek).
+      m.makeScale(0, 0, 0);
+      this.carriage.setMatrixAt(i, m);
+      this.barrel.setMatrixAt(i, m);
+      this.wheel.setMatrixAt(i * 2, m);
+      this.wheel.setMatrixAt(i * 2 + 1, m);
+      this.carriage.instanceMatrix.needsUpdate = true;
+      this.barrel.instanceMatrix.needsUpdate = true;
+      this.wheel.instanceMatrix.needsUpdate = true;
+      return;
+    }
     m.compose(tmp.set(c.x - fx * 0.4, WALL_H + 0.85, c.z - fz * 0.4), q, s.set(1, 1, 1));
     this.carriage.setMatrixAt(i, m);
     // Namlu: muylu ekseninde yukarı/aşağı döner, atışta geri teper.
@@ -152,6 +166,17 @@ export class Cannons {
     this.wheel.instanceMatrix.needsUpdate = true;
   }
 
+  /** Gedik açılınca (x, z) çevresindeki toplar yıkılır; onarılınca (`broken = false`) yerine gelir. */
+  setBroken(x: number, z: number, radius: number, broken: boolean) {
+    for (let i = 0; i < this.list.length; i++) {
+      const c = this.list[i];
+      if (Math.hypot(c.x - x, c.z - z) > radius || !!c.broken === broken) continue;
+      c.broken = broken;
+      if (this.manned === i && broken) this.manned = null;
+      this.pose(i);
+    }
+  }
+
   /** Oyuncunun başına geçebileceği en yakın top. */
   nearest(pos: THREE.Vector3) {
     if (Math.abs(pos.y - WALL_H) > 3) return null;
@@ -159,7 +184,7 @@ export class Cannons {
     let bd = C.reach + SEAT;
     for (let i = 0; i < this.list.length; i++) {
       const c = this.list[i];
-      if (Math.abs(c.x - pos.x) > bd || Math.abs(c.z - pos.z) > bd) continue;
+      if (c.broken || Math.abs(c.x - pos.x) > bd || Math.abs(c.z - pos.z) > bd) continue;
       const d = Math.hypot(c.x - pos.x, c.z - pos.z);
       if (d < bd) {
         bd = d;

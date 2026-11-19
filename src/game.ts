@@ -42,6 +42,7 @@ import { Menu } from './ui/menu';
 import { Minimap } from './ui/minimap';
 import { BigMap } from './ui/bigmap';
 import { Raid } from './world/raid';
+import { Breaker } from './world/breaker';
 import type { RaidId } from './data/raids';
 import { TouchControls } from './ui/touch';
 
@@ -90,6 +91,8 @@ export class Game {
   readonly bigmap: BigMap;
   /** Baskınlar: köy savunması ve sur kuşatması. */
   readonly raid: Raid;
+  /** Demir Koç: surlara toslayıp gedik açan zırhlı dev. */
+  readonly breaker: Breaker;
   /** Haritada konan işaret; dünyada üstünde bir ok durur, ekranda yönü gösterilir. */
   mark: { x: number; z: number } | null = null;
   private readonly markObj: THREE.Group;
@@ -191,6 +194,7 @@ export class Game {
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
     this.bigmap = new BigMap(this);
     this.raid = new Raid(this);
+    this.breaker = new Breaker(this);
     this.menu = new Menu(this);
     this.touch = new TouchControls(this, document.getElementById('hud')!, canvas);
     this.input.onTouchChange = () => {
@@ -937,6 +941,7 @@ export class Game {
     this.horse.update(sdt, this);
     this.spawner.update(sdt, this);
     this.raid.update(sdt);
+    this.breaker.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);
     const gasRatio = this.player.gas / this.player.maxGas;

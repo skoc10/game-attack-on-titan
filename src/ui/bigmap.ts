@@ -330,6 +330,16 @@ export class BigMap {
       }
       c.stroke();
     }
+    // Surdaki gedik
+    const br = g.breaker.breachPoint;
+    if (br) {
+      const [x, y] = P(br[0], br[1]);
+      c.fillStyle = '#ff4a3a';
+      c.beginPath();
+      c.arc(x, y, Math.max(5, CFG.breaker.halfWidth * s), 0, Math.PI * 2);
+      c.fill();
+      this.label('GEDİK', x, y - 16, 12, '#ff8a7a');
+    }
     c.fillStyle = '#e8c36a';
     for (const a of ARCS) {
       for (const gt of a.gates) {
