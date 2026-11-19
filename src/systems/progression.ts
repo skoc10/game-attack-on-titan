@@ -110,9 +110,16 @@ export function ownsChar(s: SaveData, id: CharId) {
 }
 
 /** Karakteri av puanıyla alır ve seçer; puan yetmiyorsa ya da zaten varsa false döner. */
+/** Karakteri almak için yeterli av puanı ve seviye var mı. */
+export function canBuyChar(s: SaveData, id: CharId) {
+  const c = CHARACTERS[id];
+  return !ownsChar(s, id) && s.coins >= c.price && s.level >= c.level;
+}
+
+/** Karakteri av puanı harcayarak alır; seviyesi yetmiyorsa alınamaz. */
 export function buyChar(s: SaveData, id: CharId) {
   const price = CHARACTERS[id].price;
-  if (ownsChar(s, id) || s.coins < price) return false;
+  if (!canBuyChar(s, id)) return false;
   s.coins -= price;
   s.chars.push(id);
   s.char = id;
