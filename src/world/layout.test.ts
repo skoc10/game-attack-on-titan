@@ -13,7 +13,10 @@ import {
   ringOf,
   spawnable,
   wallDist,
+  wallBetween,
   wallPush,
+  WALK_IN,
+  WALK_OUT,
   wallSolid,
   wallTopAt,
   zoneName,
@@ -92,6 +95,36 @@ describe('sur gövdesi', () => {
     const p = { x: d.x + Math.sin(a) * (d.r - 1), z: d.z + Math.cos(a) * (d.r - 1) };
     expect(wallPush(p, 0.5, 0)).toBe(true);
     expect(Math.hypot(p.x - d.x, p.z - d.z)).toBeCloseTo(d.r - HALF_T - 0.5);
+  });
+  it('sur üstünde korkulukların içine girilmez; dış korkuluğun üstüne zıplayan aşar', () => {
+    const a = Math.PI / 4;
+    const out = { x: Math.sin(a) * (w1.r + HALF_T - 0.2), z: Math.cos(a) * (w1.r + HALF_T - 0.2) };
+    expect(wallPush(out, 0.45, W.wallH)).toBe(true);
+    expect(Math.hypot(out.x, out.z)).toBeCloseTo(w1.r + WALK_OUT - 0.45);
+    const inn = { x: Math.sin(a) * (w1.r - HALF_T + 0.1), z: Math.cos(a) * (w1.r - HALF_T + 0.1) };
+    expect(wallPush(inn, 0.45, W.wallH)).toBe(true);
+    expect(Math.hypot(inn.x, inn.z)).toBeCloseTo(w1.r + WALK_IN + 0.45);
+    const mid = { x: Math.sin(a) * w1.r, z: Math.cos(a) * w1.r };
+    expect(wallPush(mid, 0.45, W.wallH)).toBe(false);
+    const jump = { x: Math.sin(a) * (w1.r + HALF_T - 0.2), z: Math.cos(a) * (w1.r + HALF_T - 0.2) };
+    expect(wallPush(jump, 0.45, W.wallH + 2)).toBe(false);
+  });
+  it('kapı kemerinden uzun dev kapıdan geçemez', () => {
+    const short = { x: 1, z: w1.r };
+    expect(wallPush(short, 2, 0, 15)).toBe(false);
+    const tall = { x: 1, z: w1.r };
+    expect(wallPush(tall, 2, 0, 30)).toBe(true);
+  });
+  it('surun ardındaki noktaya hat sur gövdesinden geçer; kapıdan ve sur üstünden geçmez', () => {
+    const a = Math.PI / 4;
+    const o = (r: number) => [Math.sin(a) * r, Math.cos(a) * r] as const;
+    const [ox, oz] = o(w1.r + 12);
+    const [ix, iz] = o(w1.r - 10);
+    expect(wallBetween(ox, oz, ix, iz, 1)).toBe(true);
+    expect(wallBetween(ox, oz, ix, iz, W.wallH + 1)).toBe(false);
+    expect(wallBetween(0, w1.r + 12, 0, w1.r - 10, 1)).toBe(false); // kapı geçidi
+    const [px, pz] = o(w1.r + 30);
+    expect(wallBetween(ox, oz, px, pz, 1)).toBe(false); // ikisi de dışarıda
   });
   it('dünyanın kenarından dışarı çıkılmaz', () => {
     const p = { x: EDGE + 50, z: 0 };

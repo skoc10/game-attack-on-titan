@@ -104,15 +104,21 @@ Menüde (oyunun başında ya da `Esc` ile) **BASKINLAR** düğmesi üç baskın�
 
 | Baskın | Yer | Akış | Ödül |
 |---|---|---|---|
-| **Değirmen Baskını** | Demir Ova'da bir köy | 3 dalga: 4 dev → 4 dev + 2 koşucu → 4 dev + 2 koşucu + çığlıkçı (ikisi iri) | ◆ 450 · 400 XP |
-| **Kuzgun Ormanı Baskını** | Kalkan Ormanları'nda bir köy | 3 dalga: zırhlılar, sıçrayanlar, taşçılar; son dalgada bir Öfke dönüşümcüsü | ◆ 800 · 700 XP |
-| **Sur Yıkan** | Kalkan Suru | 64 m'lik tek bir yıkıcı ve 28 sn'de bir gelen eşlikçiler | ◆ 1400 · 1200 XP |
+| **Değirmen Baskını** | Demir Ova'da bir köy | 3 dalga: 7 → 9 → 12 dev (koşucular, çığlıkçılar; son dalgada üç iri dev) | ◆ 450 · 400 XP |
+| **Kuzgun Ormanı Baskını** | Kalkan Ormanları'nda bir köy | 3 dalga: 9 → 12 → 14 dev (zırhlılar, sıçrayanlar, taşçılar); son dalgada bir Öfke dönüşümcüsü | ◆ 800 · 700 XP |
+| **Sur Yıkan** | Kalkan Suru | 64 m'lik tek bir yıkıcı; 22 sn'de bir beşer eşlikçi gelir | ◆ 1400 · 1200 XP |
 
 **Köy savunması:** devler köyle aynı sur bölgesinde, köyden 200–280 m uzakta doğar ve köye yürür. Varınca iki kolunu başının üstünde birleştirip evleri yumruklar: çatılardan toz ve tahta parçaları savrulur, köyün sağlamlığı düşer (iri devler daha çok yıkar). Sağlamlık her %12 düştüğünde bir ev alev alır. Yakınlarındaysan sana saldırırlar, uzaklaşınca köye dönerler. Dalga temizlenince birkaç saniye nefes alırsın; üçüncü dalga da düşerse baskın püskürtülür.
 
 **Sur savunması:** Sur Yıkan surdan uzundur, gövdesinden buhar tüter. Surun dışından ağır adımlarla gelir ve suru yumruklarıyla döver: her darbede taşlar kopup düşer, surun yüzünde çatlaklar açılır, sağlamlık %4,5 azalır. Ensesi açıktır ama **beş temiz kesik** ister. Bacaklarına dört kesik onu yere serer; o sırada suru dövemez. Surun üstündeki **toplar** (`E`) ona kilitlenir, enseye yakın isabet iki kesik sayılır. Sağlamlık biterse sur yıkılır: dev bir toz bulutu, düşen taşlar ve yarık.
 
 Kazanınca av puanı, XP ve dev barına +40 gelir; püskürtülen baskınlar menüde ✓ ile işaretlenir ve yeniden oynanabilir.
+
+## Surlar ve çarpışma
+
+- **Sur üstü:** yürüme yolu iç ve dış korkuluğun arasındadır; korkulukların içinden geçilmez. Dış korkuluğun (1,3 m) üstüne zıplayan aşıp aşağı atlayabilir.
+- **Devler sura gömülmez:** omuzları ve kollarıyla birlikte gövdelerinin genişliği kadar surdan uzak durur. Kapı kemerinden (24 m) uzun devler kapıdan geçemez.
+- **Sur kalkandır:** surun ardındaki (içindeki) oyuncuya devlerin yumruğu, tekmesi, ısırığı, eli, atılımı, sarsıntısı ve ışını ulaşmaz. Kapı geçidinden ya da surun üstünden geçen hatta ulaşır; surun üstündeysen yalnızca surdan uzun devlerin eli yetişir. Atılan kayalar surun üstünden aşıp düştüğü yere vurur.
 
 ## Gard, seri yumruk ve tekme
 

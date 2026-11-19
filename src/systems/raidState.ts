@@ -66,5 +66,5 @@ export class RaidState {
 
 /** Köy baskınında devin bir vuruşunun sağlamlıktan götürdüğü: iri devler daha çok yıkar. */
 export function smashDamage(height: number, siege: boolean) {
-  return siege ? 4.5 : 0.6 + height * 0.08;
+  return siege ? 4.5 : 0.5 + height * 0.065;
 }

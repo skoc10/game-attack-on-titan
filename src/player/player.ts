@@ -12,7 +12,7 @@ import { Grapple } from './grapple';
 import { TitanForm } from './titanForm';
 import { sightMult } from '../systems/inventory';
 import type { Interact } from '../systems/touchLayout';
-import { districtAt } from '../world/layout';
+import { districtAt, wallBetween, wallPush } from '../world/layout';
 
 export type PlayerMode = 'foot' | 'mounted' | 'titan';
 
@@ -683,6 +683,8 @@ export class Player {
   takeHit(dmg: number, from: THREE.Vector3, knock: number, pierce = 0) {
     if (this.dead || this.invuln > 0 || this.grabbedBy || this.game.cocoon.active) return;
     const g = this.game;
+    // Sur gövdesinin ardındaki oyuncuya darbe ulaşmaz (surun üstünde ya da kapıdan geçen hatta ulaşır).
+    if (wallBetween(from.x, from.z, this.pos.x, this.pos.z, this.pos.y + 1)) return;
     if (this.mode === 'titan') {
       const blocked = this.titan.blockFrom(this, from, pierce);
       g.meter.hit(CFG.titan.hitDrain * ((dmg * (1 - blocked)) / 30) * this.titan.def.armor);
@@ -1003,7 +1005,9 @@ export class Player {
     const pz = this.pos.z;
     this.pos.addScaledVector(this.vel, dt);
     // Çok büyük formlar ağaçları ezip geçer.
-    if (g.world.resolve(this.pos, T.radius, T.height >= 20 ? BIG_COLLIDE : COLLIDE)) {
+    // Sura karşı omuzlar ve kollarla birlikte gövde genişliği kadar itilir (kapıdan eğilerek geçer).
+    const walled = wallPush(this.pos, Math.max(T.radius, T.height * 0.24), this.pos.y);
+    if (g.world.resolve(this.pos, T.radius, T.height >= 20 ? BIG_COLLIDE : COLLIDE) || walled) {
       this.vel.x = (this.pos.x - px) / dt;
       this.vel.z = (this.pos.z - pz) / dt;
     }
