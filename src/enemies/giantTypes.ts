@@ -44,6 +44,10 @@ export interface GiantType {
   pack?: number;
   /** Kolunun yetiştiği mesafenin çarpanı (uzun kollu devler). */
   reach?: number;
+  /** Baştan aşağı metal plaka zırh (Demir Koç). */
+  plating?: { color: number; trim: number; glow: number };
+  /** Surlara toslayıp gedik açar (Demir Koç). */
+  breaker?: boolean;
 }
 
 export const GIANT_TYPES: Record<CommonKind, GiantType> = {
@@ -324,7 +328,7 @@ export const GIANT_TYPES: Record<CommonKind, GiantType> = {
   },
 };
 
-export type BossId = 'gate' | 'bekci' | 'kadim' | 'yikici';
+export type BossId = 'gate' | 'bekci' | 'kadim' | 'yikici' | 'koc';
 
 /** Bölüm sonu devleri: aynı gövde ve davranış, farklı boy ve dayanıklılık. */
 export const BOSSES: Record<BossId, GiantType> = {
@@ -354,6 +358,29 @@ export const BOSSES: Record<BossId, GiantType> = {
     dmg: 46,
     xp: 1500,
     skins: [0x5a4a52],
+  },
+  // Demir Koç: baştan aşağı metal plakalı, sur ötesinde dolaşan zırhlı dev. Kollarıyla yüzünü kapatıp sura toslar, gedik açar.
+  koc: {
+    ...GIANT_TYPES.boss,
+    name: 'Demir Koç',
+    minH: 19,
+    maxH: 19,
+    speed: 4.4,
+    turn: 1.3,
+    hpBase: 2600,
+    armored: true,
+    legCuts: 4,
+    napeCuts: 3,
+    aggro: 220,
+    dmg: 36,
+    xp: 1800,
+    bulk: [1.3, 1.3],
+    head: [0.9, 0.9],
+    arm: 1.1,
+    skins: [0x8a7a6c],
+    downTime: 8,
+    plating: { color: 0x5a636c, trim: 0xa8834a, glow: 0xff9a3a },
+    breaker: true,
   },
   // Sur baskınının yıkıcısı: surdan uzun, ağır adımlı; suru yumruklarıyla döver. Ensesi açıktır ama beş temiz kesik ister.
   yikici: {

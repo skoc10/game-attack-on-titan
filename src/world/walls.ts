@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
 import { mulberry32 } from '../core/rng';
 import { stoneTexture } from '../core/textures';
-import { ARCS, HALF_T } from './layout';
+import { ARCS, HALF_T, breachAtAngle } from './layout';
 
 const W = CFG.world;
 
@@ -64,6 +64,7 @@ export function buildWalls() {
       const g = a.gates[0];
       spans.push([a.mid - a.half, g - gateAng - (a.mid - a.half)], [g + gateAng, a.mid + a.half - g - gateAng]);
     }
+    const ring = a.half >= Math.PI ? W.walls.findIndex((w) => w.r === a.r) : -1;
     for (const [start, span] of spans) {
       const n = Math.max(4, Math.round((R * span) / 24));
       const step = span / n;
@@ -71,6 +72,8 @@ export function buildWalls() {
       const mid = R * Math.cos(step / 2);
       for (let i = 0; i < n; i++) {
         const th = start + step * (i + 0.5);
+        // Gedik: yıkılan parçalar çizilmez.
+        if (ring >= 0 && breachAtAngle(ring, th)) continue;
         // Komşu parçalar kenarda üst üste biner: üst yüzleri aynı düzlemde titreşmesin diye biri azıcık yüksektir.
         const lift = (i % 2) * 0.03;
         place(box(chord, W.wallH + base + lift, W.wallT, TILE, 0.88 + rng() * 0.12), th, mid, (W.wallH - base + lift) / 2);

@@ -129,6 +129,21 @@ Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uz
 - **Öldürmek:** ensesine üç temiz kesik gerekir. Bacaklarına üç kesik onu yere serer. Ağaçlara kanca atıp tepesine çıkmak en iyi yol.
 - **Ödülü ve yeniden doğuşu:** öldürünce +800 puan ve dolu dev barı. Beş dakika sonra yeniden doğar. Ormandan çok uzaklaşırsan peşini bırakır.
 
+## Demir Koç ve surdaki gedik
+
+**Demir Koç:** sur ötesinde (Kalkan Suru'nun dışında) dolaşan 19 m'lik zırhlı bir dev.
+- **Doğuşu:** oyuncu Demir Sur'un dışına çıkınca bir süre sonra, oyuncunun yönünde bir yerde belirir.
+- **Görünüşü:** baştan aşağı metal plakalarla kaplıdır:
+  - Gövde: göğüs ve sırt plakaları, bölümlü karın bantları, boyunluk ve kalça plakası.
+  - Kollar ve bacaklar: iki katlı omuzluklar, pazı ve önkol zırhı, dizlik, baldırlık ve ayak zırhı.
+  - Baş: tepesi sırtlı miğfer ve yüzü kapatan siper.
+  - Plakalar ortamı yansıtan parlak metaldir, kenarları pirinç süslüdür. Göz yarıkları ve plaka araları kor rengi parlar.
+- **Toslayışı:** oyuncu 700 m yakınındayken bir süre sonra surdan 260 m geri çekilip koşu yolu alır. Sonra kollarını yüzünün önünde çaprazlayıp başını eğer ve saniyede 44 m hızla Kalkan Suru'na toslar. Yolundakini savurur; önünden çekil.
+- **Gedik:** sura çarptığı yerde 34 m'lik bir gedik açılır. Taşlar savrulur, toz bulutu yükselir, gediğin iki yanına moloz yığılır, oradaki toplar yıkılır. Gediğin hizasında sur ne engeldir ne kalkan: devler de sen de geçebilirsin, üstü yürünmez. Gedik kapılardan ve kasabalardan uzakta açılır.
+- **İçeri dolanlar:** gediğin dışında dokuz dev (sıradan, koşucu, zırhlı, sıçrayan, toslayan) belirir. Önce gediğin ortasından geçer, sonra surun içine dağılırlar. Demir Koç da gedikten içeri girip surun içinde dolaşır.
+- **Öldürmek:** zırhlıdır, ensesi ancak yere düşünce kesilir. Bacaklarına dört kesik, patlar mızrak ya da sur topu onu yere serer; yerdeyken ensesine üç temiz kesik gerekir.
+- **Onarım:** Demir Koç düşünce gedik 45 saniye sonra onarılır, toplar yerine gelir. Kendisi 8 dakika sonra yeniden doğar. Büyük haritada gedik kırmızı bir işaretle görünür.
+
 ## Yeni dev türleri
 
 | Tür | Boy | Özelliği | Nerede |

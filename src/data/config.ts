@@ -84,6 +84,10 @@ export const CFG = {
   // sonrakiler `every` aralığında, oyuncudan `dist` uzaklıkta, kendi güçleriyle saldırır.
   // Avcı Dev: dev ağaçlar ormanına giren oyuncuyu kovalar. hp dev gücüne karşı can, respawn öldükten sonra yeniden doğma
   // süresi (sn), bonus öldürünce ek av puanı, mountedChase oyuncu attayken koşusuna eklenen çarpan (dörtnala yetişmeye yakın).
+  // Demir Koç: sur ötesinde dolaşır, oyuncu `notice` m yakınındayken `firstCharge` sn sonra surdan `runup` m geri çekilip
+  // `speed` m/sn ile toslar; Kalkan Suru'nda 2×`halfWidth` m'lik gedik açar (kapılardan `gateClear` radyan uzakta).
+  // Öldürülünce gedik `repair` sn sonra onarılır, kendisi `respawn` sn sonra yeniden doğar.
+  breaker: { first: 20, firstCharge: 25, notice: 700, runup: 260, speed: 44, halfWidth: 17, gateClear: 0.16, repair: 45, respawn: 480, again: 1e9 },
   huntress: { hp: 2600, respawn: 300, bonus: 800, mountedChase: 1.12, first: 4 },
   shifter: { first: 75, every: [130, 220] as [number, number], dist: [220, 370] as [number, number], hp: 900, armoredHp: 1300 },
   // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.

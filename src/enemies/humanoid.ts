@@ -41,6 +41,8 @@ export interface HumanoidOpts {
   female?: boolean;
   /** Derisiz, kasları dışarıda gövde: lifli kas dokusu, belirgin kas kütleleri ve kirişler (yüz ve eller ten). */
   muscle?: boolean;
+  /** Baştan aşağı metal plaka zırh: ana renk, kenar süsü ve plaka aralarında parlayan ekler. */
+  plating?: { color: number; trim: number; glow: number };
 }
 
 /** Ten malzemesi: insanlarda çizgi film gölgesi, devlerde yumuşak, gerçekçi deri. */
@@ -148,6 +150,14 @@ export class Rig {
     const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0, map: tex, bumpMap: tex, bumpScale: 0.6, envMapIntensity: 0.55 });
     m.onBeforeCompile = addSkinRim;
     m.customProgramCacheKey = () => 'skinrim';
+    this.mats.push(m);
+    return m;
+  }
+
+  /** Dövme metal: parlak, ortamı yansıtan sert yüzey. */
+  metal(color: number, rough = 0.32): SkinMat {
+    if (!this.soft) return this.toon(color);
+    const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.78, envMapIntensity: 1.15 });
     this.mats.push(m);
     return m;
   }
@@ -555,6 +565,50 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       rig.part(a.fore, GEO.capsule, plate, rf * 1.3, Lf / 6, rf * 1.3, 0, -Lf / 2, 0);
     }
     for (const l of [lL, lR]) rig.part(l.shin, GEO.capsule, plate, rs * 1.3, Ls / 6, rs * 1.3, 0, -Ls / 2, 0.006);
+  }
+
+  if (o.plating) {
+    // Plaka zırh: gövdeyi, kolları, bacakları ve başı kaplayan üst üste binmiş metal plakalar.
+    const P = o.plating;
+    const plate = rig.metal(P.color);
+    const trim = rig.metal(P.trim, 0.26);
+    const seam = rig.basic(P.glow);
+    // Göğüs: iki büyük plaka, ortada parlayan dikiş; altında bölümlü karın bantları.
+    for (const s of [-1, 1]) {
+      const pec = rig.part(tilt, GEO.box, plate, 0.09 * B, 0.1, 0.034, s * 0.052 * B, 0.722, 0.08 * B);
+      pec.rotation.y = s * 0.28;
+    }
+    rig.part(tilt, GEO.box, seam, 0.006, 0.11, 0.01, 0, 0.722, 0.1 * B, false);
+    for (let i = 0; i < 3; i++) {
+      rig.part(tilt, GEO.box, i === 1 ? trim : plate, (0.15 - i * 0.012) * B, 0.03, 0.03, 0, 0.635 - i * 0.036, 0.08 * B);
+      rig.part(tilt, GEO.box, seam, (0.13 - i * 0.012) * B, 0.003, 0.012, 0, 0.618 - i * 0.036, 0.094 * B, false);
+    }
+    rig.part(tilt, GEO.box, plate, 0.21 * B, 0.2, 0.03, 0, 0.68, -0.082 * B); // sırt plakası
+    rig.part(tilt, GEO.box, trim, 0.012, 0.2, 0.012, 0, 0.68, -0.1 * B, false); // omurga sırtı
+    rig.part(tilt, GEO.taper, trim, 0.052, 0.04, 0.05, 0, 0.8, 0); // boyunluk
+    rig.part(tilt, GEO.box, plate, 0.2 * B, 0.05, 0.12 * B, 0, 0.5, 0); // kalça plakası
+    for (const a of [aL, aR]) {
+      // İki katlı iri omuzluk, pazı plakası, eldiven ve dirseklik.
+      rig.part(a.g, GEO.sphere, plate, 0.078 * sb, 0.05, 0.078 * sb, 0, 0.014, 0);
+      rig.part(a.g, GEO.sphere, trim, 0.068 * sb, 0.036, 0.07 * sb, 0, -0.022, 0, false);
+      rig.part(a.g, GEO.capsule, plate, ru * 1.22, Lu / 6, ru * 1.22, 0, -Lu * 0.55, 0);
+      rig.part(a.fore, GEO.sphere, trim, rf * 1.35, rf * 1.2, rf * 1.35, 0, 0, 0, false);
+      rig.part(a.fore, GEO.capsule, plate, rf * 1.32, Lf / 5, rf * 1.32, 0, -Lf * 0.55, 0);
+      rig.part(a.fore, GEO.box, seam, rf * 0.25, Lf * 0.5, rf * 0.3, 0, -Lf * 0.55, rf * 1.3, false);
+    }
+    for (const l of [lL, lR]) {
+      // Uyluk plakası, dizlik, baldırlık ve ayak zırhı.
+      rig.part(l.g, GEO.capsule, plate, rt * 1.18, Lt / 6, rt * 1.18, 0, -Lt * 0.45, 0.004);
+      rig.part(l.shin, GEO.sphere, trim, rs * 1.4, rs * 1.3, rs * 1.4, 0, 0, rs * 0.3, false);
+      rig.part(l.shin, GEO.capsule, plate, rs * 1.3, Ls / 5, rs * 1.3, 0, -Ls * 0.5, 0.006);
+      rig.part(l.shin, GEO.box, seam, rs * 0.25, Ls * 0.5, rs * 0.3, 0, -Ls * 0.5, rs * 1.32, false);
+      rig.part(l.shin, GEO.sphere, plate, 0.046 * sb, 0.026, 0.078 * sb, 0, -Ls - 0.01, 0.026);
+    }
+    // Baş: miğfer, tepesinde sırt; yüzü kapatan siper ve göz yarıkları.
+    rig.part(head, GEO.sphere, plate, 0.078, 0.06, 0.084, 0, 0.11, -0.004);
+    rig.part(head, GEO.box, trim, 0.01, 0.03, 0.15, 0, 0.165, -0.004, false);
+    rig.part(head, GEO.box, plate, 0.13, 0.085, 0.03, 0, 0.06, 0.07);
+    for (const s of [-1, 1]) rig.part(head, GEO.box, seam, 0.034, 0.008, 0.01, s * 0.03, 0.09, 0.087, false);
   }
 
   if (o.cracks && glowMat) {

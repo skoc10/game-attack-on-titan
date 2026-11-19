@@ -60,7 +60,9 @@ export class Giant {
    * Baskın: devin yürüdüğü hedef ve varınca yıktığı yer. `siege` ise hedef surdur (yıkıcı).
    * Avı yakındaysa ona saldırır, uzaklaşınca hedefine döner.
    */
-  raid: { x: number; z: number; r: number; siege: boolean } | null = null;
+  raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
+  /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
+  breaching = false;
   /** Dev formundaki oyuncunun yumruğuna gard alma olasılığı, gardın süresi ve yeniden gard için bekleme. */
   private guardChance = 0;
   private guardDur = 0;
@@ -136,7 +138,7 @@ export class Giant {
       // Ten rengi her devde biraz farklı; bazıları şişman, bazıları sıska; kol boyu da değişir.
       const skin = new THREE.Color(type.skins[Math.floor(r() * type.skins.length)]).offsetHSL((r() - 0.5) * 0.03, (r() - 0.5) * 0.12, (r() - 0.5) * 0.08).getHex();
       const hairRoll = r();
-      const hairStyle: HairStyle = hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
+      const hairStyle: HairStyle = type.plating || hairRoll < 0.3 ? 'none' : hairRoll < 0.75 ? 'short' : 'long';
       const hairColors = [0x2a2220, 0x4a3524, 0x6b5a48, 0x8a8478];
       const fat = !type.armored && type.kind !== 'runner' && r() < 0.28;
       this.body = buildHumanoid(
@@ -156,7 +158,9 @@ export class Giant {
           bulk: lerp(type.bulk[0], type.bulk[1], r()) * (fat ? 1.12 : 1),
           head: lerp(type.head[0], type.head[1], r()),
           arm: type.arm * lerp(0.92, 1.14, r()),
-          armor: type.armored,
+          // Plaka zırhlı dev, sıradan zırh plakaları yerine baştan aşağı metal giyer.
+          armor: type.armored && !type.plating,
+          plating: type.plating,
           face: type.screamer ? 1 : Math.floor(r() * 4),
           belly: fat ? 0.4 + r() * 0.6 : 0,
         },
@@ -182,6 +186,18 @@ export class Giant {
     if (this.big && this.guardChance > 0) this.guardChance += 0.1;
     this.body.root.traverse((o) => (o.userData.giant = this));
     game.scene.add(this.body.root);
+  }
+
+  /** Yönü kilitli, hızlı bir koşuyla (x, z)'ye toslar; sura değerse gedik açar. */
+  charge(x: number, z: number, speed: number) {
+    const d = Math.hypot(x - this.pos.x, z - this.pos.z);
+    this.yaw = Math.atan2(x - this.pos.x, z - this.pos.z);
+    this.rushSpeed = speed;
+    this.rushTime = d / speed + 1.5;
+    this.rushHit = false;
+    this.breaching = true;
+    this.raid = null;
+    this.setState('rush');
   }
 
   /** Dev formundaki oyuncu önünde yumruk savurdu: dev belli bir olasılıkla gardını alır. */
@@ -564,7 +580,7 @@ export class Giant {
           const gz = R.z - this.pos.z;
           moveYaw = Math.atan2(gx, gz);
           if (Math.hypot(gx, gz) > R.r) move = speed * (R.siege ? 1 : 1.35);
-          else if (this.attackCd <= 0) {
+          else if (this.attackCd <= 0 && !R.march) {
             this.attackKind = 'smash';
             this.setState('windup');
             this.say('grunt', R.siege ? 3 : 1.2);
@@ -759,7 +775,10 @@ export class Giant {
           }
         }
         if (Math.random() < 0.5) game.particles.emit(this.pos.x, this.pos.y + 1, this.pos.z, 0, 4, 0, 0.8, 0xa39a86);
-        if (this.stateT > this.rushTime) this.setState('recover');
+        if (this.stateT > this.rushTime) {
+          this.breaching = false;
+          this.setState('recover');
+        }
         break;
       }
       case 'grab': {
@@ -877,7 +896,12 @@ export class Giant {
       }
     }
     // Gövde (omuzlar, kollar) merkezden geniştir: sura gömülmesin diye daha geniş itilir; kemere sığmayan kapıdan geçemez.
-    if (this.state !== 'leap') wallPush(this.pos, this.bodyR, 0, this.h);
+    if (this.state !== 'leap' && wallPush(this.pos, this.bodyR, 0, this.h) && this.breaching && this.state === 'rush') {
+      // Toslayış sura ulaştı: gedik açılır, dev bir an sersemler.
+      this.breaching = false;
+      game.breaker.onImpact(this);
+      this.stun(2.2);
+    }
     b.root.rotation.y = this.yaw;
     // Baş avına döner: kovalarken ve saldırırken ona bakar.
     const hunting = this.state === 'chase' || this.state === 'windup' || this.state === 'recover' || this.state === 'guard';
@@ -1337,6 +1361,15 @@ export class Giant {
         aL = aR = 0.9;
         lL = Math.sin(this.phase) * 0.9;
         lR = -lL;
+        if (this.breaching) {
+          // Sura toslayış: önkollar yüzün önünde çapraz, baş eğik, omuz önde.
+          aL = aR = -1.45;
+          elbowL = elbowR = -2.15;
+          twistL = 0.6;
+          twistR = -0.6;
+          headX = 0.4;
+          tiltX = 0.45;
+        }
         break;
     }
     if (this.state === 'windup' && this.attackKind === 'power' && this.power) {

@@ -27,6 +27,9 @@ export class World {
   readonly buildings: Building[];
   readonly villages: Village[];
   readonly grappleTargets: THREE.Object3D[] = [];
+  /** Surların tek birleşik ağı; gedik açılınca ya da onarılınca yeniden kurulur. */
+  private walls: THREE.Group;
+  private readonly scene: THREE.Scene;
   /** Kamerayı izleyen gökyüzü kubbesi. */
   readonly sky: THREE.Mesh;
   /** Ufuktaki dağ halkaları; kamerayla birlikte kayar. */
@@ -38,6 +41,7 @@ export class World {
   private readonly buildingGrid = new Map<number, Building[]>();
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
+    this.scene = scene;
     const rng = mulberry32(20261113);
     this.sky = buildSky(fogColor);
     this.mountains = buildMountains(fogColor);
@@ -45,6 +49,7 @@ export class World {
     scene.add(buildTerrain());
 
     const walls = buildWalls();
+    this.walls = walls;
     scene.add(walls);
 
     this.trees = generateTrees(rng);
@@ -87,6 +92,21 @@ export class World {
         }
       }
     }
+  }
+
+  /** Surları yeniden kurar (gedikler açıldı ya da kapandı); kanca hedefi de yenilenir. */
+  rebuildWalls() {
+    const old = this.walls;
+    this.scene.remove(old);
+    old.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.geometry.dispose();
+    });
+    const walls = buildWalls();
+    this.scene.add(walls);
+    const i = this.grappleTargets.indexOf(old);
+    if (i >= 0) this.grappleTargets[i] = walls;
+    else this.grappleTargets.push(walls);
+    this.walls = walls;
   }
 
   heightAt(x: number, z: number) {
