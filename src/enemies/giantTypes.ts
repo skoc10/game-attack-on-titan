@@ -34,6 +34,8 @@ export interface GiantType {
   thrower?: boolean;
   /** Avını görünce çığlık atıp başka devleri çağırır. */
   screamer?: boolean;
+  /** Koşucu gibi öne eğilip kolları geride koşar; attaki oyuncuya yetişmek için hızlanır (Avcı Dev). */
+  sprinter?: boolean;
 }
 
 export const GIANT_TYPES: Record<CommonKind, GiantType> = {

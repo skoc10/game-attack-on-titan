@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
 import { angDiff, mulberry32, smooth } from '../core/rng';
 import { cobbleTexture, dirtTexture, grassTexture } from '../core/textures';
-import { DIRS, DISTRICTS, ROAD_END, ROAD_HALF, districtGap, districtHalf, wallDist } from './layout';
+import { DIRS, DISTRICTS, GIANT_FOREST, ROAD_END, ROAD_HALF, districtGap, districtHalf, wallDist } from './layout';
 
 /** Analitik arazi yüksekliği. Sur diplerinde, şehirde, kasabalarda ve ana yollarda düz. */
 export function heightAt(x: number, z: number) {
@@ -26,7 +26,8 @@ export function heightAt(x: number, z: number) {
 export function buildTerrain() {
   const group = new THREE.Group();
   const size = CFG.world.size;
-  const seg = 320;
+  // Bir karo yaklaşık 27 m: dünya büyüdükçe karo sayısı da artar.
+  const seg = Math.round(size / 27);
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
@@ -41,6 +42,12 @@ export function buildTerrain() {
     const big = Math.sin(x * 0.0031 + 0.7) * Math.cos(z * 0.0027 - 1.1);
     const mid = Math.sin(x * 0.019 + z * 0.013) * Math.cos(z * 0.023 - x * 0.007);
     c.setHSL(0.225 + big * 0.035 + mid * 0.012, 0.34 + big * 0.08, 0.3 + mid * 0.045 + h * 0.005);
+    // Dev ağaçlar ormanının tabanı: gölgede kalan koyu, yosunlu toprak.
+    const fd = Math.hypot(x - GIANT_FOREST.x, z - GIANT_FOREST.z);
+    if (fd < GIANT_FOREST.r + 120) {
+      const k = smooth(GIANT_FOREST.r + 120, GIANT_FOREST.r - 80, fd);
+      c.lerp(new THREE.Color().setHSL(0.24 + mid * 0.02, 0.42, 0.17 + mid * 0.03), k);
+    }
     colors[i * 3] = c.r;
     colors[i * 3 + 1] = c.g;
     colors[i * 3 + 2] = c.b;
@@ -222,7 +229,8 @@ export function buildMountains(fogColor: THREE.Color) {
     m.renderOrder = -5;
     group.add(m);
   };
-  ring(7000, 520, 1500, 0.22);
-  ring(5600, 220, 760, 0.4);
+  // Dağlar kamerayı izler (gökyüzü gibi): dünyanın her yerinden aynı uzaklıkta, ufukta durur.
+  ring(8600, 620, 1700, 0.22);
+  ring(7000, 260, 900, 0.4);
   return group;
 }

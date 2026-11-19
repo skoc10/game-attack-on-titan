@@ -3,7 +3,7 @@ import { CFG } from '../data/config';
 import { hex } from '../data/titans';
 import { RAIDS } from '../data/raids';
 import { crateColor } from '../world/crates';
-import { ARCS, DIRS, DISTRICTS, ROAD_END } from '../world/layout';
+import { ARCS, DIRS, DISTRICTS, GIANT_FOREST, ROAD_END } from '../world/layout';
 
 const W = CFG.world;
 /** Yakınlaştırma sınırları (ekran pikseli / metre). */
@@ -267,6 +267,25 @@ export class BigMap {
     disc(W.walls[1].r, '#2a3a24');
     disc(W.walls[0].r, '#3a3a30');
 
+    // Dev ağaçlar ormanı: koyu yeşil, sık gövdeler
+    {
+      const [x, y] = P(GIANT_FOREST.x, GIANT_FOREST.z);
+      c.fillStyle = '#16301a';
+      c.beginPath();
+      c.arc(x, y, GIANT_FOREST.r * s, 0, Math.PI * 2);
+      c.fill();
+      if (s > 0.25) {
+        c.fillStyle = '#2c5a2e';
+        for (const t of g.world.trees) {
+          if (t.kind !== 2) continue;
+          const [tx, ty] = P(t.x, t.z);
+          c.beginPath();
+          c.arc(tx, ty, Math.max(1.5, t.r * s * 2.2), 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+    }
+
     // Kapı kasabaları
     c.fillStyle = '#4a4436';
     for (const d of DISTRICTS) {
@@ -380,6 +399,10 @@ export class BigMap {
         const [x, y] = P(Math.sin(Math.PI * 0.62) * r, Math.cos(Math.PI * 0.62) * r);
         this.label(name.toLocaleUpperCase('tr'), x, y, 13, 'rgba(220,214,190,0.75)');
       });
+      {
+        const [x, y] = P(GIANT_FOREST.x, GIANT_FOREST.z + GIANT_FOREST.r * 0.55);
+        this.label(GIANT_FOREST.name.toLocaleUpperCase('tr'), x, y, 13, '#9fe0a0');
+      }
       W.walls.forEach((w, i) => {
         const [x, y] = P(Math.sin(-Math.PI * 0.25) * w.r, Math.cos(-Math.PI * 0.25) * w.r);
         this.label(w.name, x, y - 12, i === 0 ? 11 : 12, '#efe8d2');

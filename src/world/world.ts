@@ -7,6 +7,13 @@ import { buildForest, buildProps, generateTrees, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
 
 const CELL = 32;
+
+/** Gövdenin `y` yüksekliğindeki yarıçapı: dev ağaçlar yukarı doğru incelir. */
+function trunkR(t: Tree, y: number) {
+  if (t.kind !== 2) return t.r;
+  const f = Math.min(1, Math.max(0, (y - t.y) / (t.h * 0.92)));
+  return t.r * (1 - 0.52 * f);
+}
 const key = (cx: number, cz: number) => (cx + 512) * 1024 + (cz + 512);
 
 export interface CollideOpts {
@@ -22,13 +29,16 @@ export class World {
   readonly grappleTargets: THREE.Object3D[] = [];
   /** Kamerayı izleyen gökyüzü kubbesi. */
   readonly sky: THREE.Mesh;
+  /** Ufuktaki dağ halkaları; kamerayla birlikte kayar. */
+  readonly mountains: THREE.Group;
   private readonly treeGrid = new Map<number, Tree[]>();
   private readonly buildingGrid = new Map<number, Building[]>();
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
     const rng = mulberry32(20261113);
     this.sky = buildSky(fogColor);
-    scene.add(this.sky, buildMountains(fogColor));
+    this.mountains = buildMountains(fogColor);
+    scene.add(this.sky, this.mountains);
     scene.add(buildTerrain());
 
     const walls = buildWalls();
@@ -88,6 +98,13 @@ export class World {
   /** Nokta katı bir yapının (sur gövdesi ya da bina) içinde mi? Kamera engeli için. */
   solidAt(x: number, y: number, z: number, margin = 0.3) {
     if (wallSolid(x, y, z, margin)) return true;
+    // Dev ağaç gövdeleri de katıdır (kamera içlerine girmesin).
+    const tc = this.treeGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
+    if (tc) {
+      for (const t of tc) {
+        if (t.kind === 2 && y < t.y + t.h * 0.9 && Math.hypot(t.x - x, t.z - z) < trunkR(t, y) + margin) return true;
+      }
+    }
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {
@@ -97,13 +114,26 @@ export class World {
     return false;
   }
 
+  /** (x, z) noktasının `margin` metre yakınında bir ağaç gövdesi var mı. */
+  treeNear(x: number, z: number, margin: number) {
+    const reach = margin + 8;
+    for (let cx = Math.floor((x - reach) / CELL); cx <= Math.floor((x + reach) / CELL); cx++) {
+      for (let cz = Math.floor((z - reach) / CELL); cz <= Math.floor((z + reach) / CELL); cz++) {
+        const cell = this.treeGrid.get(key(cx, cz));
+        if (cell?.some((t) => Math.hypot(t.x - x, t.z - z) < t.r + margin)) return true;
+      }
+    }
+    return false;
+  }
+
   /** Yatay çarpışma çözümü: surlar, ağaç gövdeleri, binalar. pos.x/z değişir. */
   resolve(pos: THREE.Vector3, radius: number, opts: CollideOpts) {
     let hit = wallPush(pos, radius, pos.y);
-    const cx0 = Math.floor((pos.x - radius - 3) / CELL);
-    const cx1 = Math.floor((pos.x + radius + 3) / CELL);
-    const cz0 = Math.floor((pos.z - radius - 3) / CELL);
-    const cz1 = Math.floor((pos.z + radius + 3) / CELL);
+    // Dev ağaçların gövdesi 7 m'ye varır: komşu hücredeki gövdeler de aranır.
+    const cx0 = Math.floor((pos.x - radius - 9) / CELL);
+    const cx1 = Math.floor((pos.x + radius + 9) / CELL);
+    const cz0 = Math.floor((pos.z - radius - 9) / CELL);
+    const cz1 = Math.floor((pos.z + radius + 9) / CELL);
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cz = cz0; cz <= cz1; cz++) {
         const k = key(cx, cz);
@@ -111,10 +141,10 @@ export class World {
           const cell = this.treeGrid.get(k);
           if (cell) {
             for (const t of cell) {
-              if (pos.y > t.y + t.h * 0.55) continue;
+              if (pos.y > t.y + t.h * (t.kind === 2 ? 0.9 : 0.55)) continue;
               const dx = pos.x - t.x;
               const dz = pos.z - t.z;
-              const min = t.r + radius;
+              const min = trunkR(t, pos.y) + radius;
               const d2 = dx * dx + dz * dz;
               if (d2 < min * min) {
                 const d = Math.sqrt(d2) || 0.001;

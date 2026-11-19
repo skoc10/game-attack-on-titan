@@ -1,7 +1,7 @@
 // Tüm denge sayıları tek yerde.
 export const CFG = {
   world: {
-    size: 8400,
+    size: 12400,
     // Her surun dört yönünde (+Z, +X, -Z, -X) dışa taşan yarım daire biçimli bir kapı kasabası vardır.
     // district: kasabanın yarıçapı, towns: o yönlerdeki kasabaların adları.
     walls: [
@@ -10,7 +10,7 @@ export const CFG = {
       { name: 'Kalkan Suru', r: 3000, district: 200, towns: ['Sınırboyu', 'Kuzgunkapı', 'Yelkovan', 'Sonkale'] },
     ],
     // Surlar arasındaki ovalara dağılmış köyler: her bölgede kaç tane ve birbirine en az uzaklıkları.
-    villages: { perZone: [12, 18, 10], spacing: 260 },
+    villages: { perZone: [12, 18, 22], spacing: 260 },
     wallH: 50,
     wallT: 12,
     gateHalfW: 11,
@@ -82,6 +82,9 @@ export const CFG = {
   giantPower: { hp: 1.4, dmg: 1.3, bigChance: 0.16, big: [1.35, 1.8] as [number, number] },
   // Düşman dönüşümcüler: oyuncunun dönüşebildiği dev formlarına giren düşmanlar. İlki `first` sn sonra,
   // sonrakiler `every` aralığında, oyuncudan `dist` uzaklıkta, kendi güçleriyle saldırır.
+  // Avcı Dev: dev ağaçlar ormanına giren oyuncuyu kovalar. hp dev gücüne karşı can, respawn öldükten sonra yeniden doğma
+  // süresi (sn), bonus öldürünce ek av puanı, mountedChase oyuncu attayken koşusuna eklenen çarpan (dörtnala yetişmeye yakın).
+  huntress: { hp: 2600, respawn: 300, bonus: 800, mountedChase: 1.12, first: 4 },
   shifter: { first: 75, every: [130, 220] as [number, number], dist: [220, 370] as [number, number], hp: 900, armoredHp: 1300 },
   // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.
   bite: { chance: 0.3, titanChance: 0.4, dmgMult: 1.4, windup: 0.75, lunge: 0.45, knock: 8 },
@@ -99,7 +102,7 @@ export const CFG = {
     decay: 12,
   },
   spawn: { maxAlive: 14, minDist: 140, maxDist: 270, despawn: 440, interval: 1.2 },
-  crate: { count: 120, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
+  crate: { count: 170, respawn: 240, reach: 3.6, medicHeal: 0.6, coins: 60 },
   // Çanta: en çok kaç sargı taşınır.
   inv: { sargiMax: 3 },
   // Orman Kapşonu: giyiliyken devler oyuncuyu ancak bu oranda yakından fark eder; saldırınca `reveal` saniye görünür olur.

@@ -16,8 +16,15 @@ export const HALF_T = W.wallT / 2;
 export const EDGE = W.size / 2 - 80;
 /** Kapı ve kasaba yönleri, atan2(x, z) açısı olarak: +Z, +X, -Z, -X. */
 export const DIRS = [0, Math.PI / 2, Math.PI, -Math.PI / 2] as const;
-/** Ana yollar en dıştaki kasabanın kapısından bu kadar ileri uzanır. */
-export const ROAD_END = W.walls[2].r + W.walls[2].district + 600;
+/** Ana yollar en dıştaki kasabanın kapısından bu kadar ileri uzanır (güneydeki dev ağaçlar ormanının ortasına dek). */
+export const ROAD_END = W.walls[2].r + W.walls[2].district + 1850;
+/** Dünyanın güney ucundaki dev ağaçlar ormanı: yüz metreyi aşan gövdeler, kancayla dolaşılır. */
+export const GIANT_FOREST = { x: 0, z: -(W.walls[2].r + 2050), r: 900, name: 'Dev Ağaçlar Ormanı' } as const;
+
+/** Nokta dev ağaçlar ormanının içinde mi (`margin` metre payla). */
+export function inGiantForest(x: number, z: number, margin = 0) {
+  return Math.hypot(x - GIANT_FOREST.x, z - GIANT_FOREST.z) < GIANT_FOREST.r + margin;
+}
 /** Yolun ve kasaba sokağının yarı genişliği. */
 export const ROAD_HALF = 6.5;
 
@@ -265,6 +272,7 @@ export function wallBetween(ax: number, az: number, bx: number, bz: number, y: n
 export function zoneName(x: number, z: number) {
   const d = districtAt(x, z);
   if (d) return d.ring === 0 ? `${d.name} Kasabası — Güvenli Bölge` : `${d.name} Kasabası — ${W.walls[d.ring].name}`;
+  if (inGiantForest(x, z)) return `${GIANT_FOREST.name} — Sur Ötesi`;
   return ['Taç Suru İçi — Güvenli Bölge', 'Demir Ova', 'Kalkan Ormanları', 'Sur Ötesi'][ringOf(x, z)];
 }
 
@@ -286,7 +294,7 @@ export function placeVillages(rng: Rng): Village[] {
       const rr = Math.sqrt(a * a + (b * b - a * a) * rng());
       const x = Math.sin(ang) * rr;
       const z = Math.cos(ang) * rr;
-      if (wallDist(x, z) < 90 || districtGap(x, z) < 70 || onRoad(x, z, 70)) continue;
+      if (wallDist(x, z) < 90 || districtGap(x, z) < 70 || onRoad(x, z, 70) || inGiantForest(x, z, 150)) continue;
       if (out.some((v) => Math.hypot(v.x - x, v.z - z) < V.spacing)) continue;
       out.push({ x, z, zone: i + 1 });
       placed++;
