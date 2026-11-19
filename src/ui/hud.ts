@@ -35,7 +35,12 @@ export class Hud {
         <div class="bar boss"><i data-id="boss"></i></div>
         <div class="bossHint" data-id="bossHint"></div>
       </div>
+      <div class="raidBox" data-id="raid">
+        <div class="raidHead"><b data-id="raidName"></b><span data-id="raidLine"></span></div>
+        <div class="raidRow"><span class="label" data-id="raidPlace"></span><div class="bar raid"><i data-id="raidBar"></i></div><em data-id="raidPct"></em></div>
+      </div>
       <canvas class="minimap" width="180" height="180" data-key="KeyM"></canvas>
+      <div class="markDir" data-id="markDir"><i data-id="markArrow">▲</i><span data-id="markDist"></span></div>
       <div class="crosshair" data-id="cross"></div>
       <div class="hint" data-id="hint"></div>
       <div class="toasts" data-id="toasts"></div>
@@ -315,6 +320,36 @@ export class Hud {
     }
 
     const boss = g.bossInView();
+    // Baskın paneli: adı, aşaması ve savunulan yerin sağlamlığı.
+    const rv = g.raid.view();
+    this.el.raid.classList.toggle('show', rv !== null);
+    this.root.classList.toggle('raiding', rv !== null);
+    if (rv) {
+      this.text('raidName', rv.name.toLocaleUpperCase('tr'));
+      this.text('raidLine', rv.line);
+      this.text('raidPlace', rv.place);
+      this.text('raidPct', `%${Math.round(rv.integrity * 100)}`);
+      this.width('raidBar', rv.integrity);
+      this.el.raid.classList.toggle('low', rv.integrity < 0.3);
+      this.el.raid.classList.toggle('won', rv.won);
+    }
+    // Haritadaki işaretin yönü ve uzaklığı (kameraya göre).
+    const mk = g.mark;
+    this.el.markDir.classList.toggle('show', mk !== null);
+    if (mk) {
+      const dx = mk.x - p.pos.x;
+      const dz = mk.z - p.pos.z;
+      const sn = Math.sin(g.camYaw);
+      const cs = Math.cos(g.camYaw);
+      const ang = Math.atan2(-dx * cs + dz * sn, dx * sn + dz * cs);
+      const deg = `rotate(${Math.round((ang * 180) / Math.PI)}deg)`;
+      if (this.last.markRot !== deg) {
+        this.last.markRot = deg;
+        this.el.markArrow.style.transform = deg;
+      }
+      const d = Math.hypot(dx, dz);
+      this.text('markDist', `İŞARET ${d >= 1000 ? `${(d / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(d)} m`}`);
+    }
     this.el.bossWrap.style.display = boss ? 'block' : 'none';
     if (boss) {
       this.text('bossName', boss.type.name.toLocaleUpperCase('tr'));

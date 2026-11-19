@@ -40,6 +40,9 @@ import { CLASSES } from './player/classes';
 import { Hud } from './ui/hud';
 import { Menu } from './ui/menu';
 import { Minimap } from './ui/minimap';
+import { BigMap } from './ui/bigmap';
+import { Raid } from './world/raid';
+import type { RaidId } from './data/raids';
 import { TouchControls } from './ui/touch';
 
 const target = new THREE.Vector3();
@@ -83,6 +86,13 @@ export class Game {
   readonly hud: Hud;
   readonly menu: Menu;
   readonly minimap: Minimap;
+  /** Tam ekran harita (M). */
+  readonly bigmap: BigMap;
+  /** Baskınlar: köy savunması ve sur kuşatması. */
+  readonly raid: Raid;
+  /** Haritada konan işaret; dünyada üstünde bir ok durur, ekranda yönü gösterilir. */
+  mark: { x: number; z: number } | null = null;
+  private readonly markObj: THREE.Group;
   readonly touch: TouchControls;
   readonly giants: Giant[] = [];
   readonly stats = { kills: 0, needlesFound: 0, transforms: 0 };
@@ -114,7 +124,7 @@ export class Game {
   private wasLocked = false;
   private lockHintT = -1;
   private last = 0;
-  private frameNo = 0;
+  frameNo = 0;
   private slowT = 0;
   private shake = 0;
   private loadoutDirty = false;
@@ -179,6 +189,8 @@ export class Game {
     this.scene.add(buildBeacon());
     this.hud = new Hud(this);
     this.minimap = new Minimap(this, this.hud.minimapCanvas);
+    this.bigmap = new BigMap(this);
+    this.raid = new Raid(this);
     this.menu = new Menu(this);
     this.touch = new TouchControls(this, document.getElementById('hud')!, canvas);
     this.input.onTouchChange = () => {
@@ -214,6 +226,8 @@ export class Game {
     );
     this.waypoint.visible = false;
     this.scene.add(this.waypoint);
+    this.markObj = buildMarkArrow();
+    this.scene.add(this.markObj);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -223,7 +237,7 @@ export class Game {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === canvas;
       // Esc fare kilidini açar: oyunu duraklat.
-      if (!locked && this.wasLocked && this.running) this.pause();
+      if (!locked && this.wasLocked && this.running && !this.bigmap.open) this.pause();
       this.wasLocked = locked;
     });
     // Tablette uygulama değiştirilince ya da ekran kilitlenince oyun duraklar.
@@ -333,9 +347,53 @@ export class Game {
     storeSave(this.save);
   }
 
-  /** Etkin görevin haritada gösterilecek hedefi. */
+  /** Etkin görevin haritada gösterilecek hedefi (baskın sürerken savunulan yer). */
   objectiveTarget(): [number, number] | null {
+    const raid = this.raid.target;
+    if (raid) return raid;
     return this.save.mode === 'story' ? this.story.target : (this.quests.current?.target ?? null);
+  }
+
+  /** Haritada bir yere işaret koyar. */
+  setMark(x: number, z: number) {
+    const h = CFG.world.size / 2 - 60;
+    this.mark = { x: clamp(x, -h, h), z: clamp(z, -h, h) };
+    this.audio.hook();
+  }
+
+  clearMark() {
+    this.mark = null;
+  }
+
+  /** Menüden: seçilen baskını başlatır (oyuncu savunacağı yere taşınır). */
+  startRaid(id: RaidId) {
+    this.start();
+    this.raid.begin(id);
+  }
+
+  /** İşaret oku: yakındayken küçük, uzaklaştıkça büyür ki ufukta da görünsün; yerdeki halka ve ışık sütunuyla. */
+  private updateMark() {
+    const m = this.mark;
+    const o = this.markObj;
+    o.visible = m !== null;
+    if (!m) return;
+    const p = this.player.pos;
+    const d = Math.hypot(m.x - p.x, m.z - p.z);
+    if (d < 14) {
+      this.mark = null;
+      o.visible = false;
+      this.hud.toast('İşarete vardın');
+      return;
+    }
+    const k = clamp(d / 70, 1, 9);
+    const now = performance.now() * 0.001;
+    const gy = this.world.heightAt(m.x, m.z);
+    o.position.set(m.x, gy, m.z);
+    const arrow = o.children[0];
+    arrow.scale.setScalar(k);
+    arrow.position.y = (7 + Math.sin(now * 3) * 1.2) * k;
+    arrow.rotation.y = now * 1.6;
+    o.children[1].scale.setScalar(k);
   }
 
   /** Yakındaki bölüm sonu devi (can barı için). */
@@ -789,6 +847,12 @@ export class Game {
     const inp = this.input;
     this.frameNo += 1;
     this.frameDt = dt;
+    if (this.bigmap.open) {
+      // Harita açıkken dünya durur; tuşlar haritaya gider.
+      this.bigmap.keys(dt);
+      inp.endFrame();
+      return;
+    }
     // Kamera: tekerlek sağa/sola çevirir (Shift ile yukarı/aşağı), orta tuşla sürükleme ve ok tuşları da çalışır.
     this.yawPending += inp.wheelYaw;
     this.pitchPending += inp.wheelPitch;
@@ -843,7 +907,13 @@ export class Game {
       this.pause();
       return;
     }
-    if (inp.pressed('KeyM')) this.hud.toast(this.minimap.toggle() ? 'Harita: geniş görünüm' : 'Harita: yakın görünüm');
+    if (inp.pressed('KeyM') && !talking) {
+      // Büyük harita açılır; açıkken oyun durur (aşağıdaki dal).
+      this.bigmap.show();
+      this.hud.update(dt);
+      inp.endFrame();
+      return;
+    }
     if (this.debug && !talking && !this.inventory.open) this.debugKeys();
 
     let sdt = dt;
@@ -860,6 +930,7 @@ export class Game {
     for (const g of this.giants) g.update(sdt, this);
     this.horse.update(sdt, this);
     this.spawner.update(sdt, this);
+    this.raid.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);
     const gasRatio = this.player.gas / this.player.maxGas;
@@ -892,6 +963,7 @@ export class Game {
     this.waypoint.visible = wpOn;
     if (wp && wpOn) this.waypoint.position.set(wp[0], this.world.heightAt(wp[0], wp[1]) + 90, wp[1]);
 
+    this.updateMark();
     this.bolt.update(dt);
     if (this.skyFlashT > 0) {
       this.skyFlashT = Math.max(0, this.skyFlashT - dt);
@@ -971,4 +1043,29 @@ export class Game {
     if (inp.pressed('Digit6')) this.grantCoins(500);
     if (inp.pressed('Digit7')) p.spears = p.maxSpears;
   }
+}
+
+/** Haritada konan işaretin dünyadaki oku: aşağı bakan dönen ok, yerde halka ve ince bir ışık sütunu. */
+function buildMarkArrow() {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0x5fd8ff, fog: false });
+  const arrow = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.ConeGeometry(2.2, 4.2, 4), mat);
+  head.rotation.x = Math.PI; // uç aşağıda
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.1, 4, 1.1), mat);
+  shaft.position.y = 4;
+  arrow.add(head, shaft);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(2.6, 3.4, 32).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x5fd8ff, transparent: true, opacity: 0.7, depthWrite: false, fog: false }),
+  );
+  ring.position.y = 0.3;
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.8, 0.8, 220, 8, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x5fd8ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }),
+  );
+  beam.position.y = 110;
+  group.add(arrow, ring, beam);
+  group.visible = false;
+  return group;
 }

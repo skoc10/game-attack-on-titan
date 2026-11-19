@@ -218,7 +218,7 @@ export const GIANT_TYPES: Record<CommonKind, GiantType> = {
   },
 };
 
-export type BossId = 'gate' | 'bekci' | 'kadim';
+export type BossId = 'gate' | 'bekci' | 'kadim' | 'yikici';
 
 /** Bölüm sonu devleri: aynı gövde ve davranış, farklı boy ve dayanıklılık. */
 export const BOSSES: Record<BossId, GiantType> = {
@@ -248,6 +248,27 @@ export const BOSSES: Record<BossId, GiantType> = {
     dmg: 46,
     xp: 1500,
     skins: [0x5a4a52],
+  },
+  // Sur baskınının yıkıcısı: surdan uzun, ağır adımlı; suru yumruklarıyla döver. Ensesi açıktır ama beş temiz kesik ister.
+  yikici: {
+    ...GIANT_TYPES.boss,
+    name: 'Sur Yıkan',
+    minH: 64,
+    maxH: 64,
+    speed: 2.3,
+    turn: 0.7,
+    hpBase: 6500,
+    armored: false,
+    legCuts: 4,
+    napeCuts: 5,
+    aggro: 90,
+    dmg: 60,
+    xp: 2500,
+    bulk: [1.4, 1.4],
+    head: [0.85, 0.85],
+    arm: 1.25,
+    skins: [0x9a5a4c],
+    downTime: 8,
   },
 };
 

@@ -191,6 +191,28 @@ export class Minimap {
       c.stroke();
     }
 
+    // Haritada konan işaret: görüş dışındaysa kenara sabitlenir.
+    const mk = g.mark;
+    if (mk) {
+      let [x, y] = map(mk.x, mk.z);
+      const dx = x - R;
+      const dy = y - R;
+      const d = Math.hypot(dx, dy);
+      if (d > R - 8) {
+        x = R + (dx / d) * (R - 8);
+        y = R + (dy / d) * (R - 8);
+      }
+      c.fillStyle = '#5fd8ff';
+      c.strokeStyle = '#0b2a36';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(x, y - 6, 4.5, Math.PI, 0);
+      c.lineTo(x, y + 1);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+
     // Gaz azaldıysa en yakın ikmal noktasının yönü kenarda gösterilir.
     if (g.player.gas / g.player.maxGas < CFG.gas.lowRatio * 1.5) {
       const near = g.stations.nearest(p.x, p.z).station;

@@ -886,7 +886,7 @@ kbd {
 #hud .streak {
   position: absolute;
   right: 22px;
-  top: 216px;
+  top: 228px;
   width: 172px;
   text-align: right;
   opacity: 0;
@@ -1438,4 +1438,257 @@ body.touch #menu button {
 }
 body.touch #menu .up button {
   min-width: 44px;
+}
+
+/* ------------------------------------------------------------- Baskınlar */
+#menu .modes button.raidBtn {
+  color: #ff9a8a;
+  border-color: rgba(255, 90, 70, 0.4);
+}
+#menu .modes button.raidBtn.sel {
+  color: var(--ink);
+  border-color: #ff5a46;
+  background: rgba(255, 90, 70, 0.14);
+}
+#menu .storyLead .ghost {
+  margin-left: 10px;
+  padding: 3px 10px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 90, 70, 0.5);
+  color: #ff9a8a;
+}
+#menu .raids {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (max-width: 860px) {
+  #menu .raids {
+    grid-template-columns: 1fr;
+  }
+}
+#menu .raid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 10px 12px;
+  background: rgba(60, 12, 8, 0.28);
+  border: 1px solid rgba(255, 90, 70, 0.32);
+}
+#menu .raid:hover {
+  border-color: #ff5a46;
+  background: rgba(255, 90, 70, 0.12);
+}
+#menu .raid small {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #ff8a6a;
+}
+#menu .raid b {
+  font-weight: normal;
+  letter-spacing: 0.1em;
+  font-size: 16px;
+}
+#menu .raid p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  opacity: 0.85;
+}
+#menu .raid span {
+  font-size: 11px;
+  color: var(--dim);
+}
+#menu .raid em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--gold);
+}
+#menu .raid.done em {
+  color: #8fd18a;
+}
+#menu .raid.live {
+  border-color: #ff5a46;
+}
+
+#hud .raidBox {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, 46vw);
+  padding: 7px 12px 8px;
+  background: rgba(40, 10, 8, 0.7);
+  border: 1px solid rgba(255, 90, 70, 0.45);
+  display: none;
+}
+#hud .raidBox.show {
+  display: block;
+}
+#hud .raidHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+#hud .raidHead b {
+  font-weight: normal;
+  letter-spacing: 0.22em;
+  font-size: 13px;
+  color: #ffb0a0;
+}
+#hud .raidHead span {
+  font-size: 12px;
+  color: var(--ink);
+}
+#hud .raidRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#hud .raidRow .bar {
+  flex: 1;
+  height: 9px;
+}
+#hud .raidRow em {
+  font-style: normal;
+  font-size: 12px;
+  min-width: 36px;
+  text-align: right;
+}
+#hud .bar.raid i {
+  background: linear-gradient(90deg, #c88a3a, #e8c36a);
+}
+#hud .raidBox.low .bar.raid i {
+  background: #d8402f;
+}
+#hud .raidBox.won {
+  border-color: #8fd18a;
+}
+#hud .raidBox.won .bar.raid i {
+  background: #8fd18a;
+}
+/* Baskın sürerken bölüm sonu devi barı panelin altına iner. */
+#hud.raiding .tc {
+  top: 76px;
+}
+#hud .markDir {
+  position: absolute;
+  top: 199px;
+  right: 18px;
+  width: 180px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #bfefff;
+}
+#hud .markDir.show {
+  display: flex;
+}
+#hud .markDir i {
+  font-style: normal;
+  display: inline-block;
+  color: #5fd8ff;
+  font-size: 16px;
+  transition: transform 0.08s linear;
+}
+body.touch #hud .markDir {
+  right: calc(env(safe-area-inset-right, 0px) + 18px);
+}
+
+/* ------------------------------------------------------------- Büyük harita */
+#bigmap {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  background: #0d110d;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: var(--ink);
+}
+#bigmap.show {
+  display: block;
+}
+#bigmap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+#bigmap .bmTop {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 6px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+#bigmap .bmTop b {
+  letter-spacing: 0.3em;
+  margin-right: 10px;
+  color: var(--gold);
+  font-weight: normal;
+}
+#bigmap .bmTop span {
+  color: var(--dim);
+}
+#bigmap .bmBar {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+#bigmap .bmBar button {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  min-height: 38px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+#bigmap .bmBar button:hover {
+  border-color: var(--gold);
+}
+#bigmap .bmLegend {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: min(520px, calc(100% - 340px));
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  pointer-events: none;
+}
+#bigmap .bmLegend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+@media (max-width: 700px) {
+  #bigmap .bmLegend {
+    display: none;
+  }
 }

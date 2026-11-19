@@ -57,7 +57,7 @@ Karakter fareyle yönlendirilir. Tarayıcı izin verirse fare kilitlenir ve fare
 | `H` | Sargı sar | — |
 | `Tab` | Dönüşülecek devi seç | — |
 | `T` | Seçili deve dönüş | İnsan formuna dön |
-| `M` | Haritayı genişlet / daralt | Haritayı genişlet / daralt |
+| `M` | Büyük harita: kaydır, yakınlaş, tıklayıp işaret koy | Aynı |
 | `Esc` / `P` | Duraklat, menü | |
 
 İsteğe bağlı: `W A S D` ile de yürünür, ok tuşları ya da orta tuşla sürükleme de kamerayı çevirir.
@@ -91,6 +91,28 @@ Surların tepesinde, yürüme yolunun dış kenarında aralıklarla **toplar** d
 - **Ateş:** Tıkla (dokunmatikte **ATEŞ**). Gülle kilitli deve doğru yönünü düzeltir. Yaklaşık 10 m yarıçaplı patlamanın içinde kalan **sıradan devler ölür** (zırhlılar dahil). Bölüm sonu devi ölmez: ensesine yakın isabet ense kesiği sayılır, gövdeye isabet onu sendeletir. Top 1,6 saniyede yeniden dolar.
 - **Menzil:** yaklaşık 550 m. Top dışa bakan yönünden en çok 83° döner; daha yandaki hedef için yandaki topa geç.
 - **Ayrılmak:** `E` ya da `Space` (dokunmatikte **İN**).
+
+## Büyük harita ve işaret
+
+**Büyük harita (`M`, dokunmatikte küçük haritaya dokun):** tüm dünya tam ekranda açılır, oyun bu sırada durur. Sürükleyerek (ya da `W A S D` / ok tuşlarıyla) kaydırılır, tekerlekle, `+`/`-` ile ya da iki parmakla yakınlaştırılır. Surlar, kapılar, kasabalar, köyler, yollar, gaz ikmal noktaları, yakındaki devler, atın, görev hedefi ve sürmekte olan baskın görünür. `Bana dön` haritayı sana ortalar.
+
+**İşaret:** haritada bir yere tıkla (dokun), oraya mavi bir iğne düşer; senden işarete kesikli bir çizgi ve uzaklık çıkar. Oyunda o noktanın üstünde dönen mavi bir ok ve ince bir ışık sütunu durur (uzaklaştıkça büyür, ufukta da seçilir). Küçük haritanın altında işaretin yönünü gösteren ok ve uzaklık yazar; küçük haritada da mavi iğne görünür. İşarete varınca kendiliğinden kalkar. Sağ tık, işaretin üstüne tıklamak ya da `İşareti kaldır` onu siler; başka bir yere tıklamak taşır.
+
+## Baskınlar
+
+Menüde (oyunun başında ya da `Esc` ile) **BASKINLAR** düğmesi üç baskını listeler. Birini seçince savunacağın yere götürülürsün; atın da yanına gelir. Baskın sürerken ekranın üstünde adı, aşaması ve savunulan yerin **sağlamlığı** görünür. Haritada ve ışık sütununda hedef baskın yeridir, olağan devler bu sırada doğmaz. Ölürsen baskın yerinde yeniden doğarsın. Savunulan yerden 760 m'den fazla uzaklaşırsan 10 saniye içinde dönmezsen baskın kaybedilir; menüden **Baskından çekil** de denebilir.
+
+| Baskın | Yer | Akış | Ödül |
+|---|---|---|---|
+| **Değirmen Baskını** | Demir Ova'da bir köy | 3 dalga: 4 dev → 4 dev + 2 koşucu → 4 dev + 2 koşucu + çığlıkçı (ikisi iri) | ◆ 450 · 400 XP |
+| **Kuzgun Ormanı Baskını** | Kalkan Ormanları'nda bir köy | 3 dalga: zırhlılar, sıçrayanlar, taşçılar; son dalgada bir Öfke dönüşümcüsü | ◆ 800 · 700 XP |
+| **Sur Yıkan** | Kalkan Suru | 64 m'lik tek bir yıkıcı ve 28 sn'de bir gelen eşlikçiler | ◆ 1400 · 1200 XP |
+
+**Köy savunması:** devler köyle aynı sur bölgesinde, köyden 200–280 m uzakta doğar ve köye yürür. Varınca iki kolunu başının üstünde birleştirip evleri yumruklar: çatılardan toz ve tahta parçaları savrulur, köyün sağlamlığı düşer (iri devler daha çok yıkar). Sağlamlık her %12 düştüğünde bir ev alev alır. Yakınlarındaysan sana saldırırlar, uzaklaşınca köye dönerler. Dalga temizlenince birkaç saniye nefes alırsın; üçüncü dalga da düşerse baskın püskürtülür.
+
+**Sur savunması:** Sur Yıkan surdan uzundur, gövdesinden buhar tüter. Surun dışından ağır adımlarla gelir ve suru yumruklarıyla döver: her darbede taşlar kopup düşer, surun yüzünde çatlaklar açılır, sağlamlık %4,5 azalır. Ensesi açıktır ama **beş temiz kesik** ister. Bacaklarına dört kesik onu yere serer; o sırada suru dövemez. Surun üstündeki **toplar** (`E`) ona kilitlenir, enseye yakın isabet iki kesik sayılır. Sağlamlık biterse sur yıkılır: dev bir toz bulutu, düşen taşlar ve yarık.
+
+Kazanınca av puanı, XP ve dev barına +40 gelir; püskürtülen baskınlar menüde ✓ ile işaretlenir ve yeniden oynanabilir.
 
 ## Gard, seri yumruk ve tekme
 

@@ -1,3 +1,4 @@
+import { RAIDS, waveSize, type RaidId } from '../data/raids';
 import type { Game } from '../game';
 import { CLASSES } from '../player/classes';
 import { buyUpgrade, ownsChar, classUnlocked, CLASS_UNLOCK, MAX_UPGRADE, UPGRADES, type ClassId, type GameMode, type UpgradeId } from '../systems/progression';
@@ -27,7 +28,7 @@ const CONTROLS: [string, string][] = [
   ['T', 'Deve dönüş (bar yarı + iğne)'],
   ['W A S D', 'Klavyeyle hareket (isteğe bağlı)'],
   ['E (surda)', 'Sur topunun başına geç · tıkla: ateş · E: ayrıl'],
-  ['M', 'Haritayı genişlet / daralt'],
+  ['M', 'Büyük harita: kaydır, yakınlaş, tıklayıp işaret koy (ok seni oraya götürür)'],
   ['Enter', 'Konuşma satırını geç'],
   ['Esc', 'Duraklat'],
 ];
@@ -46,7 +47,7 @@ const TOUCH_CONTROLS: [string, string][] = [
   ['KOZA · SARGI · İĞNE · AT', 'Koza, sargı, iğne seçimi, atı çağır'],
   ['ÇANTA', 'Kapşonu giy/çıkar, sargı kullan (satırlara dokun)'],
   ['TOP · ATEŞ', 'Surdaki topun yanında TOP: başına geç · deve nişan al, ATEŞ · İN: ayrıl'],
-  ['Harita', 'Dokun: geniş görünüm / yakın görünüm'],
+  ['Harita', 'Dokun: büyük harita · sürükle, iki parmakla yakınlaş, dokunup işaret koy'],
   ['❚❚', 'Duraklat'],
   ['Konuşmalar', 'Telsiz satırına dokunarak geç · seçeneklere dokunarak seç'],
 ];
@@ -56,6 +57,8 @@ export class Menu {
   private resetArmed = false;
   private jumpArmed = -1;
   private buyArmed: CharId | null = null;
+  /** Baskın listesi açık mı (hikâye/serbest av kutusunun yerine). */
+  private raidView = false;
 
   constructor(private readonly game: Game) {
     this.root = document.getElementById('menu')!;
@@ -84,7 +87,17 @@ export class Menu {
       g.start();
       return;
     }
-    if (act === 'mode') g.setMode(arg as GameMode);
+    if (act === 'raid') {
+      this.raidView = false;
+      g.startRaid(arg as RaidId);
+      return;
+    }
+    if (act === 'raidQuit') g.raid.abort();
+    if (act === 'raids') this.raidView = !this.raidView;
+    if (act === 'mode') {
+      this.raidView = false;
+      g.setMode(arg as GameMode);
+    }
     if (act === 'char') {
       const id = arg as CharId;
       // Sahip olunan karakter tek tıkla seçilir; satın alma ikinci tıkla onaylanır.
@@ -177,6 +190,23 @@ export class Menu {
         <div class="seasons">${seasons}</div>
       </div>`;
     const freeBox = `<div class="story"><p class="storyLead">Hikâye yok, sıra yok: surların dışında dilediğin gibi avlan. Seviye, sınıf ve yükseltmeler iki modda ortaktır.</p></div>`;
+    const g = this.game;
+    const raidCards = RAIDS.map((r, i) => {
+      const won = s.raids.includes(r.id);
+      const live = g.raid.active && g.raid.id === r.id;
+      const waves = r.kind === 'wall' ? 'Tek dev · eşlik eden devler' : `${r.waves.length} dalga · ${r.waves.reduce((n, w) => n + waveSize(w), 0)} dev`;
+      return `<button class="raid ${won ? 'done' : ''} ${live ? 'live' : ''}" data-act="raid" data-arg="${r.id}">
+        <small>BASKIN ${i + 1} · ${r.kind === 'wall' ? 'SUR SAVUNMASI' : 'KÖY SAVUNMASI'}</small><b>${r.name}</b>
+        <p>${r.desc}</p>
+        <span>${r.place} · ${waves}</span>
+        <em>${live ? 'SÜRÜYOR — yeniden başlat' : won ? '✓ Püskürtüldü · yeniden oyna' : `Ödül: ◆ ${r.reward.coins} · ${r.reward.xp} XP`}</em></button>`;
+    }).join('');
+    const raidBox = `<div class="story">
+        <p class="storyLead">Devler bir köye ya da sura saldırıyor; savun. Baskını seçince oraya götürülürsün. Sağlamlık biterse ya da bölgeden çok uzaklaşırsan baskın kaybedilir.${
+          g.raid.active ? ` <button class="ghost" data-act="raidQuit">Baskından çekil</button>` : ''
+        }<span>${s.raids.length}/${RAIDS.length} püskürtüldü</span></p>
+        <div class="raids">${raidCards}</div>
+      </div>`;
     const startLabel = this.game.started ? 'DEVAM ET' : story ? (missionsDone(s.story) > 0 && !done ? 'HİKÂYEYE DEVAM ET' : 'HİKÂYEYE BAŞLA') : 'SURLARIN DIŞINA ÇIK';
     const touch = this.game.input.touch;
     const controls = (touch ? TOUCH_CONTROLS : CONTROLS).map(([k, v]) => `<li><kbd>${k}</kbd><span>${v}</span></li>`).join('');
@@ -187,10 +217,11 @@ export class Menu {
           <p>İnsanlık üç surun ardına sığındı. Devler dışarıda. Sen de.</p>
         </header>
         <div class="modes">
-          <button class="${story ? 'sel' : ''}" data-act="mode" data-arg="story">HİKÂYE MODU</button>
-          <button class="${story ? '' : 'sel'}" data-act="mode" data-arg="free">SERBEST AV</button>
+          <button class="${story && !this.raidView ? 'sel' : ''}" data-act="mode" data-arg="story">HİKÂYE MODU</button>
+          <button class="${story || this.raidView ? '' : 'sel'}" data-act="mode" data-arg="free">SERBEST AV</button>
+          <button class="raidBtn ${this.raidView ? 'sel' : ''}" data-act="raids">BASKINLAR</button>
         </div>
-        ${story ? storyBox : freeBox}
+        ${this.raidView ? raidBox : story ? storyBox : freeBox}
         <section class="roster">
           <h2>Karakterler <span>Av puanı: ◆ ${s.coins} · devleri öldürerek ve görev bitirerek kazanılır</span></h2>
           <div class="chars">${chars}</div>
