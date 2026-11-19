@@ -1,8 +1,8 @@
 import type { HairStyle } from '../enemies/humanoid';
 import type { InnateId } from './titans';
 
-export type CharId = 'aras' | 'defne' | 'bora' | 'ilkim' | 'kuzey' | 'zeren' | 'tugrul' | 'ece' | 'mete' | 'aybuke';
-export const CHAR_IDS: CharId[] = ['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke'];
+export type CharId = 'aras' | 'defne' | 'bora' | 'ilkim' | 'kuzey' | 'zeren' | 'tugrul' | 'ece' | 'mete' | 'aybuke' | 'nehir' | 'kaan' | 'sena' | 'alp' | 'oguz';
+export const CHAR_IDS: CharId[] = ['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke', 'nehir', 'kaan', 'sena', 'alp', 'oguz'];
 
 /**
  * Av puanıyla alınan karakter. Sayılar sınıfın değerleriyle çarpılır (1 = değişmez).
@@ -16,6 +16,8 @@ export interface CharDef {
   /** Menüde gösterilen özellik özeti. */
   perk: string;
   price: number;
+  /** Almak için gereken en az seviye (XP ile kazanılır); av puanı da yetmelidir. */
+  level: number;
   hp: number;
   speed: number;
   reel: number;
@@ -30,7 +32,7 @@ export interface CharDef {
   look: { skin: number; hair: number; hairStyle: HairStyle; top: number; cloak: number; eye: number };
 }
 
-const base = { hp: 1, speed: 1, reel: 1, reach: 1, gas: 1, blades: 1, meter: 1, drain: 1, titan: null };
+const base = { level: 1, hp: 1, speed: 1, reel: 1, reach: 1, gas: 1, blades: 1, meter: 1, drain: 1, titan: null };
 
 export const CHARACTERS: Record<CharId, CharDef> = {
   aras: {
@@ -150,5 +152,76 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     drain: 0.85,
     titan: 'safak',
     look: { skin: 0xf6e6d8, hair: 0xf4f4f8, hairStyle: 'long', top: 0x6a6258, cloak: 0xd8d0b8, eye: 0xfff0c0 },
+  },
+  // Yeni devlerin formlarına sahip karakterler: hem çok av puanı hem de yüksek seviye ister.
+  nehir: {
+    ...base,
+    id: 'nehir',
+    name: 'Nehir',
+    title: 'Boğa Güreşçisi',
+    bio: 'Köyünde azgın boğaları omzuyla durdururdu.',
+    perk: 'Can +%15 · kanca çekişi +%10 · kendi formu: Toslayan Devi',
+    price: 4000,
+    level: 6,
+    hp: 1.15,
+    reel: 1.1,
+    titan: 'toslayan',
+    look: { skin: 0xd8a882, hair: 0x6a2a18, hairStyle: 'ponytail', top: 0x7a3a24, cloak: 0xa8501e, eye: 0xe0703a },
+  },
+  kaan: {
+    ...base,
+    id: 'kaan',
+    name: 'Kaan',
+    title: 'Uzak Nişancı',
+    bio: 'Kancasını herkesten uzağa atar, hiç ıskalamaz.',
+    perk: 'Kılıç erişimi +%20 · gaz +%10 · kendi formu: Uzunkol Devi',
+    price: 5200,
+    level: 8,
+    reach: 1.2,
+    gas: 1.1,
+    titan: 'uzunkol',
+    look: { skin: 0xe6c4a4, hair: 0x2a2420, hairStyle: 'long', top: 0x2e4a50, cloak: 0x3a8a84, eye: 0x8ad0c8 },
+  },
+  sena: {
+    ...base,
+    id: 'sena',
+    name: 'Sena',
+    title: 'İz Sürücü',
+    bio: 'Dev ağaçlar ormanında büyüdü; avcıların izini rüzgârdan okur.',
+    perk: 'Hız +%12 · gaz +%15 · kendi formu: Avcı Devi',
+    price: 6800,
+    level: 10,
+    speed: 1.12,
+    gas: 1.15,
+    titan: 'avci',
+    look: { skin: 0xc8946e, hair: 0x24140e, hairStyle: 'ponytail', top: 0x3a4a2a, cloak: 0x2a6a3a, eye: 0x7dff9a },
+  },
+  alp: {
+    ...base,
+    id: 'alp',
+    name: 'Alp',
+    title: 'Sur Demircisi',
+    bio: 'Yıkılan surları yeniden ören ustaların başı; zırhını kendi dövdü.',
+    perk: 'Can +%40 · kılıç dayanımı +%30 · kendi formu: Demir Koç',
+    price: 8800,
+    level: 12,
+    hp: 1.4,
+    blades: 1.3,
+    titan: 'koc',
+    look: { skin: 0xb98a66, hair: 0x1a1412, hairStyle: 'short', top: 0x3c444c, cloak: 0x8a6a34, eye: 0xff9a3a },
+  },
+  oguz: {
+    ...base,
+    id: 'oguz',
+    name: 'Oğuz',
+    title: 'Dağ Çobanı',
+    bio: 'Sur ötesinin dağlarında sürü güttü; devlerin bile onu dinlediği söylenir.',
+    perk: 'Dev barı %25 hızlı dolar, formda %10 yavaş biter · kendi formu: Çoban Devi',
+    price: 11500,
+    level: 14,
+    meter: 1.25,
+    drain: 0.9,
+    titan: 'coban',
+    look: { skin: 0xc49a76, hair: 0x5a4030, hairStyle: 'long', top: 0x5a4a38, cloak: 0x6e5844, eye: 0xc8a070 },
   },
 };

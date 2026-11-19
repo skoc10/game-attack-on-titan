@@ -862,6 +862,10 @@ kbd {
 #menu .char.poor em {
   color: var(--dim);
 }
+/* Eksik kalan şart (seviye ya da av puanı) kırmızı görünür. */
+#menu .char em .short {
+  color: #e0735a;
+}
 
 /* ------------------------------------------------------------- Mızrak ve seri */
 #hud .spears {

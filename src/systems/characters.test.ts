@@ -3,7 +3,7 @@ import { CFG } from '../data/config';
 import { CHARACTERS, CHAR_IDS } from '../data/characters';
 import { FORMS, INNATE, INNATE_IDS, rollTitan, TITAN_IDS } from '../data/titans';
 import { GIANT_TYPES } from '../enemies/giantTypes';
-import { buyChar, coinsFor, newSave, ownsChar, sanitizeSave, selectChar } from './progression';
+import { buyChar, canBuyChar, coinsFor, newSave, ownsChar, sanitizeSave, selectChar } from './progression';
 import { TitanMeter } from './titanMeter';
 
 describe('av puanı ve karakterler', () => {
@@ -71,6 +71,35 @@ describe('av puanı ve karakterler', () => {
       }
     }
     for (let i = 0; i < 200; i++) expect(TITAN_IDS).toContain(rollTitan((i + 0.5) / 200));
+  });
+});
+
+describe('yeni devlerin formlarına sahip karakterler', () => {
+  it('Toslayan, Uzunkol, Avcı, Demir Koç ve Çoban formlarının birer sahibi var; hepsi eski kadrodan pahalı', () => {
+    const top = Math.max(...(['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke'] as const).map((id) => CHARACTERS[id].price));
+    for (const [id, form] of [['nehir', 'toslayan'], ['kaan', 'uzunkol'], ['sena', 'avci'], ['alp', 'koc'], ['oguz', 'coban']] as const) {
+      const c = CHARACTERS[id];
+      expect(c.titan).toBe(form);
+      expect(c.price).toBeGreaterThan(top);
+      expect(c.level).toBeGreaterThan(1);
+    }
+  });
+
+  it('almak için hem av puanı hem seviye gerekir; biri eksikse alınmaz', () => {
+    const s = newSave();
+    const c = CHARACTERS.sena;
+    s.coins = c.price;
+    s.level = c.level - 1;
+    expect(canBuyChar(s, 'sena')).toBe(false);
+    expect(buyChar(s, 'sena')).toBe(false);
+    expect(s.coins).toBe(c.price);
+    s.level = c.level;
+    s.coins = c.price - 1;
+    expect(buyChar(s, 'sena')).toBe(false);
+    s.coins = c.price;
+    expect(buyChar(s, 'sena')).toBe(true);
+    expect(s.coins).toBe(0);
+    expect(s.char).toBe('sena');
   });
 });
 

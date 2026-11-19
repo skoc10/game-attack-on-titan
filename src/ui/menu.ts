@@ -1,7 +1,7 @@
 import { RAIDS, waveSize, type RaidId } from '../data/raids';
 import type { Game } from '../game';
 import { CLASSES } from '../player/classes';
-import { buyUpgrade, ownsChar, classUnlocked, CLASS_UNLOCK, MAX_UPGRADE, UPGRADES, type ClassId, type GameMode, type UpgradeId } from '../systems/progression';
+import { buyUpgrade, canBuyChar, ownsChar, classUnlocked, CLASS_UNLOCK, MAX_UPGRADE, UPGRADES, type ClassId, type GameMode, type UpgradeId } from '../systems/progression';
 import { CHAPTERS, missionCount } from '../data/story';
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { FORMS, hex } from '../data/titans';
@@ -104,7 +104,7 @@ export class Menu {
       if (ownsChar(g.save, id) || this.buyArmed === id) {
         g.pickChar(id);
         this.buyArmed = null;
-      } else this.buyArmed = g.save.coins >= CHARACTERS[id].price ? id : null;
+      } else this.buyArmed = canBuyChar(g.save, id) ? id : null;
     } else this.buyArmed = null;
     if (act === 'chapter') {
       const i = Number(arg);
@@ -151,9 +151,13 @@ export class Menu {
     const chars = CHAR_IDS.map((id) => {
       const c = CHARACTERS[id];
       const owned = ownsChar(s, id);
-      const can = s.coins >= c.price;
+      const can = canBuyChar(s, id);
+      const lvlOk = s.level >= c.level;
       const form = c.titan ? FORMS[c.titan] : null;
-      const state = s.char === id ? 'SEÇİLİ' : owned ? 'Seç' : this.buyArmed === id ? `Satın al? ◆ ${c.price}` : `◆ ${c.price}`;
+      // Fiyat: av puanı; yüksek karakterler bir de seviye (XP) ister.
+      const need = c.level > 1 ? `<span class="${lvlOk ? '' : 'short'}">Sv ${c.level}</span> · ` : '';
+      const state =
+        s.char === id ? 'SEÇİLİ' : owned ? 'Seç' : this.buyArmed === id ? `Satın al? ◆ ${c.price}` : `${need}<span class="${s.coins >= c.price ? '' : 'short'}">◆ ${c.price}</span>`;
       return `<button class="char ${s.char === id ? 'sel' : ''} ${owned ? 'owned' : can ? 'can' : 'poor'}" data-act="char" data-arg="${id}" style="--c:${hex(c.look.cloak)}">
         <div class="cardHead"><b>${c.name}</b><span>${c.title}</span></div>
         <p>${c.bio}</p>
@@ -223,7 +227,7 @@ export class Menu {
         </div>
         ${this.raidView ? raidBox : story ? storyBox : freeBox}
         <section class="roster">
-          <h2>Karakterler <span>Av puanı: ◆ ${s.coins} · devleri öldürerek ve görev bitirerek kazanılır</span></h2>
+          <h2>Karakterler <span>Av puanı: ◆ ${s.coins} · Seviye ${s.level} · güçlü karakterler hem av puanı hem seviye (XP) ister</span></h2>
           <div class="chars">${chars}</div>
         </section>
         <div class="cols">
