@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { lerp } from '../core/rng';
+import { lerp, mulberry32 } from '../core/rng';
 import { muscleTexture, skinTexture, toonGradient } from '../core/textures';
 
 export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob';
@@ -43,6 +43,10 @@ export interface HumanoidOpts {
   muscle?: boolean;
   /** Baştan aşağı metal plaka zırh: ana renk, kenar süsü ve plaka aralarında parlayan ekler. */
   plating?: { color: number; trim: number; glow: number };
+  /** Kürk: omuzları, sırtı, kolları ve uylukları örten sarkık tutamlar ve uzun sakal (koyu kök, açık uç). */
+  fur?: { color: number; tip: number };
+  /** Kıvrık koç boynuzları (renk). */
+  horns?: number;
 }
 
 /** Ten malzemesi: insanlarda çizgi film gölgesi, devlerde yumuşak, gerçekçi deri. */
@@ -609,6 +613,67 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     rig.part(head, GEO.box, trim, 0.01, 0.03, 0.15, 0, 0.165, -0.004, false);
     rig.part(head, GEO.box, plate, 0.13, 0.085, 0.03, 0, 0.06, 0.07);
     for (const s of [-1, 1]) rig.part(head, GEO.box, seam, 0.034, 0.008, 0.01, s * 0.03, 0.09, 0.087, false);
+  }
+
+  if (o.fur) {
+    // Kürk: üst üste binen, aşağı sarkan uzun tutamlar (ince uzun yuvarlaklar); konumlar sabit tohumla dağıtılır.
+    const F = o.fur;
+    const furA = rig.surf(F.color, 0.95);
+    const furB = rig.surf(F.tip, 0.95);
+    const rnd = mulberry32(5151);
+    const tuft = (parent: THREE.Object3D, x: number, y: number, z: number, w: number, len: number, out: number) => {
+      // Tutam bağlandığı yerden aşağı sarkar; yana doğru hafifçe kabarır.
+      const t = rig.part(parent, GEO.sphere, rnd() < 0.55 ? furA : furB, w, len, w * 0.75, x, y - len * 0.55, z, false);
+      t.rotation.set((rnd() - 0.5) * 0.35, rnd() * 6.28, out * 0.35 + (rnd() - 0.5) * 0.25);
+      return t;
+    };
+    // Sırt ve omuzlar: gür bir yele.
+    for (let i = 0; i < 56; i++) {
+      const a = Math.PI * (0.3 + rnd() * 1.4);
+      const y = 0.64 + rnd() * 0.2;
+      tuft(tilt, Math.sin(a) * 0.15 * B, y, Math.cos(a) * 0.095 * B, 0.03 + rnd() * 0.016, 0.045 + rnd() * 0.035, Math.sin(a));
+    }
+    // Göğüs yelesi
+    for (let i = 0; i < 16; i++) tuft(tilt, (rnd() - 0.5) * 0.19 * B, 0.72 + rnd() * 0.09, 0.08 * B, 0.026, 0.04 + rnd() * 0.03, 0);
+    for (const a of [aL, aR]) {
+      for (let i = 0; i < 12; i++) tuft(a.g, (rnd() - 0.5) * ru * 1.6, -Lu * (0.05 + rnd() * 0.85), (rnd() - 0.6) * ru * 1.8, ru * 0.6, 0.035 + rnd() * 0.02, 0);
+      for (let i = 0; i < 6; i++) tuft(a.fore, (rnd() - 0.5) * rf * 1.5, -Lf * (0.05 + rnd() * 0.6), -rf * 0.7 + (rnd() - 0.5) * rf, rf * 0.55, 0.03 + rnd() * 0.015, 0);
+    }
+    for (const l of [lL, lR]) {
+      for (let i = 0; i < 9; i++) tuft(l.g, (rnd() - 0.5) * rt * 1.6, -Lt * (0.02 + rnd() * 0.5), (rnd() - 0.5) * rt * 1.8, rt * 0.5, 0.04 + rnd() * 0.025, 0);
+    }
+    // Başın arkası ve yanları; çeneden sarkan uzun sakal.
+    for (let i = 0; i < 14; i++) {
+      const a = Math.PI * (0.45 + rnd() * 1.1);
+      tuft(head, Math.sin(a) * 0.07, 0.11 + rnd() * 0.06, Math.cos(a) * 0.07, 0.026, 0.045 + rnd() * 0.03, Math.sin(a));
+    }
+    for (let i = 0; i < 10; i++) tuft(jaw, (rnd() - 0.5) * 0.075, -0.02, 0.035 + rnd() * 0.035, 0.022, 0.05 + rnd() * 0.04, 0);
+  }
+
+  if (o.horns !== undefined) {
+    // Kıvrık boynuzlar: başın iki yanından geriye ve aşağı dolanan, uca doğru incelen bir sarmal (kapsül parçaları).
+    const horn = rig.surf(o.horns, 0.55);
+    const ring = rig.surf(shade(o.horns, 0.78), 0.6);
+    const UP = new THREE.Vector3(0, 1, 0);
+    const N = 8;
+    for (const s of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const ang = t * Math.PI * 1.35;
+        // Yana doğru açılarak geriye ve aşağı kıvrılır: önden bakınca da kıvrım görünür.
+        pts.push(new THREE.Vector3(s * (0.06 + 0.075 * t + 0.02 * Math.sin(ang)), 0.145 + 0.045 * Math.cos(ang) - 0.035 * t, -0.01 - 0.045 * (1 - Math.cos(ang))));
+      }
+      for (let i = 0; i < N; i++) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        const d = b.clone().sub(a);
+        const len = d.length();
+        const r = 0.021 * (1 - 0.65 * (i / N));
+        const seg = rig.part(head, GEO.capsule, i % 2 ? ring : horn, r, (len + r) / 4, r, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2, false);
+        seg.quaternion.setFromUnitVectors(UP, d.normalize());
+      }
+    }
   }
 
   if (o.cracks && glowMat) {

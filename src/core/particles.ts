@@ -38,15 +38,32 @@ export class Particles {
     this.geo.setAttribute('tint', new THREE.BufferAttribute(this.col, 3));
     this.geo.setAttribute('size', new THREE.BufferAttribute(this.size, 1));
     this.geo.setAttribute('fade', new THREE.BufferAttribute(this.fade, 1));
+    const S = smoke ? 64 : 32;
     const cvs = document.createElement('canvas');
-    cvs.width = cvs.height = 32;
+    cvs.width = cvs.height = S;
     const ctx = cvs.getContext('2d')!;
-    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.5, 'rgba(255,255,255,0.45)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 32, 32);
+    if (smoke) {
+      // Duman: üst üste binen yumuşak öbekler; kenarı düzensiz bir bulut, keskin bir daire değil.
+      let seed = 7;
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 9; i++) {
+        const cx = S / 2 + (rnd() - 0.5) * S * 0.36;
+        const cy = S / 2 + (rnd() - 0.5) * S * 0.36;
+        const r = S * (0.16 + rnd() * 0.16);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.42)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, S, S);
+      }
+    } else {
+      const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.5, 'rgba(255,255,255,0.45)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 32, 32);
+    }
     // Her parçacığın kendi boyutu var: kıvılcımlar küçük kalır, buhar ve toz yayıldıkça büyür.
     const mat = new THREE.ShaderMaterial({
       uniforms: { map: { value: new THREE.CanvasTexture(cvs) }, scale: { value: 400 } },
@@ -59,9 +76,11 @@ export class Particles {
         varying float vFade;
         void main() {
           vTint = tint;
-          vFade = fade;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * scale / max(0.1, -mv.z);
+          // Kameranın dibindeki dev bir parçacık ekranı kaplamasın: ekranda büyüdükçe söner, boyutu da sınırlı.
+          float ps = size * scale / max(0.1, -mv.z);
+          vFade = fade * clamp(1.6 - ps / (scale * 0.45), 0.0, 1.0);
+          gl_PointSize = min(ps, scale * 0.7);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: `

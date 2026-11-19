@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GIANT_TYPES } from '../enemies/giantTypes';
+import { BOSSES, GIANT_TYPES } from '../enemies/giantTypes';
+import { CFG } from '../data/config';
 import { SPAWN_TABLES } from '../world/spawner';
 import { giantPerches, GIANT_TRUNK, type Tree } from '../world/forest';
 
@@ -48,5 +49,19 @@ describe('dev ağacın üstü', () => {
       expect(c.y).toBeLessThan(t.h);
       expect(c.rx).toBeGreaterThan(5);
     }
+  });
+});
+
+describe('Çoban Dev', () => {
+  it('kürklü ve boynuzludur, kaya atar ve devleri yönetir; ensesi açıktır', () => {
+    const c = BOSSES.coban;
+    expect(c.shepherd).toBe(true);
+    expect(c.fur).toBeDefined();
+    expect(c.horns).toBeDefined();
+    expect(c.armored).toBe(false);
+    expect(c.arm).toBeGreaterThan(1.4);
+    expect(c.aggro).toBeGreaterThan(300); // uzaktan görür ve atar
+    expect(CFG.shepherd.radius).toBeGreaterThan(200);
+    expect(CFG.shepherd.dur).toBeGreaterThan(10);
   });
 });

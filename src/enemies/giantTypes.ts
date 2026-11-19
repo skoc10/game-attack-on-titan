@@ -48,6 +48,11 @@ export interface GiantType {
   plating?: { color: number; trim: number; glow: number };
   /** Surlara toslayıp gedik açar (Demir Koç). */
   breaker?: boolean;
+  /** Çoban Dev: dev kayalar fırlatır, kaya ezip parça saçar, çevresindeki devleri yönetir. */
+  shepherd?: boolean;
+  /** Kürk ve boynuz (görünüş). */
+  fur?: { color: number; tip: number };
+  horns?: number;
 }
 
 export const GIANT_TYPES: Record<CommonKind, GiantType> = {
@@ -328,7 +333,7 @@ export const GIANT_TYPES: Record<CommonKind, GiantType> = {
   },
 };
 
-export type BossId = 'gate' | 'bekci' | 'kadim' | 'yikici' | 'koc';
+export type BossId = 'gate' | 'bekci' | 'kadim' | 'yikici' | 'koc' | 'coban';
 
 /** Bölüm sonu devleri: aynı gövde ve davranış, farklı boy ve dayanıklılık. */
 export const BOSSES: Record<BossId, GiantType> = {
@@ -358,6 +363,31 @@ export const BOSSES: Record<BossId, GiantType> = {
     dmg: 46,
     xp: 1500,
     skins: [0x5a4a52],
+  },
+  // Çoban Dev: kürklü, kıvrık boynuzlu, sakallı, kolları uzun. Uzaktan dev kayalar atar, kaya ezip parça saçar,
+  // kükreyişiyle çevresindeki devleri sürü gibi avına salar.
+  coban: {
+    ...GIANT_TYPES.boss,
+    name: 'Çoban Dev',
+    minH: 24,
+    maxH: 24,
+    speed: 3.6,
+    turn: 1.4,
+    hpBase: 3000,
+    armored: false,
+    legCuts: 4,
+    napeCuts: 3,
+    aggro: 420,
+    dmg: 30,
+    xp: 2000,
+    bulk: [1.2, 1.2],
+    head: [0.95, 0.95],
+    arm: 1.55,
+    skins: [0x5c483a],
+    downTime: 8,
+    shepherd: true,
+    fur: { color: 0x4a3628, tip: 0x8a6c50 },
+    horns: 0xb4a27e,
   },
   // Demir Koç: baştan aşağı metal plakalı, sur ötesinde dolaşan zırhlı dev. Kollarıyla yüzünü kapatıp sura toslar, gedik açar.
   koc: {

@@ -770,6 +770,22 @@ export class Game {
     }
   }
 
+  /** Çoban Dev kükredi: çevresindeki devler bir süre onun buyruğuyla oyuncuya koşar. */
+  onCommand(g: Giant) {
+    const C = CFG.shepherd;
+    let n = 0;
+    for (const o of this.giants) {
+      if (o === g || !o.alive || o.heavy || Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) > C.radius) continue;
+      o.command(C.dur);
+      n++;
+    }
+    this.audio.roar();
+    this.rings.spawn(g.pos.x, g.pos.y, g.pos.z, C.radius * 0.4, 0xff6a4a, 1.2);
+    const p = this.player.pos;
+    this.shakeCam(Math.max(0.2, 0.9 - Math.hypot(g.pos.x - p.x, g.pos.z - p.z) / 400));
+    this.hud.banner('ÇOBAN DEV KÜKREDİ', n > 0 ? `${n} dev onun buyruğuyla üstüne geliyor — önce Çoban'ı devir` : 'Sürüsünü çağırıyor');
+  }
+
   onPlayerHurt() {
     this.audio.hurt();
     this.hud.flash('#8a0f0f', 0.5, 0.45);

@@ -88,6 +88,8 @@ export const CFG = {
   // `speed` m/sn ile toslar; Kalkan Suru'nda 2×`halfWidth` m'lik gedik açar (kapılardan `gateClear` radyan uzakta).
   // Öldürülünce gedik `repair` sn sonra onarılır, kendisi `respawn` sn sonra yeniden doğar.
   breaker: { first: 20, firstCharge: 25, notice: 700, runup: 260, speed: 44, halfWidth: 17, gateClear: 0.16, repair: 45, respawn: 480, again: 1e9 },
+  // Çoban Dev: dış bölgede (Kalkan Suru'nun dışında) doğar; kükreyişi `radius` m içindeki devleri `dur` sn buyruğu altına alır.
+  shepherd: { first: 60, respawn: 420, radius: 320, dur: 22 },
   huntress: { hp: 2600, respawn: 300, bonus: 800, mountedChase: 1.12, first: 4 },
   shifter: { first: 75, every: [130, 220] as [number, number], dist: [220, 370] as [number, number], hp: 900, armoredHp: 1300 },
   // Devlerin ısırığı: yerdeki ava eğilip dişler. Yumruktan sert vurur, öncesinde başını geri çeker.

@@ -129,6 +129,18 @@ Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uz
 - **Öldürmek:** ensesine üç temiz kesik gerekir. Bacaklarına üç kesik onu yere serer. Ağaçlara kanca atıp tepesine çıkmak en iyi yol.
 - **Ödülü ve yeniden doğuşu:** öldürünce +800 puan ve dolu dev barı. Beş dakika sonra yeniden doğar. Ormandan çok uzaklaşırsan peşini bırakır.
 
+## Çoban Dev
+
+Kalkan Suru'nun dışında (orman dışında) dolaşırken bir süre sonra 300–420 m uzakta, beş devlik sürüsüyle birlikte belirir.
+
+- **Görünüşü:** 24 m'lik, uzun kollu bir dev. Omuzlarını, sırtını, göğsünü, kollarını ve uyluklarını sarkık, iki tonlu kalın bir kürk örter. Başının arkasında yele, çenesinde uzun bir sakal var; başının iki yanından geriye ve aşağı kıvrılan koç boynuzları çıkar.
+- **Dev kaya:** 45–280 m'deki avına yerinde durup kaya atar. Önce çömelip yerden kocaman bir kaya kaldırır, başının üstüne çıkarır, geriye gerilip fırlatır. Kaya yüksek bir yayla ve dönerek uçar; düşeceği yer kırmızı bir halkayla görünür. Düştüğü yerde geniş bir alanı ezer, toz bulutu kaldırır, etrafa taş saçar.
+- **Parça yağmuru:** kayayı göğsünün önünde iki eliyle sıkar; kolları titrer, avucundan toz dökülür. Sonra kaya ezilir ve 26 parça senin çevrene, her biri kendi yayıyla yağar. Tek parça az vurur ama yerinde durursan birkaçı birden isabet eder: yana koş.
+- **Sürüyü yönetmek:** başını geriye atıp kollarını iki yana açarak kükrer. 320 m içindeki devler 22 saniye onun buyruğuna girer; başlarının üstünde kızıl kıvılcımlar çıkar. Buyruktaki dev %30 hızlı koşar, kapşonu ve uzaklığı umursamadan sana gelir, kolay vazgeçmez. 26–34 saniyede bir yeniden kükrer.
+- **Öldürmek:** zırhsızdır; bacaklarına dört kesik onu yere serer, ensesine üç temiz kesik gerekir. Öldürünce dev barın dolar. Sürüsü sıradan devler gibi dağılır. 7 dakika sonra yeniden doğar.
+
+**Duman ve toz:** duman parçacıkları artık düzensiz kenarlı yumuşak bulutlar. Kameranın dibine gelip ekranı kaplayacak kadar büyüyen bir parçacık söner, boyutu da sınırlıdır.
+
 ## Demir Koç ve surdaki gedik
 
 **Demir Koç:** sur ötesinde (Kalkan Suru'nun dışında) dolaşan 19 m'lik zırhlı bir dev.

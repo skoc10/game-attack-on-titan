@@ -9,7 +9,7 @@ import { spawnable } from '../world/layout';
 import { chapterAt, goal, missionAt, needleFor, nextStep, progressFor, storyDone, type StoryEvent } from './storyRules';
 
 /** Hikâyeye ait olmayan, görev değişince kaldırılmayan dev etiketleri. */
-const WORLD_TAGS = new Set(['gate', 'raid', 'huntress', 'koc']);
+const WORLD_TAGS = new Set(['gate', 'raid', 'huntress', 'koc', 'coban']);
 
 export interface ObjectiveView {
   text: string;
