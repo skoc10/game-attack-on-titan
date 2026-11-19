@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { lerp } from '../core/rng';
-import { skinTexture, toonGradient } from '../core/textures';
+import { muscleTexture, skinTexture, toonGradient } from '../core/textures';
 
 export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob';
 export type BodyStyle = 'human' | 'giant' | 'titan';
@@ -39,6 +39,8 @@ export interface HumanoidOpts {
   belly?: number;
   /** Kadın gövdesi: göğüs ve daha geniş kalça. */
   female?: boolean;
+  /** Derisiz, kasları dışarıda gövde: lifli kas dokusu, belirgin kas kütleleri ve kirişler (yüz ve eller ten). */
+  muscle?: boolean;
 }
 
 /** Ten malzemesi: insanlarda çizgi film gölgesi, devlerde yumuşak, gerçekçi deri. */
@@ -150,6 +152,17 @@ export class Rig {
     return m;
   }
 
+  /** Çıplak kas: lifli doku, derin tümsek ve hafif ıslak parlaklık. */
+  fiber(color: number): SkinMat {
+    if (!this.soft) return this.toon(color);
+    const tex = muscleTexture();
+    const m = new THREE.MeshStandardMaterial({ color, roughness: 0.48, metalness: 0, map: tex, bumpMap: tex, bumpScale: 1.5, envMapIntensity: 0.75 });
+    m.onBeforeCompile = addSkinRim;
+    m.customProgramCacheKey = () => 'skinrim';
+    this.mats.push(m);
+    return m;
+  }
+
   basic(color: number) {
     const m = new THREE.MeshBasicMaterial({ color });
     this.mats.push(m);
@@ -209,10 +222,13 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
   // Dev gövdeleri yumuşak gölgeli deriyle ve ince konturla çizilir: daha gerçekçi, daha az çizgi film.
   const rig = new Rig((o.outline ?? 0.004) * (big ? 0.5 : 1), big);
 
+  const flesh = big && o.muscle === true;
   const skinMat = rig.surf(pal.skin);
-  const armMat = rig.surf(pal.sleeve ?? pal.skin);
-  const topMat = rig.surf(pal.top);
-  const legMat = rig.surf(pal.legs);
+  const armMat = flesh ? rig.fiber(pal.sleeve ?? pal.top) : rig.surf(pal.sleeve ?? pal.skin);
+  const topMat = flesh ? rig.fiber(pal.top) : rig.surf(pal.top);
+  const legMat = flesh ? rig.fiber(pal.legs) : rig.surf(pal.legs);
+  // Kirişler ve kasların arasındaki beyazımsı zar.
+  const sinewMat = flesh ? rig.fiber(blend(pal.top, 0xf0d8c8, 0.55)) : null;
   const bootMat = pal.boots !== undefined ? rig.surf(pal.boots) : legMat;
   const darkMat = rig.surf(0x1a1210, 0.5);
   const whiteMat = rig.surf(0xf4efe6, 0.35);
@@ -253,6 +269,17 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     if (o.female) {
       for (const s of [-1, 1]) rig.part(tilt, GEO.sphere, topMat, 0.048 * B, 0.044, 0.04 * B, s * 0.046 * B, 0.716, 0.072 * B, false);
       rig.part(tilt, GEO.sphere, legMat, 0.128 * B, 0.07, 0.088 * B, 0, 0.51, -0.004, false); // geniş kalça
+    }
+    if (sinewMat) {
+      // Çıplak kas: boyun kirişleri, göğüs kafesinin yanındaki dişli kaslar, karın kenarı ve sırt kasları.
+      for (const s of [-1, 1]) {
+        const neck = rig.part(tilt, GEO.capsule, topMat, 0.011, 0.03, 0.011, s * 0.022, 0.81, 0.02, false);
+        neck.rotation.z = s * 0.35;
+        for (let i = 0; i < 3; i++) rig.part(tilt, GEO.sphere, topMat, 0.016, 0.012, 0.014, s * 0.105 * B, 0.69 - i * 0.03, 0.04 * B, false);
+        rig.part(tilt, GEO.box, sinewMat, 0.0035, 0.13, 0.006, s * 0.05 * B, 0.6, 0.074 * B, false); // karın kenarı
+        rig.part(tilt, GEO.sphere, topMat, 0.04 * B, 0.1, 0.03 * B, s * 0.04 * B, 0.64, -0.07 * B, false); // sırt kası
+      }
+      rig.part(tilt, GEO.box, sinewMat, 0.004, 0.17, 0.007, 0, 0.62, 0.078 * B, false); // karın orta çizgisi
     }
     if (B <= 1.15) {
       // Karın kasları: orta çizgi ve iki yatay çizgi.
@@ -449,11 +476,19 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     const delt = big ? 1.38 : 1.1;
     rig.part(g, GEO.sphere, armMat, ru * delt, ru * delt, ru * delt, s * 0.004, -0.006, 0, false); // omuz kası
     if (big) rig.part(g, GEO.sphere, armMat, ru * 1.12, Lu * 0.3, ru * 1.15, 0, -Lu * 0.45, ru * 0.3, false); // pazı
+    if (sinewMat) {
+      rig.part(g, GEO.sphere, armMat, ru * 1.05, Lu * 0.32, ru, 0, -Lu * 0.5, -ru * 0.35, false); // arka kol
+      rig.part(g, GEO.box, sinewMat, ru * 0.25, Lu * 0.24, ru * 0.25, 0, -Lu * 0.86, ru * 0.75, false); // dirsek kirişi
+    }
     const fore = new THREE.Group();
     fore.position.set(0, -Lu, 0);
     g.add(fore);
     rig.part(fore, GEO.sphere, armMat, rf * 1.14, rf * 1.14, rf * 1.14, 0, 0, 0, false); // dirsek
     rig.part(fore, GEO.capsule, armMat, rf, Lf / 4, rf, 0, -Lf / 2, 0);
+    if (sinewMat) {
+      rig.part(fore, GEO.sphere, armMat, rf * 1.15, Lf * 0.26, rf * 1.1, s * rf * 0.2, -Lf * 0.3, 0, false); // ön kol kası
+      rig.part(fore, GEO.box, sinewMat, rf * 0.18, Lf * 0.36, rf * 0.22, 0, -Lf * 0.72, rf * 0.82, false); // bilek kirişleri
+    }
     if (!big) rig.part(fore, GEO.taper, trimMat, rf * 1.18, 0.022, rf * 1.18, 0, -Lf + 0.012, 0, false); // kol ağzı
     // El: avuç, hafif kıvrık parmaklar ve başparmak.
     const handMat = pal.sleeve !== undefined ? skinMat : armMat;
@@ -481,6 +516,11 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     g.position.set(s * 0.058 * B, 0.5, 0);
     tilt.add(g);
     rig.part(g, GEO.capsule, legMat, rt, Lt / 4, rt, 0, -Lt / 2, 0);
+    if (sinewMat) {
+      rig.part(g, GEO.sphere, legMat, rt * 0.95, Lt * 0.32, rt * 0.9, 0, -Lt * 0.5, rt * 0.4, false); // ön uyluk
+      rig.part(g, GEO.sphere, legMat, rt * 0.7, Lt * 0.3, rt * 0.75, -s * rt * 0.45, -Lt * 0.42, 0, false); // iç uyluk
+      rig.part(g, GEO.box, sinewMat, rt * 0.3, Lt * 0.16, rt * 0.3, 0, -Lt * 0.9, rt * 0.85, false); // diz kirişi
+    }
     const shin = new THREE.Group();
     shin.position.set(0, -Lt, 0);
     g.add(shin);
@@ -489,6 +529,7 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     rig.part(shin, GEO.sphere, bootMat, 0.04 * sb, 0.022, 0.07 * sb, 0, -Ls - 0.012, 0.026);
     if (big) {
       rig.part(shin, GEO.sphere, bootMat, rs * 1.1, Ls * 0.3, rs * 1.12, 0, -Ls * 0.36, -rs * 0.32, false); // baldır
+      if (sinewMat) rig.part(shin, GEO.box, sinewMat, rs * 0.3, Ls * 0.5, rs * 0.3, 0, -Ls * 0.55, -rs * 0.9, false); // topuk kirişi
       rig.part(shin, GEO.sphere, bootMat, 0.044 * sb, 0.015, 0.024 * sb, 0, -Ls - 0.017, 0.088 * sb, false); // parmaklar
       for (const tx of [-0.014, 0, 0.014]) rig.part(shin, GEO.box, inkMat, 0.0025, 0.012, 0.03 * sb, tx * sb, -Ls - 0.012, 0.094 * sb, false);
     } else {
