@@ -27,8 +27,9 @@ export interface RaidDef {
   /** Dalgalar arası nefes (sn). */
   rest: number;
   waves: RaidWave[];
-  /** Sur baskınında yıkıcıya eşlik eden devlerin aralığı (sn). */
+  /** Sur baskınında yıkıcıya eşlik eden devlerin aralığı (sn) ve her seferinde kaç tane geldiği. */
   escortEvery?: number;
+  escortCount?: number;
   reward: { coins: number; xp: number };
 }
 
@@ -44,9 +45,9 @@ export const RAIDS: RaidDef[] = [
     prep: 14,
     rest: 9,
     waves: [
-      { giants: [['normal', 4]] },
-      { giants: [['normal', 4], ['runner', 2]] },
-      { giants: [['normal', 4], ['runner', 2], ['screamer', 1]], big: 2 },
+      { giants: [['normal', 6], ['runner', 1]] },
+      { giants: [['normal', 6], ['runner', 3]], big: 1 },
+      { giants: [['normal', 7], ['runner', 3], ['screamer', 2]], big: 3 },
     ],
     reward: { coins: 450, xp: 400 },
   },
@@ -61,9 +62,9 @@ export const RAIDS: RaidDef[] = [
     prep: 14,
     rest: 10,
     waves: [
-      { giants: [['normal', 4], ['runner', 2]] },
-      { giants: [['armored', 2], ['leaper', 2], ['thrower', 2], ['normal', 2]], big: 1 },
-      { giants: [['armored', 2], ['runner', 3], ['normal', 2]], shifter: 'ofke', big: 2 },
+      { giants: [['normal', 6], ['runner', 3]] },
+      { giants: [['armored', 3], ['leaper', 3], ['thrower', 3], ['normal', 3]], big: 2 },
+      { giants: [['armored', 3], ['runner', 4], ['normal', 4], ['leaper', 2]], shifter: 'ofke', big: 3 },
     ],
     reward: { coins: 800, xp: 700 },
   },
@@ -78,7 +79,8 @@ export const RAIDS: RaidDef[] = [
     prep: 12,
     rest: 0,
     waves: [{ giants: [] }],
-    escortEvery: 28,
+    escortEvery: 22,
+    escortCount: 5,
     reward: { coins: 1400, xp: 1200 },
   },
 ];

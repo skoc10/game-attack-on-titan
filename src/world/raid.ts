@@ -238,7 +238,7 @@ export class Raid {
     const z = Math.cos(a) * (R + 340);
     const gi = new Giant(BOSSES.yikici, x, z, g);
     g.giants.push(gi);
-    const stand = R + HALF_T + gi.radius + 3;
+    const stand = R + HALF_T + gi.bodyR + 2;
     this.enlist(gi, this.wave, false);
     gi.raid = { x: Math.sin(a) * stand, z: Math.cos(a) * stand, r: 7, siege: true };
     this.colossus = gi;
@@ -251,10 +251,11 @@ export class Raid {
     const g = this.game;
     const c = this.colossus;
     if (!c || !c.alive) return;
-    for (let k = 0; k < 3; k++) {
+    const n = this.def?.escortCount ?? 3;
+    for (let k = 0; k < n; k++) {
       const a = Math.random() * Math.PI * 2;
-      const x = c.pos.x + Math.sin(a) * 40;
-      const z = c.pos.z + Math.cos(a) * 40;
+      const x = c.pos.x + Math.sin(a) * (40 + Math.random() * 30);
+      const z = c.pos.z + Math.cos(a) * (40 + Math.random() * 30);
       const gi = new Giant(GIANT_TYPES[ESCORTS[Math.floor(Math.random() * ESCORTS.length)]], x, z, g);
       g.giants.push(gi);
       this.enlist(gi, this.escorts, false);

@@ -155,8 +155,18 @@ export function onRoad(x: number, z: number, half = ROAD_HALF) {
   return Math.abs(x) < half || Math.abs(z) < half;
 }
 
-/** Sur gövdesinden ve dünyanın kenarından dışarı iter (kapı geçitleri hariç). Değişiklik olduysa true. */
-export function wallPush(pos: { x: number; z: number }, radius: number, feetY: number) {
+/** Sur üstündeki yürüme yolu: iç korkuluğun ve dış korkuluğun arasında kalan şerit (sur ortasına göre). */
+export const WALK_IN = -HALF_T + 0.8;
+export const WALK_OUT = HALF_T - 1.1;
+/** Korkulukların üst yüksekliği (sur üstüne göre): bunun üstünde zıplayan aşabilir. */
+const RAIL_IN = 0.9;
+const RAIL_OUT = 1.3;
+
+/**
+ * Sur gövdesinden ve dünyanın kenarından dışarı iter (kapı geçitleri hariç). Değişiklik olduysa true.
+ * Sur üstündeyken korkuluklardan geçilmez. `tall` verilirse (devin boyu) kapı kemerine sığmayan kapıdan geçemez.
+ */
+export function wallPush(pos: { x: number; z: number }, radius: number, feetY: number, tall = 0) {
   let hit = false;
   const r = Math.hypot(pos.x, pos.z);
   if (r > EDGE) {
@@ -164,14 +174,35 @@ export function wallPush(pos: { x: number; z: number }, radius: number, feetY: n
     pos.z *= EDGE / r;
     hit = true;
   }
-  if (feetY >= W.wallH - 0.6) return hit;
+  if (feetY >= W.wallH - 0.6) {
+    // Sur üstü: gövde korkulukların içine girmesin.
+    const up = feetY - W.wallH;
+    if (up >= RAIL_OUT) return hit;
+    for (const a of ARCS) {
+      const dx = pos.x - a.cx;
+      const dz = pos.z - a.cz;
+      const dist = Math.hypot(dx, dz);
+      const d = dist - a.r;
+      if (Math.abs(d) > HALF_T + 0.15 || !onArc(a, dx, dz) || dist < 1e-6) continue;
+      const lo = up < RAIL_IN ? WALK_IN + radius : -Infinity;
+      const hi = WALK_OUT - radius;
+      const c = Math.min(hi, Math.max(lo, d));
+      if (c === d) return hit;
+      const k = (a.r + c) / dist;
+      pos.x = a.cx + dx * k;
+      pos.z = a.cz + dz * k;
+      return true;
+    }
+    return hit;
+  }
   for (const a of ARCS) {
     const dx = pos.x - a.cx;
     const dz = pos.z - a.cz;
     const dist = Math.hypot(dx, dz);
     const d = dist - a.r;
     if (Math.abs(d) >= HALF_T + radius || !onArc(a, dx, dz)) continue;
-    const gate = feetY < W.gateH - 2.5 ? gateAt(a, dx, dz, dist) : null;
+    const fits = tall > 0 ? feetY + tall < W.gateH - 0.5 : feetY < W.gateH - 2.5;
+    const gate = fits ? gateAt(a, dx, dz, dist) : null;
     if (gate) {
       // Kapı geçidinde: yalnızca kapının yan duvarlarına çarpılır.
       const lim = Math.max(0, W.gateHalfW - radius);
@@ -212,6 +243,21 @@ export function wallSolid(x: number, y: number, z: number, margin: number) {
     if (Math.abs(dist - a.r) >= HALF_T + margin || !onArc(a, dx, dz)) continue;
     const gate = y < W.gateH - margin ? gateAt(a, dx, dz, dist) : null;
     if (!gate || Math.abs(gate.t) > W.gateHalfW - margin) return true;
+  }
+  return false;
+}
+
+/**
+ * İki nokta arasında (y yüksekliğinde) sur gövdesi var mı: surun ardındaki oyuncuya devin eli yetişmez.
+ * Kapı boşluklarından ve surun üstünden geçen hat engellenmez.
+ */
+export function wallBetween(ax: number, az: number, bx: number, bz: number, y: number) {
+  if (y >= W.wallH) return false;
+  const len = Math.hypot(bx - ax, bz - az);
+  const n = Math.min(80, Math.ceil(len / 1.5));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (wallSolid(ax + (bx - ax) * t, y, az + (bz - az) * t, 0)) return true;
   }
   return false;
 }

@@ -4,7 +4,7 @@ import { CFG } from '../data/config';
 import { angDiff, lerp, turnToward } from '../core/rng';
 import { rollVoice, type IdleVoice } from '../core/audioMath';
 import type { GiantSound } from '../core/audio';
-import { DISTRICTS, wallPush } from '../world/layout';
+import { DISTRICTS, wallBetween, wallPush } from '../world/layout';
 import { animateCollapse, newCollapse, type Collapse } from './collapse';
 import { pickMelee } from './attacks';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
@@ -201,6 +201,11 @@ export class Giant {
     return this.type.meter !== 'normal';
   }
   /** Bölüm sonu devi ya da dönüşümcü: sersemletme yarıya iner, darbeyle savrulmaz. */
+  /** Sura karşı çarpışma yarıçapı: omuz ve kollarla birlikte gövdenin yarı genişliği. */
+  get bodyR() {
+    return this.radius * 1.75;
+  }
+
   get heavy() {
     return this.type.kind === 'boss' || this.form !== null;
   }
@@ -417,7 +422,7 @@ export class Giant {
       return false;
     }
     if (this.attackKind === 'grab') {
-      if (dist < this.reach(titan) * 1.15 && dy < this.h * 1.2 && p.canBeGrabbed()) {
+      if (dist < this.reach(titan) * 1.15 && dy < this.h * 1.2 && p.canBeGrabbed() && !wallBetween(this.pos.x, this.pos.z, p.pos.x, p.pos.z, p.pos.y + 1)) {
         p.grab(this);
         this.setState('grab');
         return true;
@@ -775,7 +780,8 @@ export class Giant {
         this.pos.z = d.z + (dz / l) * min;
       }
     }
-    if (this.state !== 'leap') wallPush(this.pos, this.radius, 0);
+    // Gövde (omuzlar, kollar) merkezden geniştir: sura gömülmesin diye daha geniş itilir; kemere sığmayan kapıdan geçemez.
+    if (this.state !== 'leap') wallPush(this.pos, this.bodyR, 0, this.h);
     b.root.rotation.y = this.yaw;
     // Baş avına döner: kovalarken ve saldırırken ona bakar.
     const hunting = this.state === 'chase' || this.state === 'windup' || this.state === 'recover' || this.state === 'guard';

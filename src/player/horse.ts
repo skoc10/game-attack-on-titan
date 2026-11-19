@@ -3,6 +3,7 @@ import type { Game } from '../game';
 import { CFG } from '../data/config';
 import { lerp, turnToward } from '../core/rng';
 import { GEO, Rig } from '../enemies/humanoid';
+import { wallPush } from '../world/layout';
 
 const H = CFG.horse;
 
@@ -206,7 +207,9 @@ export class Horse {
     this.pos.x += Math.sin(this.yaw) * this.speed * dt;
     this.pos.z += Math.cos(this.yaw) * this.speed * dt;
     this.pos.y = 0;
-    if (game.world.resolve(this.pos, 1, { trees: true, buildings: true })) {
+    // Ağaçlara gövdesiyle, sura başı ve sağrısıyla birlikte (gövde boyunun yarısı) çarpar.
+    const walled = wallPush(this.pos, 1.9, 0, 3);
+    if (game.world.resolve(this.pos, 1, { trees: true, buildings: true }) || walled) {
       const moved = Math.hypot(this.pos.x - px, this.pos.z - pz);
       this.speed = Math.min(this.speed, (moved / dt) * 0.98 + 2);
     }
