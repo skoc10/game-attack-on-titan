@@ -121,7 +121,7 @@ Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uz
 **Dev Ağaçlar Ormanı:** dünyanın güney ucunda, 900 m yarıçaplı bir orman. Yaklaşık 470 dev ağacın gövdesi 90–140 m boyunda ve 11–17 m kalınlığında. Kök payandaları, dışa açılan kalın dalları ve iri yaprak kümeleri var. Gövdelere ve dallara kanca atılır, gövdelerin arası atla geçilecek kadar geniştir. Ortasından orman yolu geçer. Orman tabanı koyu ve yosunludur. Girişte, ortada ve iki yanda birer gaz ikmal noktası var. Haritada koyu yeşil bir daire olarak görünür.
 
 **Avcı Dev:** ormana girince derinlikten biri seni fark eder.
-- **Doğuşu ve görünüşü:** yıldırım düşer, buharın içinden 22 m'lik bir dişi dev yükselir. Uzun, koyu örgülü saçlıdır; teni bronz, kolları ve baldırları ağaç kabuğu gibi koyudur, gözleri yeşil yanar.
+- **Doğuşu ve görünüşü:** yıldırım düşer, buharın içinden 22 m'lik bir dişi dev yükselir. Gövdesi derisizdir, kasları dışarıdadır: koyu kızıl kas lifleri, belirgin kas kütleleri (omuz, pazı, ön kol, uyluk, baldır, karın, sırt) ve aralarında açık renkli kirişler. Yüzü ve elleri ten rengidir, koyu kısa at kuyruğu vardır, gözleri yeşil yanar.
 - **Kovalaması:** ormanın her yerinden seni görür ve öne eğilip kolları geride koşar. Yayanken kaçamazsın. Attayken dörtnala neredeyse yetişir: aradaki mesafe saniyede ancak bir metre açılır.
 - **Saldırıları:** **Av Atılımı** ile ileri fırlayıp çarpar, **Kök Sarsıntısı** ile yeri döver, tekme atar.
 - **Öldürmek:** ensesine üç temiz kesik gerekir. Bacaklarına üç kesik onu yere serer. Ağaçlara kanca atıp tepesine çıkmak en iyi yol.

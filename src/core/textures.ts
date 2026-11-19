@@ -277,3 +277,47 @@ export function skinTexture() {
   skinTex = finish(c, 2, 2);
   return skinTex;
 }
+
+let muscleTex: THREE.CanvasTexture | null = null;
+/**
+ * Çıplak kas dokusu: boyuna uzanan ince lifler (koyu oluklar, açık sırtlar) ve aralarda beyazımsı kiriş şeritleri.
+ * Malzemenin rengiyle çarpılır; tümsek haritası olarak da kullanılır.
+ */
+export function muscleTexture() {
+  if (muscleTex) return muscleTex;
+  const S = 256;
+  const { c, g } = canvas(S, S);
+  const rng = mulberry32(7171);
+  g.fillStyle = '#efe2de';
+  g.fillRect(0, 0, S, S);
+  const fiber = (color: string, width: number, n: number) => {
+    g.strokeStyle = color;
+    g.lineWidth = width;
+    for (let i = 0; i < n; i++) {
+      const x0 = rng() * S;
+      const bend = (rng() - 0.5) * 18;
+      // Döşenebilir: çizgi yatayda üç kopya, dikeyde tüm yüksekliği kaplar.
+      for (const ox of [-S, 0, S]) {
+        g.beginPath();
+        g.moveTo(x0 + ox, -4);
+        g.bezierCurveTo(x0 + ox + bend, S * 0.33, x0 + ox - bend, S * 0.66, x0 + ox, S + 4);
+        g.stroke();
+      }
+    }
+  };
+  fiber('rgba(110,30,30,0.32)', 1.6, 120); // lif arası oluklar
+  fiber('rgba(255,236,230,0.28)', 0.9, 160); // lif sırtları
+  fiber('rgba(80,18,20,0.22)', 3.2, 18); // kas demetlerini ayıran derin çizgiler
+  // Kiriş şeritleri: kasın uçlarında parlak, beyazımsı bantlar.
+  for (const y of [S * 0.08, S * 0.58]) {
+    const grad = g.createLinearGradient(0, y - 10, 0, y + 10);
+    grad.addColorStop(0, 'rgba(255,246,236,0)');
+    grad.addColorStop(0.5, 'rgba(255,246,236,0.55)');
+    grad.addColorStop(1, 'rgba(255,246,236,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, y - 10, S, 20);
+  }
+  speckle(g, rng, S, S, 500, ['#c98a80', '#f6e6e0'], 0.5, 1.2);
+  muscleTex = finish(c, 2, 2);
+  return muscleTex;
+}
