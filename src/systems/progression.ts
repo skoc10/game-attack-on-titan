@@ -1,3 +1,4 @@
+import { RAIDS, type RaidId } from '../data/raids';
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
 import { NPC_IDS, NPCS, type NpcId } from '../data/npcs';
@@ -33,6 +34,8 @@ export interface SaveData {
   contracts: Record<NpcId, ContractState>;
   /** Çanta: kapşon ve sargılar. */
   inv: InvState;
+  /** Püskürtülen baskınlar. */
+  raids: RaidId[];
 }
 
 export const MAX_UPGRADE = 5;
@@ -64,6 +67,7 @@ export function newSave(): SaveData {
     char: 'aras',
     contracts: { nuran: newContractState(), kagan: newContractState(), behram: newContractState() },
     inv: newInv(),
+    raids: [],
   };
 }
 
@@ -160,6 +164,8 @@ export function sanitizeSave(raw: unknown): SaveData {
     d.contracts[id] = { index, active, progress: active ? num(c.progress, 0, 0, Math.max(0, goal - 1)) : 0 };
   }
   d.inv = sanitizeInv(r.inv);
+  const won = Array.isArray(r.raids) ? r.raids : [];
+  d.raids = RAIDS.map((x) => x.id).filter((id) => won.includes(id));
   if (typeof r.cls === 'string' && r.cls in CLASS_UNLOCK && classUnlocked(d, r.cls as ClassId)) d.cls = r.cls as ClassId;
   return d;
 }

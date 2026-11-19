@@ -49,7 +49,12 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'power' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'power' = 'swipe';
+  /**
+   * Baskın: devin yürüdüğü hedef ve varınca yıktığı yer. `siege` ise hedef surdur (yıkıcı).
+   * Avı yakındaysa ona saldırır, uzaklaşınca hedefine döner.
+   */
+  raid: { x: number; z: number; r: number; siege: boolean } | null = null;
   /** Dev formundaki oyuncunun yumruğuna gard alma olasılığı, gardın süresi ve yeniden gard için bekleme. */
   private guardChance = 0;
   private guardDur = 0;
@@ -434,6 +439,13 @@ export class Giant {
       }
       return false;
     }
+    if (this.attackKind === 'smash') {
+      // Baskın: köydeki evleri ya da suru yumruklar; oyuncu dibindeyse o da nasibini alır.
+      game.raid.smash(this);
+      this.attackCd = this.raid?.siege ? 1.3 : 1.8;
+      if (dist < this.reach(titan) * 0.9 && dy < this.h) p.takeHit(dmg * 0.8, this.pos, 16);
+      return false;
+    }
     if (this.attackKind === 'kick') {
       // Tekme: önündeki ava bacağıyla uzanır; yerdekini fırlatır, gardı kısmen deler.
       const K = CFG.giantKick;
@@ -515,6 +527,25 @@ export class Giant {
 
     switch (this.state) {
       case 'wander': {
+        if (this.raid) {
+          // Baskın: hedefe yürür, varınca yumruklarıyla yıkar; ancak yakınına gelen avı fark eder.
+          const R = this.raid;
+          const gx = R.x - this.pos.x;
+          const gz = R.z - this.pos.z;
+          moveYaw = Math.atan2(gx, gz);
+          if (Math.hypot(gx, gz) > R.r) move = speed * (R.siege ? 1 : 1.35);
+          else if (this.attackCd <= 0) {
+            this.attackKind = 'smash';
+            this.setState('windup');
+            this.say('grunt', R.siege ? 3 : 1.2);
+            break;
+          }
+          if (targetable && dist < this.type.aggro * 0.45 * p.sightMult) {
+            this.setState('chase');
+            this.say(this.type.kind === 'boss' ? 'growl' : this.voice, this.type.kind === 'boss' ? 2.5 : 1.2);
+          }
+          break;
+        }
         this.wanderT -= dt;
         if (this.wanderT <= 0) {
           this.wanderT = 3 + Math.random() * 5;
@@ -544,7 +575,9 @@ export class Giant {
       }
       case 'chase': {
         const leashed = this.home !== null && Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) > this.type.aggro * 1.3;
-        if (!targetable || dist > this.type.aggro * 1.7 * p.sightMult || leashed) {
+        // Baskındaki dev uzaklaşan avın peşine düşmez, hedefine döner.
+        const raidBack = this.raid !== null && dist > this.type.aggro * 0.6;
+        if (!targetable || dist > this.type.aggro * 1.7 * p.sightMult || leashed || raidBack) {
           this.setState('wander');
           break;
         }
@@ -590,8 +623,8 @@ export class Giant {
         break;
       }
       case 'windup': {
-        moveYaw = Math.atan2(dx, dz);
-        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : 0.75;
+        moveYaw = this.attackKind === 'smash' && this.raid ? Math.atan2(this.raid.x - this.pos.x, this.raid.z - this.pos.z) : Math.atan2(dx, dz);
+        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : this.attackKind === 'smash' ? (this.raid?.siege ? 1.7 : 1.05) : 0.75;
         if (this.attackKind === 'power') this.telegraph(game);
         if (this.stateT > wind) {
           this.attackCd = this.heavy ? 2.4 : 1.5;
@@ -1077,6 +1110,14 @@ export class Giant {
             tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
             headX = 0.3;
           }
+        } else if (this.attackKind === 'smash') {
+          // Yıkma: iki kol başın üstünde birleşir, gövde geriye gerilir.
+          aL = aR = -2.9;
+          elbowL = elbowR = -0.5;
+          tiltX = -0.12;
+          headX = -0.2;
+          jawOpen = 0.55;
+          lL = lR = 0;
         } else if (this.attackKind === 'kick') {
           // Tekme hazırlığı: diz göğse çekilir, gövde geriye yaslanır, kollar dengeyi tutar.
           lR = -1.15;
@@ -1120,6 +1161,14 @@ export class Giant {
       case 'recover':
         if (this.attackKind === 'swipe') aR = -0.5;
         tiltX = 0.2;
+        if (this.attackKind === 'smash' && this.stateT < 0.45) {
+          // Kollar aşağı inmiş, gövde öne çökmüş: vuruşun ardı.
+          aL = aR = -1.05;
+          tiltX = 0.5;
+          headX = 0.3;
+          lL = -0.3;
+          lR = 0.2;
+        }
         if (this.attackKind === 'kick' && this.stateT < 0.35) {
           // Bacak ileri açılmış, gövde geride.
           lR = -1.55;

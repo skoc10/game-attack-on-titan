@@ -136,6 +136,8 @@ export class Spawner {
       }
     }
 
+    // Baskın sürerken yalnızca baskının devleri gelir.
+    if (game.raid.active) return;
     this.updateShifters(dt, game);
     this.timer -= dt;
     if (this.timer > 0 || alive >= S.maxAlive) return;
