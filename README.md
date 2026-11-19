@@ -120,12 +120,25 @@ Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uz
 
 **Dev Ağaçlar Ormanı:** dünyanın güney ucunda, 900 m yarıçaplı bir orman. Yaklaşık 470 dev ağacın gövdesi 90–140 m boyunda ve 11–17 m kalınlığında. Kök payandaları, dışa açılan kalın dalları ve iri yaprak kümeleri var. Gövdelere ve dallara kanca atılır, gövdelerin arası atla geçilecek kadar geniştir. Ortasından orman yolu geçer. Orman tabanı koyu ve yosunludur. Girişte, ortada ve iki yanda birer gaz ikmal noktası var. Haritada koyu yeşil bir daire olarak görünür.
 
+**Ağaçların üstü:** dev ağaçların dallarında ve yaprak kümelerinin üstünde durabilirsin. Kancayla çık, yaprak kümesinin tepesine ya da ağacın tepesindeki taca (90–140 m) in. Dalların üst yüzünde yürünür; kenardan yürürsen düşersin.
+
 **Avcı Dev:** ormana girince derinlikten biri seni fark eder.
 - **Doğuşu ve görünüşü:** yıldırım düşer, buharın içinden 22 m'lik bir dişi dev yükselir. Gövdesi derisizdir, kasları dışarıdadır: koyu kızıl kas lifleri, belirgin kas kütleleri (omuz, pazı, ön kol, uyluk, baldır, karın, sırt) ve aralarında açık renkli kirişler. Yüzü ve elleri ten rengidir, koyu kısa at kuyruğu vardır, gözleri yeşil yanar.
 - **Kovalaması:** ormanın her yerinden seni görür ve öne eğilip kolları geride koşar. Yayanken kaçamazsın. Attayken dörtnala neredeyse yetişir: aradaki mesafe saniyede ancak bir metre açılır.
 - **Saldırıları:** **Av Atılımı** ile ileri fırlayıp çarpar, **Kök Sarsıntısı** ile yeri döver, tekme atar.
 - **Öldürmek:** ensesine üç temiz kesik gerekir. Bacaklarına üç kesik onu yere serer. Ağaçlara kanca atıp tepesine çıkmak en iyi yol.
 - **Ödülü ve yeniden doğuşu:** öldürünce +800 puan ve dolu dev barı. Beş dakika sonra yeniden doğar. Ormandan çok uzaklaşırsan peşini bırakır.
+
+## Yeni dev türleri
+
+| Tür | Boy | Özelliği | Nerede |
+|---|---|---|---|
+| **Tırmanıcı** | 3,5–5,5 m | Küçük ve çevik, kolları uzun. Dalda ya da yaprakların üstündeysen dev ağacın gövdesine koşar, sarılıp saniyede 8 m tırmanır; yetişince sana atılır, vurursa seni ağaçtan düşürür. Sersemlerse ya da bacağı kesilirse tutunamayıp düşer. İndiğinde ya da uzaklaştığında gövdeyi bırakır. | En çok Dev Ağaçlar Ormanı'nda (doğanların üçte biri) |
+| **Toslayan** | 11–16 m | Kalın, kısa boyunlu, iri omuzlu. 25–90 m'deki avına başını eğip toprağı eşeler, sonra hızla toslar; yolundakini savurur. Ağaca ya da binaya çarparsa sersemler: kaçarken arana ağaç al. | Demir Sur dışı ve ötesi, orman |
+| **Sürü Devi** | 4–6 m | Tek başına zayıf ama dörder dörder gelir. | Her yerde |
+| **Uzunkol** | 13–18 m | Sırık gibi uzun, kolları dizlerini geçer: eli sıradan bir devin ~1,5 katı uzağa yetişir. Kancayla yaklaşanı havada kapar. | Her yerde |
+
+Tırmanıcı ve Sürü Devi iri doğmaz; diğerleri bazen türünün 1,35–1,8 katı iri doğar.
 
 ## Surlar ve çarpışma
 

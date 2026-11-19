@@ -5,13 +5,15 @@ import { angDiff, lerp, turnToward } from '../core/rng';
 import { rollVoice, type IdleVoice } from '../core/audioMath';
 import type { GiantSound } from '../core/audio';
 import { DISTRICTS, wallBetween, wallPush } from '../world/layout';
+import { trunkR } from '../world/world';
+import type { Tree } from '../world/forest';
 import { animateCollapse, newCollapse, type Collapse } from './collapse';
 import { pickMelee } from './attacks';
 import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid } from './humanoid';
 import type { GiantType } from './giantTypes';
 import type { Ability, TitanDef } from '../data/titans';
 
-export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'guard' | 'dead';
+export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'guard' | 'climb' | 'dead';
 /** Dev formundaki oyuncunun vuruşunun nitelikleri: yakın dövüş mü (gard yalnızca buna işler), gardı kırar mı, ne kadar iter. */
 export interface TitanHitOpts {
   melee?: boolean;
@@ -49,7 +51,11 @@ export class Giant {
   persistent = false;
   private attackCd = 0;
   private leapCd = 2;
-  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'power' = 'swipe';
+  private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'charge' | 'power' = 'swipe';
+  /** Tırmanıcının sarıldığı dev ağaç. */
+  private climbTree: Tree | null = null;
+  /** Toslayanın yeniden toslamasına kalan süre. */
+  private chargeCd = 3;
   /**
    * Baskın: devin yürüdüğü hedef ve varınca yıktığı yer. `siege` ise hedef surdur (yıkıcı).
    * Avı yakındaysa ona saldırır, uzaklaşınca hedefine döner.
@@ -116,7 +122,8 @@ export class Giant {
     this.form = form;
     let h = lerp(type.minH, type.maxH, r() * r() * 0.6 + r() * 0.4);
     if (type.kind === 'boss' || form) h = type.maxH;
-    else if (!type.crawl && r() < P.bigChance) {
+    // Küçük türler (tırmanıcı, sürü) iri doğmaz.
+    else if (!type.crawl && !type.climber && !type.pack && r() < P.bigChance) {
       h *= lerp(P.big[0], P.big[1], r());
       this.big = true;
     }
@@ -171,7 +178,7 @@ export class Giant {
     // Gard: sürünenler alamaz; ağır devler ve zırhlılar sık, çevikler seyrek alır.
     const GG = CFG.giantGuard;
     const k = type.kind;
-    this.guardChance = type.crawl ? 0 : this.heavy ? GG.heavy : type.armored ? GG.armored : k === 'runner' || k === 'leaper' || k === 'screamer' ? GG.fast : GG.normal;
+    this.guardChance = type.crawl ? 0 : this.heavy ? GG.heavy : type.armored ? GG.armored : k === 'runner' || k === 'leaper' || k === 'screamer' || k === 'pack' || k === 'climber' ? GG.fast : GG.normal;
     if (this.big && this.guardChance > 0) this.guardChance += 0.1;
     this.body.root.traverse((o) => (o.userData.giant = this));
     game.scene.add(this.body.root);
@@ -224,6 +231,12 @@ export class Giant {
   private setState(s: GiantState) {
     // Yakalama herhangi bir nedenle kesilirse (sersemleme, düşme, ölüm) oyuncu bırakılır.
     if (this.state === 'grab' && s !== 'grab') this.game.player.releaseGrab(this);
+    // Ağaçtaki tırmanıcı sersemlerse ya da bacağı kesilirse tutunamaz, düşer.
+    if (this.state === 'climb' && s !== 'climb' && s !== 'leap' && s !== 'dead') {
+      this.vel.set(0, 0, 0);
+      this.leapHit = true;
+      s = 'leap';
+    }
     this.state = s;
     this.stateT = 0;
   }
@@ -397,7 +410,7 @@ export class Giant {
   }
 
   private reach(titan: boolean) {
-    return this.h * 0.45 + 1.5 + (titan ? this.game.player.titan.def.radius + 1.5 : 0);
+    return this.h * 0.45 * (this.type.reach ?? 1) + 1.5 + (titan ? this.game.player.titan.def.radius + 1.5 : 0);
   }
 
   /** Saldırının vuruş anı. Oyuncu yakalandıysa true döner (dev 'grab' durumuna geçmiştir). */
@@ -443,6 +456,17 @@ export class Giant {
         game.audio.bite(0.5);
       }
       return false;
+    }
+    if (this.attackKind === 'charge') {
+      // Tos: avının olduğu yere doğru, yönü kilitli hızlı koşu; yolundakini savurur, ağaca çarparsa sersemler.
+      this.chargeCd = 7 + Math.random() * 3;
+      this.rushSpeed = 28 + this.h;
+      this.rushTime = Math.min(2.6, dist / this.rushSpeed + 0.5);
+      this.rushHit = false;
+      this.yaw = Math.atan2(dx, dz);
+      game.audio.stomp(0.7);
+      this.setState('rush');
+      return true;
     }
     if (this.attackKind === 'smash') {
       // Baskın: köydeki evleri ya da suru yumruklar; oyuncu dibindeyse o da nasibini alır.
@@ -496,6 +520,7 @@ export class Giant {
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.leapCd > 0) this.leapCd -= dt;
     if (this.guardCd > 0) this.guardCd -= dt;
+    if (this.chargeCd > 0) this.chargeCd -= dt;
     if (this.form) {
       if (this.powerCd > 0) this.powerCd -= dt;
       if (this.buffT > 0) {
@@ -592,6 +617,32 @@ export class Giant {
           this.screamT -= dt; // çığlık atarken olduğu yerde durur
           break;
         }
+        // Tırmanıcı: avı bir dev ağacın dalındaysa ya da yapraklarının üstündeyse gövdeye koşar ve tırmanır.
+        if (this.type.climber && dy > this.h * 0.9 && p.mode === 'foot') {
+          const tree = game.world.giantTreeNear(p.pos.x, p.pos.z, 45);
+          if (tree) {
+            const ax = this.pos.x - tree.x;
+            const az = this.pos.z - tree.z;
+            const al = Math.hypot(ax, az) || 1;
+            const R = trunkR(tree, this.pos.y) + this.radius + 0.4;
+            const tx = tree.x + (ax / al) * R;
+            const tz = tree.z + (az / al) * R;
+            moveYaw = Math.atan2(tx - this.pos.x, tz - this.pos.z);
+            if (Math.hypot(tx - this.pos.x, tz - this.pos.z) < 3) {
+              this.climbTree = tree;
+              this.setState('climb');
+              this.say('shriek', 1.2);
+            } else move = speed * CFG.giantPace.chase;
+            break;
+          }
+        }
+        // Toslayan: uzaktaki avına başını eğip hızla koşar.
+        if (this.type.charger && this.chargeCd <= 0 && this.attackCd <= 0 && dist > 25 && dist < 90 && dy < this.h * 0.6) {
+          this.attackKind = 'charge';
+          this.setState('windup');
+          this.say('growl', 1.6);
+          break;
+        }
         // Dönüşümcü, formunun güçlerinden mesafeye uyanını kullanır.
         if (this.form && this.powerCd <= 0) {
           const ab = this.pickPower(dist);
@@ -629,7 +680,7 @@ export class Giant {
       }
       case 'windup': {
         moveYaw = this.attackKind === 'smash' && this.raid ? Math.atan2(this.raid.x - this.pos.x, this.raid.z - this.pos.z) : Math.atan2(dx, dz);
-        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : this.attackKind === 'smash' ? (this.raid?.siege ? 1.7 : 1.05) : 0.75;
+        const wind = this.attackKind === 'power' ? (this.power?.kind === 'beam' ? 1.3 : 1.05) : this.attackKind === 'stomp' ? 1.2 : this.attackKind === 'throw' ? 1.05 : this.attackKind === 'grab' ? 0.9 : this.attackKind === 'bite' ? CFG.bite.windup : this.attackKind === 'kick' ? CFG.giantKick.windup : this.attackKind === 'smash' ? (this.raid?.siege ? 1.7 : 1.05) : this.attackKind === 'charge' ? 0.9 : 0.75;
         if (this.attackKind === 'power') this.telegraph(game);
         if (this.stateT > wind) {
           this.attackCd = this.heavy ? 2.4 : 1.5;
@@ -647,6 +698,43 @@ export class Giant {
         }
         break;
       }
+      case 'climb': {
+        // Tırmanış: gövdeye sarılı, avının olduğu yana doğru dolanarak yukarı çıkar; yetişince ona atılır.
+        const t = this.climbTree;
+        if (!t) {
+          this.setState('leap');
+          break;
+        }
+        const cur = Math.atan2(this.pos.x - t.x, this.pos.z - t.z);
+        const ang = turnToward(cur, Math.atan2(p.pos.x - t.x, p.pos.z - t.z), 0.9 * dt);
+        const R = trunkR(t, this.pos.y) + this.radius * 0.8;
+        this.pos.x = t.x + Math.sin(ang) * R;
+        this.pos.z = t.z + Math.cos(ang) * R;
+        moveYaw = ang + Math.PI; // yüzü gövdeye dönük
+        const targetY = Math.min(t.y + t.h * 0.86, p.pos.y - this.h * 0.35);
+        if (this.pos.y < targetY) {
+          this.pos.y = Math.min(targetY, this.pos.y + 8 * dt);
+          this.phase += dt * 7;
+          this.moving = true;
+        }
+        const ground = game.world.heightAt(p.pos.x, p.pos.z);
+        const lost = p.dead || p.mode !== 'foot' || (p.onGround && p.pos.y - ground < 6) || Math.hypot(p.pos.x - t.x, p.pos.z - t.z) > 70 || this.stateT > 30;
+        v.set(this.pos.x, this.pos.y + this.h * 0.6, this.pos.z);
+        if (lost) {
+          // Av indi ya da uzaklaştı: gövdeden bırakıp düşer.
+          this.vel.set(-Math.sin(ang + Math.PI) * 3, 0, -Math.cos(ang + Math.PI) * 3);
+          this.leapHit = true;
+          this.setState('leap');
+        } else if (this.pos.y >= targetY - 1 && v.distanceTo(p.pos) < 34 && this.leapCd <= 0) {
+          const T = 0.65;
+          this.vel.set((p.pos.x - this.pos.x) / T, (p.pos.y - this.h * 0.4 - this.pos.y) / T + 0.5 * LEAP_G * T, (p.pos.z - this.pos.z) / T);
+          this.leapHit = false;
+          this.leapCd = 3.5;
+          this.say('shriek', 1.5);
+          this.setState('leap');
+        }
+        break;
+      }
       case 'rush': {
         // Atılım: yönü kilitli, hızla ileri savrulur; yolundaki avı çarpıp fırlatır.
         const step = this.rushSpeed * dt;
@@ -654,6 +742,14 @@ export class Giant {
         this.pos.z += Math.cos(this.yaw) * step;
         this.phase += step / (this.h * 0.18);
         this.moving = true;
+        // Ağaçlar ve binalar atılımı durdurur; toslayan çarpınca sersemler.
+        if (this.type.kind !== 'boss' && game.world.resolve(this.pos, this.radius, OBSTACLES) && this.type.charger) {
+          game.audio.stomp(0.9);
+          game.shakeCam(Math.max(0, 0.6 - dist / 150));
+          game.particles.burst(v.set(this.pos.x, this.pos.y + this.h * 0.75, this.pos.z), 20, 10, 0.8, 0x8a6a48, 2);
+          this.stun(1.8);
+          break;
+        }
         if (!this.rushHit && !p.dead) {
           const reachR = this.radius + (titan ? p.titan.def.radius : 1.5) + 2;
           if (dist < reachR && dy < this.h) {
@@ -760,7 +856,7 @@ export class Giant {
         }
         this.moving = true;
       }
-      this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
+      if (this.state !== 'climb') this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
     }
     // Devler şehre ve Taç Suru kasabalarına giremez; surlardan yalnızca kapılardan geçer.
     const r = Math.hypot(this.pos.x, this.pos.z);
@@ -970,6 +1066,12 @@ export class Giant {
    */
   private animateDeath(dt: number, game: Game) {
     const b = this.body;
+    // Ağaçta ya da havada ölen dev önce yere düşer.
+    const floor = game.world.heightAt(this.pos.x, this.pos.z);
+    if (this.pos.y > floor) {
+      this.vel.y -= LEAP_G * dt;
+      this.pos.y = Math.max(floor, this.pos.y + this.vel.y * dt);
+    }
     const t = this.stateT;
     const fd = this.fallDir;
     const k = 1 - Math.exp(-dt * 14);
@@ -1116,6 +1218,14 @@ export class Giant {
             tiltX = dy < this.h * 0.5 ? 0.95 : 0.4;
             headX = 0.3;
           }
+        } else if (this.attackKind === 'charge') {
+          // Tos hazırlığı: baş eğik, omuzlar önde, bir ayak geride toprağı eşeler.
+          tiltX = 0.55;
+          headX = 0.35;
+          aL = aR = 0.7;
+          lL = -0.15;
+          lR = 0.55;
+          jawOpen = 0.4;
         } else if (this.attackKind === 'smash') {
           // Yıkma: iki kol başın üstünde birleşir, gövde geriye gerilir.
           aL = aR = -2.9;
@@ -1209,6 +1319,18 @@ export class Giant {
         lL = lR = 0.6;
         tiltX = 0.5;
         break;
+      case 'climb': {
+        // Tırmanış: kollar yukarıda sırayla tutunur, bacaklar gövdeyi sarar, baş avına kalkık.
+        const c = Math.sin(this.phase);
+        aL = -2.6 + c * 0.45;
+        aR = -2.6 - c * 0.45;
+        lL = -0.9 + c * 0.5;
+        lR = -0.9 - c * 0.5;
+        tiltX = 0.15;
+        headX = -0.45;
+        kneeR = 1.4;
+        break;
+      }
       case 'rush':
         // Atılım: omuz önde, kollar geride, uzun adımlar.
         tiltX = 0.55;
@@ -1268,7 +1390,7 @@ export class Giant {
         aL = aR = 0.55;
       }
     }
-    let kneeL: number | undefined;
+    let kneeL: number | undefined = this.state === 'climb' ? 1.4 : undefined;
     if (this.screamT > 0 && this.state === 'chase') {
       // Çığlık: baş geride, ağız sonuna kadar açık, kollar yana açılmış.
       headX = -0.55;

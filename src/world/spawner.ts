@@ -9,16 +9,20 @@ import { HUNTRESS, huntressType } from '../data/huntress';
 
 const S = CFG.spawn;
 
+/** Bölgelere göre dev türlerinin doğma olasılıkları (her tabloda toplam 1). */
+export const SPAWN_TABLES: Record<'inner' | 'middle' | 'outer' | 'forest', [CommonKind, number][]> = {
+  inner: [['normal', 0.6], ['runner', 0.09], ['leaper', 0.07], ['crawler', 0.06], ['screamer', 0.05], ['thrower', 0.04], ['pack', 0.06], ['longarm', 0.03]],
+  middle: [['normal', 0.32], ['runner', 0.11], ['leaper', 0.1], ['armored', 0.11], ['crawler', 0.07], ['thrower', 0.07], ['screamer', 0.05], ['pack', 0.06], ['brute', 0.05], ['longarm', 0.04], ['climber', 0.02]],
+  outer: [['normal', 0.2], ['runner', 0.11], ['leaper', 0.11], ['armored', 0.15], ['crawler', 0.07], ['thrower', 0.08], ['screamer', 0.05], ['pack', 0.07], ['brute', 0.07], ['longarm', 0.06], ['climber', 0.03]],
+  // Dev ağaçlar ormanı: gövdelere tırmananlar çoğunlukta.
+  forest: [['climber', 0.34], ['pack', 0.14], ['normal', 0.14], ['runner', 0.1], ['leaper', 0.1], ['longarm', 0.1], ['brute', 0.08]],
+};
+
 function pickKind(x: number, z: number, game: Game): CommonKind {
   if (game.save.level === 1 && game.save.kills < 3) return 'normal';
   const roll = Math.random();
   const zone = ringOf(x, z);
-  const table: [CommonKind, number][] =
-    zone <= 1
-      ? [['normal', 0.66], ['runner', 0.1], ['leaper', 0.08], ['crawler', 0.07], ['screamer', 0.05], ['thrower', 0.04]]
-      : zone === 2
-        ? [['normal', 0.4], ['runner', 0.13], ['leaper', 0.12], ['armored', 0.13], ['crawler', 0.08], ['thrower', 0.08], ['screamer', 0.06]]
-        : [['normal', 0.27], ['runner', 0.14], ['leaper', 0.14], ['armored', 0.19], ['crawler', 0.09], ['thrower', 0.1], ['screamer', 0.07]];
+  const table = SPAWN_TABLES[inGiantForest(x, z, 80) ? 'forest' : zone <= 1 ? 'inner' : zone === 2 ? 'middle' : 'outer'];
   let acc = 0;
   for (const [k, w] of table) {
     acc += w;
@@ -60,9 +64,16 @@ export class Spawner {
     return g;
   }
 
+  /** Dev doğurur; sürü türleri yanlarında birkaç eşiyle birlikte gelir. */
   spawn(kind: CommonKind, x: number, z: number, game: Game) {
-    const g = new Giant(GIANT_TYPES[kind], x, z, game);
+    const type = GIANT_TYPES[kind];
+    const g = new Giant(type, x, z, game);
     game.giants.push(g);
+    for (let i = 1; i < (type.pack ?? 1); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 6 + Math.random() * 10;
+      game.giants.push(new Giant(type, x + Math.sin(a) * d, z + Math.cos(a) * d, game));
+    }
     return g;
   }
 
