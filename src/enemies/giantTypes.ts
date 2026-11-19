@@ -1,7 +1,7 @@
 import { CFG, type MeterKind } from '../data/config';
 import type { TitanDef } from '../data/titans';
 
-export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'crawler' | 'thrower' | 'screamer' | 'boss' | 'shifter';
+export type GiantKind = 'normal' | 'runner' | 'leaper' | 'armored' | 'crawler' | 'thrower' | 'screamer' | 'climber' | 'brute' | 'pack' | 'longarm' | 'boss' | 'shifter';
 /** Kendiliğinden doğan sıradan türler (dönüşümcüler dev formlarından kurulur). */
 export type CommonKind = Exclude<GiantKind, 'shifter'>;
 
@@ -36,6 +36,14 @@ export interface GiantType {
   screamer?: boolean;
   /** Koşucu gibi öne eğilip kolları geride koşar; attaki oyuncuya yetişmek için hızlanır (Avcı Dev). */
   sprinter?: boolean;
+  /** Dev ağaçlara tırmanır: dalda ya da yaprakların üstünde duran avına gövdeden çıkıp atılır. */
+  climber?: boolean;
+  /** Başını eğip avına doğru hızla toslar (yolundakini savurur). */
+  charger?: boolean;
+  /** Sürü hâlinde doğar: bir seferde kaç tane. */
+  pack?: number;
+  /** Kolunun yetiştiği mesafenin çarpanı (uzun kollu devler). */
+  reach?: number;
 }
 
 export const GIANT_TYPES: Record<CommonKind, GiantType> = {
@@ -172,6 +180,102 @@ export const GIANT_TYPES: Record<CommonKind, GiantType> = {
     skins: [0xa8876a, 0x9a7a5e],
     downTime: 6,
     thrower: true,
+  },
+  // Küçük ve çevik: dev ağaçların gövdesine sarılıp tırmanır, daldaki avına atılır.
+  climber: {
+    kind: 'climber',
+    name: 'Tırmanıcı',
+    minH: 3.5,
+    maxH: 5.5,
+    speed: 9,
+    turn: 3.6,
+    hpBase: 60,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 170,
+    dmg: 12,
+    armored: false,
+    meter: 'elite',
+    xp: 35,
+    bulk: [0.7, 0.82],
+    head: [1.1, 1.3],
+    arm: 1.5,
+    skins: [0x9aa08a, 0x8c947e, 0xa6a896],
+    downTime: 4,
+    climber: true,
+  },
+  // Kalın, kısa boyunlu, iri omuzlu: başını eğip toslar.
+  brute: {
+    kind: 'brute',
+    name: 'Toslayan',
+    minH: 11,
+    maxH: 16,
+    speed: 4.8,
+    turn: 1.6,
+    hpBase: 170,
+    hpPerM: 0,
+    legCuts: 2,
+    napeCuts: 1,
+    aggro: 170,
+    dmg: 26,
+    armored: false,
+    meter: 'elite',
+    xp: 60,
+    bulk: [1.4, 1.6],
+    head: [0.78, 0.88],
+    arm: 1,
+    skins: [0xb07a62, 0xa46e58],
+    downTime: 6,
+    charger: true,
+  },
+  // Küçük, hızlı, sürüyle gezer: tek başına zayıf, üçü beşi bir arada tehlikeli.
+  pack: {
+    kind: 'pack',
+    name: 'Sürü Devi',
+    minH: 4,
+    maxH: 6,
+    speed: 10,
+    turn: 3.4,
+    hpBase: 55,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 180,
+    dmg: 10,
+    armored: false,
+    meter: 'normal',
+    xp: 18,
+    bulk: [0.8, 0.95],
+    head: [1, 1.2],
+    arm: 1.1,
+    skins: [0xc8b8a8, 0xbca898, 0xd2c2b0],
+    downTime: 4,
+    pack: 4,
+  },
+  // Sırık gibi uzun, kolları dizlerini geçer: uzaktan yakalar, kancayla yaklaşanı havada kapar.
+  longarm: {
+    kind: 'longarm',
+    name: 'Uzunkol',
+    minH: 13,
+    maxH: 18,
+    speed: 3.8,
+    turn: 1.5,
+    hpBase: 130,
+    hpPerM: 0,
+    legCuts: 1,
+    napeCuts: 1,
+    aggro: 190,
+    dmg: 20,
+    armored: false,
+    meter: 'elite',
+    xp: 55,
+    bulk: [0.72, 0.82],
+    head: [0.78, 0.9],
+    arm: 1.75,
+    skins: [0xb8a89a, 0xae9c8e],
+    downTime: 6,
+    reach: 1.55,
   },
   screamer: {
     kind: 'screamer',

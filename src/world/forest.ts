@@ -72,7 +72,72 @@ export function generateTrees(rng: Rng): Tree[] {
 }
 
 /** Dev ağaç gövdesinin taban yarıçapı (boyun oranı olarak). */
-const GIANT_TRUNK = 0.062;
+export const GIANT_TRUNK = 0.062;
+
+/** Dev ağacın dalları (birim ağaçta): gövdedeki yükseklik, yön, uzunluk ve dikeyden açı; ucunda yaprak kümesi. */
+const BRANCHES = Array.from({ length: 8 }, (_, i) => ({
+  y: 0.42 + i * 0.058,
+  a: i * 2.4,
+  len: 0.17 - i * 0.009,
+  up: 1.05 - i * 0.04,
+  blob: 0.09 + (i % 3) * 0.014,
+}));
+/** Tepe tacının yaprak kümeleri: merkez ve yarıçaplar (birim ağaçta). */
+const CROWN: [number, number, number, number, number][] = [
+  [0, 0.93, 0, 0.11, 0.06],
+  [0.05, 0.88, 0.04, 0.08, 0.045],
+  [-0.05, 0.86, -0.03, 0.085, 0.045],
+];
+const BLOB_RY = 0.045;
+
+/** Dev ağacın kendi ekseni etrafındaki dönüşü: konumundan türetilir (rastgele sayı akışını bozmaz). */
+export function giantYaw(t: Tree) {
+  const s = Math.sin(t.x * 12.9898 + t.z * 78.233) * 43758.5453;
+  return (s - Math.floor(s)) * Math.PI * 2;
+}
+
+/** Üstünde durulabilen yaprak kümesi (yatay yarıçap rx, dikey yarıçap ry). */
+export interface Canopy {
+  x: number;
+  y: number;
+  z: number;
+  rx: number;
+  ry: number;
+}
+/** Üstünde yürünebilen dal: tabandan uca, uçta incelen yarıçapla. */
+export interface Bough {
+  ax: number;
+  ay: number;
+  az: number;
+  bx: number;
+  by: number;
+  bz: number;
+  ra: number;
+  rb: number;
+}
+
+/** Dev ağacın dünyadaki dalları ve yaprak kümeleri: görselle aynı ölçüler. */
+export function giantPerches(t: Tree): { canopies: Canopy[]; boughs: Bough[] } {
+  const h = t.h;
+  const yaw = giantYaw(t);
+  const cy = Math.cos(yaw);
+  const sy = Math.sin(yaw);
+  // Birim ağaçtaki (x, z) noktasını ağacın dönüşüyle dünyaya taşır.
+  const wx = (x: number, z: number) => t.x + (x * cy + z * sy) * h;
+  const wz = (x: number, z: number) => t.z + (-x * sy + z * cy) * h;
+  const canopies: Canopy[] = [];
+  const boughs: Bough[] = [];
+  for (const b of BRANCHES) {
+    const tx = Math.sin(b.up) * b.len;
+    const ty = b.y + Math.cos(b.up) * b.len;
+    const ux = Math.cos(b.a) * tx;
+    const uz = -Math.sin(b.a) * tx;
+    boughs.push({ ax: t.x, ay: t.y + b.y * h, az: t.z, bx: wx(ux, uz), by: t.y + ty * h, bz: wz(ux, uz), ra: 0.013 * h, rb: 0.005 * h });
+    canopies.push({ x: wx(ux, uz), y: t.y + (ty + 0.01) * h, z: wz(ux, uz), rx: b.blob * h, ry: BLOB_RY * h });
+  }
+  for (const [x, y, z, rad, ry] of CROWN) canopies.push({ x: wx(x, z), y: t.y + y * h, z: wz(x, z), rx: rad * h, ry: ry * h });
+  return { canopies, boughs };
+}
 
 /**
  * Dev ağaçlar ormanı: 90–140 m'lik gövdeler, aralarında atla geçilebilecek kadar boşluk.
@@ -198,11 +263,7 @@ function giantGeo() {
     parts.push(paint(b, dark, light, y - ry, y + ry));
   };
   // Dallar: gövdenin üst yarısından dışa ve yukarı açılır, uçlarında yaprak kümesi.
-  for (let i = 0; i < 8; i++) {
-    const y = 0.42 + i * 0.058;
-    const a = i * 2.4;
-    const len = 0.17 - i * 0.009;
-    const up = 1.05 - i * 0.04;
+  for (const { y, a, len, up, blob: rad } of BRANCHES) {
     const br = new THREE.CylinderGeometry(0.005, 0.013, len, 6);
     br.translate(0, len / 2, 0);
     br.rotateZ(-up);
@@ -212,12 +273,10 @@ function giantGeo() {
     const tx = Math.sin(up) * len;
     const ty = y + Math.cos(up) * len;
     // rotateY(a), +x yönündeki ucu (cos a, -sin a) yönüne çevirir.
-    blob(Math.cos(a) * tx, ty + 0.01, -Math.sin(a) * tx, 0.09 + (i % 3) * 0.014, 0.045);
+    blob(Math.cos(a) * tx, ty + 0.01, -Math.sin(a) * tx, rad, BLOB_RY);
   }
   // Tepe tacı
-  blob(0, 0.93, 0, 0.11, 0.06);
-  blob(0.05, 0.88, 0.04, 0.08, 0.045);
-  blob(-0.05, 0.86, -0.03, 0.085, 0.045);
+  for (const [x, y, z, rad, ry] of CROWN) blob(x, y, z, rad, ry);
   return mergeGeometries(parts)!;
 }
 
@@ -241,7 +300,9 @@ export function buildForest(trees: Tree[], rng: Rng) {
   for (const list of chunks.values()) {
     const im = new THREE.InstancedMesh(kinds[list[0].kind], mat, list.length);
     list.forEach((t, i) => {
-      q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rng() * 6.28);
+      const spin = rng() * 6.28;
+      // Dev ağacın dönüşü sabittir: üstünde durulan dallar ve yaprak kümeleri aynı yerde hesaplanır.
+      q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, t.kind === 2 ? giantYaw(t) : spin);
       // Dev ağaçlar her eksende aynı ölçeklenir (dalları yatay uzanır); diğerleri gövde yarıçapı ve boyla.
       if (t.kind === 2) s.setScalar(t.h);
       else s.set(t.r, t.h, t.r);

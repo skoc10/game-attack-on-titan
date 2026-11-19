@@ -3,13 +3,13 @@ import { mulberry32 } from '../core/rng';
 import { buildMountains, buildSky, buildTerrain, heightAt } from './terrain';
 import { buildWalls } from './walls';
 import { wallPush, wallSolid, wallTopAt } from './layout';
-import { buildForest, buildProps, generateTrees, type Tree } from './forest';
+import { buildForest, buildProps, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
 
 const CELL = 32;
 
 /** Gövdenin `y` yüksekliğindeki yarıçapı: dev ağaçlar yukarı doğru incelir. */
-function trunkR(t: Tree, y: number) {
+export function trunkR(t: Tree, y: number) {
   if (t.kind !== 2) return t.r;
   const f = Math.min(1, Math.max(0, (y - t.y) / (t.h * 0.92)));
   return t.r * (1 - 0.52 * f);
@@ -32,6 +32,9 @@ export class World {
   /** Ufuktaki dağ halkaları; kamerayla birlikte kayar. */
   readonly mountains: THREE.Group;
   private readonly treeGrid = new Map<number, Tree[]>();
+  /** Dev ağaçların üstünde durulabilen dalları ve yaprak kümeleri (merkezlerinin hücresine göre). */
+  private readonly canopyGrid = new Map<number, Canopy[]>();
+  private readonly boughGrid = new Map<number, Bough[]>();
   private readonly buildingGrid = new Map<number, Building[]>();
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
@@ -56,6 +59,18 @@ export class World {
 
     this.grappleTargets.push(walls, ...forest, ruins.walls, ruins.roofs);
 
+    const put = <T>(grid: Map<number, T[]>, x: number, z: number, item: T) => {
+      const k = key(Math.floor(x / CELL), Math.floor(z / CELL));
+      let cell = grid.get(k);
+      if (!cell) grid.set(k, (cell = []));
+      cell.push(item);
+    };
+    for (const t of this.trees) {
+      if (t.kind !== 2) continue;
+      const { canopies, boughs } = giantPerches(t);
+      for (const c of canopies) put(this.canopyGrid, c.x, c.z, c);
+      for (const b of boughs) put(this.boughGrid, (b.ax + b.bx) / 2, (b.az + b.bz) / 2, b);
+    }
     for (const t of this.trees) {
       const k = key(Math.floor(t.x / CELL), Math.floor(t.z / CELL));
       let cell = this.treeGrid.get(k);
@@ -78,11 +93,12 @@ export class World {
     return heightAt(x, z);
   }
 
-  /** y hizasındaki bir cismi taşıyabilecek en yüksek yüzey (arazi, sur üstü, çatı). */
+  /** y hizasındaki bir cismi taşıyabilecek en yüksek yüzey (arazi, sur üstü, çatı, dev ağaç dalı ve yaprak kümesi). */
   groundAt(x: number, z: number, y: number) {
     let g = heightAt(x, z);
     const wt = wallTopAt(x, z);
     if (wt > g && y >= wt - 1.2) g = wt;
+    if (y > g + 20) g = Math.max(g, this.perchAt(x, z, y));
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {
@@ -112,6 +128,69 @@ export class World {
       }
     }
     return false;
+  }
+
+  /**
+   * Dev ağaçların üstü: yaprak kümelerinin tepesi (yumuşak bir kubbe) ve dalların üst yüzü.
+   * y'nin biraz altında kalan en yüksek yüzey; yoksa -Infinity.
+   */
+  perchAt(x: number, z: number, y: number) {
+    let best = -Infinity;
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    for (let i = cx - 1; i <= cx + 1; i++) {
+      for (let j = cz - 1; j <= cz + 1; j++) {
+        const k = key(i, j);
+        const cs = this.canopyGrid.get(k);
+        if (cs) {
+          for (const c of cs) {
+            const q = ((x - c.x) ** 2 + (z - c.z) ** 2) / (c.rx * c.rx);
+            if (q >= 1) continue;
+            const top = c.y + c.ry * Math.sqrt(1 - q);
+            if (top > best && y >= top - 1.2) best = top;
+          }
+        }
+        const bs = this.boughGrid.get(k);
+        if (bs) {
+          for (const b of bs) {
+            const dx = b.bx - b.ax;
+            const dz = b.bz - b.az;
+            const l2 = dx * dx + dz * dz;
+            const t = l2 > 1e-6 ? Math.max(0, Math.min(1, ((x - b.ax) * dx + (z - b.az) * dz) / l2)) : 0;
+            const r = b.ra + (b.rb - b.ra) * t;
+            const d = Math.hypot(x - (b.ax + dx * t), z - (b.az + dz * t));
+            if (d > r + 0.3) continue;
+            const top = b.ay + (b.by - b.ay) * t + Math.sqrt(Math.max(0, r * r - d * d));
+            if (top > best && y >= top - 1) best = top;
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  /** (x, z)'ye en yakın dev ağaç (`maxD` metre içinde), yoksa null. */
+  giantTreeNear(x: number, z: number, maxD: number) {
+    let best: Tree | null = null;
+    let bd = maxD;
+    const reach = Math.ceil(maxD / CELL);
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    for (let i = cx - reach; i <= cx + reach; i++) {
+      for (let j = cz - reach; j <= cz + reach; j++) {
+        const cell = this.treeGrid.get(key(i, j));
+        if (!cell) continue;
+        for (const t of cell) {
+          if (t.kind !== 2) continue;
+          const d = Math.hypot(t.x - x, t.z - z);
+          if (d < bd) {
+            bd = d;
+            best = t;
+          }
+        }
+      }
+    }
+    return best;
   }
 
   /** (x, z) noktasının `margin` metre yakınında bir ağaç gövdesi var mı. */
