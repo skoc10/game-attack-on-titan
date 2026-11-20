@@ -1,7 +1,7 @@
 import type { HumanoidOpts, Palette } from '../enemies/humanoid';
 
-export type TitanId = 'ofke' | 'firtina' | 'kaya' | 'zirve' | 'isin' | 'buz';
-export const TITAN_IDS: TitanId[] = ['ofke', 'firtina', 'kaya', 'zirve', 'isin', 'buz'];
+export type TitanId = 'ofke' | 'firtina' | 'kaya' | 'zirve' | 'isin' | 'buz' | 'haykiran';
+export const TITAN_IDS: TitanId[] = ['ofke', 'firtina', 'kaya', 'zirve', 'isin', 'buz', 'haykiran'];
 /** Karakterlere özgü formlar: iğneyle değil, o karakterin kendi gücüyle (bar dolunca) açılır. */
 export type InnateId = 'golge' | 'ors' | 'simsek' | 'mancinik' | 'safak' | 'toslayan' | 'uzunkol' | 'avci' | 'koc' | 'coban';
 export const INNATE_IDS: InnateId[] = ['golge', 'ors', 'simsek', 'mancinik', 'safak', 'toslayan', 'uzunkol', 'avci', 'koc', 'coban'];
@@ -9,8 +9,11 @@ export type FormId = TitanId | InnateId;
 
 /** Bir dev formu gücü. Her tür, aynı kodla farklı sayılarla çalışır. */
 export type Ability =
-  /** Çevredeki devleri sersemletir. */
-  | { kind: 'stun'; name: string; cost: number; cd: number; radius: number; stun: number }
+  /**
+   * Çevredeki devleri sersemletir. `fill` ise kükreyiş dev barını sonuna kadar doldurur;
+   * `call` metre içindeki devler sesi duyup koşarak gelir.
+   */
+  | { kind: 'stun'; name: string; cost: number; cd: number; radius: number; stun: number; fill?: boolean; call?: number }
   /** Bir süre yumrukları güçlendirir ve zırh kırdırır. */
   | { kind: 'buff'; name: string; cost: number; cd: number; dur: number; mult: number }
   /** Baktığı yöne atılır; yolundaki her şeye çarpar. */
@@ -73,7 +76,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'stun', name: 'Kükreme', cost: 15, cd: 12, radius: 70, stun: 5 },
     e: { kind: 'buff', name: 'Taş Yumruk', cost: 25, cd: 20, dur: 8, mult: 2.5 },
     slam: { name: 'Ezme', cost: 10, radius: 14, dmg: 80 },
-    weight: 38,
+    weight: 30,
     palette: { skin: 0x9a7362, top: 0x8a6557, legs: 0x7a584c, hair: 0x1a1412, hairStyle: 'spiky', eye: 0xff7a1a, glow: 0xff7a1a },
     opts: { style: 'titan', outline: 0.0028, bulk: 1.15, head: 0.95, arm: 1.1, cracks: true },
   },
@@ -196,6 +199,30 @@ export const TITANS: Record<TitanId, TitanDef> = {
     weight: 9,
     palette: { skin: 0xa8c0e0, top: 0x98b0d2, legs: 0x869fc4, hair: 0xe8f4ff, hairStyle: 'spiky', eye: 0x3f6bff, glow: 0x7fa8ff },
     opts: { style: 'titan', outline: 0.003, bulk: 1.12, head: 0.92, arm: 1.08, armor: true, plateColor: 0xd4e8ff, cracks: true },
+  },
+  // Uzun saçlı, sırım gibi kaslı dövüşçü: yumruğunu taşa kestirir; kükreyişi barını sonuna kadar doldurur.
+  haykiran: {
+    id: 'haykiran',
+    name: 'Haykıran Dev',
+    needle: 'Haykırış İğnesi',
+    tagline: 'Kükre, sertleş, yık.',
+    color: 0x36f0b0,
+    height: 15,
+    radius: 2.5,
+    speed: 16,
+    sprint: 24,
+    jump: 25,
+    gravity: 42,
+    drain: 1.5,
+    armor: 0.9,
+    camDist: 30,
+    punch: { name: 'Yumruk', dmg: 140, range: 8, reach: 6, time: 0.46, cost: 1.5, armorBreak: false },
+    q: { kind: 'buff', name: 'Sertleşme', cost: 22, cd: 16, dur: 9, mult: 2.6 },
+    e: { kind: 'stun', name: 'Kükreme', cost: 5, cd: 60, radius: 80, stun: 4, fill: true, call: 450 },
+    slam: { name: 'Ezme', cost: 9, radius: 15, dmg: 95 },
+    weight: 8,
+    palette: { skin: 0xa47a64, top: 0x96705c, legs: 0x8a6654, hair: 0x22160f, hairStyle: 'long', eye: 0x36f0b0, glow: 0x36f0b0 },
+    opts: { style: 'titan', outline: 0.0028, bulk: 1.02, head: 0.94, arm: 1.1, cracks: true, muscle: true },
   },
 };
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyWind } from '../core/wind';
 import type { World } from './world';
 import { CFG } from '../data/config';
 import { smooth } from '../core/rng';
@@ -52,6 +53,8 @@ export class Grass {
     geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     geo.setIndex(idx);
     const mat = new THREE.MeshLambertMaterial({ map: grassTuftTexture(), alphaTest: 0.45 });
+    // Otlar rüzgârda dalgalanır.
+    applyWind(mat, 0.3, 2);
     this.mesh = new THREE.InstancedMesh(geo, mat, SIDE * SIDE);
     this.mesh.frustumCulled = false;
     this.mesh.receiveShadow = true;

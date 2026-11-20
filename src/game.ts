@@ -17,6 +17,7 @@ import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { Camps } from './world/camps';
+import { tickWind } from './core/wind';
 import { clamp, lerp } from './core/rng';
 import { World } from './world/world';
 import { crateColor, Crates, type Crate } from './world/crates';
@@ -846,11 +847,15 @@ export class Game {
     this.sun.target.updateMatrixWorld();
     this.grass.update(p.x, p.z);
     this.world.update(dt, p.x, p.z);
+    this.gust = tickWind(dt);
   }
 
   /** Dinleyici, rüzgâr ve savaş müziği yoğunluğu. Yoğunluk saniyede birkaç kez yeniden hesaplanır. */
   private audioT = 0;
   private audioIntensity = 0;
+  /** Dinleyicinin çevresindeki orman yoğunluğu (yumuşatılmış) ve rüzgârın şiddeti. */
+  private forest = 0;
+  private gust = 0.5;
   private updateAudio(dt: number) {
     const p = this.player;
     this.audioT -= dt;
@@ -861,10 +866,14 @@ export class Game {
         if (!g.alive || g.state === 'wander' || g.state === 'downed') continue;
         if (Math.hypot(g.pos.x - p.pos.x, g.pos.z - p.pos.z) < 95) chasing++;
       }
+      // Ormanın içinde rüzgâr ve yaprak hışırtısı gürleşir (şehirde ağaç yok).
+      const cam0 = this.camera.position;
+      const dense = p.inTown ? 0 : this.world.forestDensity(cam0.x, cam0.z);
+      this.forest += (dense - this.forest) * 0.35;
       this.audioIntensity = p.dead ? 0 : combatIntensity({ chasing, boss: this.bossInView() !== null, grabbed: p.grabbedBy !== null, titan: p.mode === 'titan' });
     }
     const cam = this.camera.position;
-    this.audio.frame({ x: cam.x, z: cam.z, yaw: this.camYaw }, p.mode === 'titan' ? 0 : p.vel.length(), this.audioIntensity, this.running);
+    this.audio.frame({ x: cam.x, z: cam.z, yaw: this.camYaw }, p.mode === 'titan' ? 0 : p.vel.length(), this.audioIntensity, this.running, { forest: this.forest, gust: this.gust });
   }
 
   private idleCamera(dt: number) {

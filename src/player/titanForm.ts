@@ -542,13 +542,30 @@ export class TitanForm {
     const H = this.def.height;
     switch (ab.kind) {
       case 'stun': {
+        let called = 0;
         for (const gi of g.giants) {
-          if (gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) < ab.radius) gi.stun(gi.heavy ? ab.stun * 0.5 : ab.stun);
+          if (!gi.alive) continue;
+          const d = Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z);
+          if (d < ab.radius) gi.stun(gi.heavy ? ab.stun * 0.5 : ab.stun);
+          else if (ab.call && d < ab.call && !gi.heavy) {
+            // Uzaktaki devler kükreyişi duyar ve koşarak gelir.
+            gi.alert();
+            called++;
+          }
         }
-        g.audio.roar();
-        g.shakeCam(1);
+        g.shakeCam(ab.fill ? 1.4 : 1);
         this.ring(p, ab.radius * 0.8, H * 0.85, this.def.color);
-        g.hud.toast(`${ab.name.toLocaleUpperCase('tr')} — devler sersemledi`);
+        if (ab.fill) {
+          // Haykırış: dev barı sonuna kadar dolar; ikinci, daha geniş bir halka yayılır.
+          g.meter.value = g.meter.max;
+          g.audio.warcry();
+          this.ring(p, ab.radius * 1.6, H * 0.6, 0xffffff);
+          g.hud.callout('BAR DOLDU');
+          g.hud.toast(`${ab.name.toLocaleUpperCase('tr')} — devler sersemledi, barın doldu${called ? `; ${called} dev sesini duyup geliyor` : ''}`);
+        } else {
+          g.audio.roar();
+          g.hud.toast(`${ab.name.toLocaleUpperCase('tr')} — devler sersemledi`);
+        }
         break;
       }
       case 'buff':
