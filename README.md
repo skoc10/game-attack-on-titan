@@ -278,9 +278,10 @@ Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kada
 | Kaan | Uzak Nişancı | 5200 · Sv 8 | Kılıç erişimi +%20, gaz +%10 | Uzunkol Devi (20 m): kolları dizini geçer; uzaktan savuruş, kapan (sersemletme), taş fırlatma |
 | Sena | İz Sürücü | 6800 · Sv 10 | Hız +%12, gaz +%15 | Avcı Devi (22 m): derisiz, kasları dışarıda; en hızlı büyük form, av atılımı, kök sarsıntısı |
 | Alp | Sur Demircisi | 8800 · Sv 12 | Can +%40, kılıç dayanımı +%30 | Demir Koç (19 m): metal plakalı, darbelere en dayanıklı form; zırh delen yumruk, sur delen tos, kızgın plaka |
+| Yiğit | Vadi Haykırığı | 10000 · Sv 13 | Can +%10, bar %15 hızlı dolar, formda %5 yavaş biter | Haykıran Dev (18 m): dağınık saçlı, sertleşen yumruk, barı dolduran kükreyiş. Haykırış İğnesi varsa yarım barla da dönüşür |
 | Oğuz | Dağ Çobanı | 11500 · Sv 14 | Bar %25 hızlı dolar, formda %10 yavaş biter | Çoban Devi (24 m): kürklü, boynuzlu; dev kaya fırlatma, geniş buyruk kükreyişi |
 
-Son beş karakter, sur ötesinde karşılaştığın yeni devlerin formlarına sahiptir ve almak için **hem av puanı hem seviye** gerekir: seviye XP ile yükselir, menüde eksik kalan şart kırmızı görünür. Yalnızca av puanı harcanır; seviye düşmez.
+Son altı karakter yeni devlerin formlarına sahiptir ve almak için **hem av puanı hem seviye** gerekir: seviye XP ile yükselir, menüde eksik kalan şart kırmızı görünür. Yalnızca av puanı harcanır; seviye düşmez.
 
 Kendi dev formu olan karakterler **iğne harcamadan** dönüşür, ama bunun için dev barının **tamamen dolması** gerekir (iğneyle dönüşüm yarım barda olur). İğne de taşıyorsan `Tab` ile iğne formları ve kendi formun arasında geçersin; HUD'da kendi formun ★ ile gösterilir.
 
