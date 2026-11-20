@@ -1021,7 +1021,7 @@ export class Player {
       return;
     }
     const guard = this.titan.guarding;
-    const sp = guard ? T.speed * CFG.guard.slow : sprint ? T.sprint : T.speed;
+    const sp = (guard ? T.speed * CFG.guard.slow : sprint ? T.sprint : T.speed) * this.titan.moveMul;
     const rate = (this.onGround ? 46 : 10) * dt;
     const ddx = wish.x * sp - this.vel.x;
     const ddz = wish.z * sp - this.vel.z;
@@ -1066,7 +1066,7 @@ export class Player {
     this.titan.update(dt, this);
     // Bar yalnızca hareket ederken yanar: yerinde duran dev dinlenir.
     this.titanResting = this.onGround && this.titan.rushT <= 0 && Math.hypot(this.vel.x, this.vel.z) < 0.5;
-    if (g.meter.tick(dt, T.drain * CFG.titan.drainMult * this.char.drain * (1 - 0.1 * g.save.upgrades.titan), !this.titanResting)) this.revert();
+    if (g.meter.tick(dt, T.drain * CFG.titan.drainMult * this.char.drain * (1 - 0.1 * g.save.upgrades.titan) * this.titan.drainMul, !this.titanResting)) this.revert();
   }
 
   // ---------------------------------------------------------------- görsel

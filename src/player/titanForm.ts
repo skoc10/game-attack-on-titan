@@ -61,6 +61,11 @@ export class TitanForm {
   /** Bu yumruğun süresi, hasar çarpanı, sersemletmesi ve seri bitirici olup olmadığı. */
   private punchDur = 0.5;
   private punchMult = 1;
+  /** Çıldırma modu açık mı (bar yarıya inince; dönüşüm bitene dek sürer). */
+  berserk = false;
+  private rageSteamT = 0;
+  /** Çıldırırken boyanan malzemeler ve özgün renkleri. */
+  private readonly rageMats: { m: THREE.Material & { color?: THREE.Color; emissive?: THREE.Color }; color: number; emissive: number }[] = [];
   /** Ağızda taşınan dev, taşıma süresi ve sıradaki çiğneyişe kalan süre. */
   carried: Giant | null = null;
   private carryT = 0;
@@ -146,6 +151,7 @@ export class TitanForm {
     this.counterT = 0;
     this.heat = 0;
     this.heatT = 0;
+    this.setBerserk(false);
     this.kickT = -1;
     this.kickCd = 0;
     this.jumped = false;
@@ -255,6 +261,7 @@ export class TitanForm {
 
   /** Formdan çıkış: gövde olduğu yerde kalır ve ölen bir dev gibi yıkılır. */
   exit() {
+    this.setBerserk(false);
     if (this.carried) {
       this.carried.fling(this.game, this.game.player.faceYaw, 6);
       this.carried = null;
@@ -381,7 +388,7 @@ export class TitanForm {
     this.punchT = 0;
     this.punchDone = false;
     this.punchArm *= -1;
-    this.punchDur = pn.time;
+    this.punchDur = pn.time * this.speedMul;
     this.punchMult = this.counterT > 0 ? G.counter : 1;
     // Hücum Ruhu: yumruk sert; gardda ya da gardla karşıladıktan hemen sonra daha da sert.
     const os = this.def.onslaught;
@@ -391,7 +398,7 @@ export class TitanForm {
     if (this.guarding) {
       this.combo = this.comboT > 0 ? this.combo + 1 : 1;
       this.comboT = 0;
-      this.punchDur = pn.time * G.punchTime;
+      this.punchDur = pn.time * G.punchTime * this.speedMul;
       this.punchMult *= 1 + G.step * Math.min(this.combo - 1, 6);
       if (this.combo % G.finishEvery === 0) {
         this.finisher = true;
@@ -723,7 +730,71 @@ export class TitanForm {
 
   private get mult() {
     const os = this.def.onslaught;
-    return (this.stone ? this.buffMult : 1) * (os ? 1 + os.chain * this.heat : 1);
+    const rage = this.berserk && this.def.berserk ? this.def.berserk.dmg : 1;
+    return (this.stone ? this.buffMult : 1) * (os ? 1 + os.chain * this.heat : 1) * rage;
+  }
+
+  /** Çıldırırken yumruk süresinin katı (küçük = hızlı). */
+  get speedMul() {
+    return this.berserk && this.def.berserk ? this.def.berserk.speed : 1;
+  }
+  /** Çıldırırken koşu hızının katı. */
+  get moveMul() {
+    return this.berserk && this.def.berserk ? this.def.berserk.move : 1;
+  }
+  /** Çıldırırken barın yanma hızının katı. */
+  get drainMul() {
+    return this.berserk && this.def.berserk ? this.def.berserk.drain : 1;
+  }
+
+  /** Çıldırmayı açar ya da kapatır: gözler ve çatlaklar kızıla döner, ten kızarır. */
+  private setBerserk(on: boolean) {
+    if (on === this.berserk) return;
+    this.berserk = on;
+    if (on) {
+      const glow = this.def.palette.glow;
+      this.rageMats.length = 0;
+      for (const mat of this.body.mats) {
+        const m = mat as THREE.Material & { color?: THREE.Color; emissive?: THREE.Color };
+        const isGlow = mat instanceof THREE.MeshBasicMaterial && glow !== undefined && mat.color.getHex() === glow;
+        // Kolların rengini taş yumruk yönetir; onlar boyanmaz.
+        if ((!isGlow && !m.emissive) || mat === this.body.armMat) continue;
+        this.rageMats.push({ m, color: m.color?.getHex() ?? 0, emissive: m.emissive?.getHex() ?? 0 });
+        if (isGlow) m.color!.setHex(0xff2a14);
+        else m.emissive!.setHex(0x3a0a04);
+      }
+    } else {
+      for (const r of this.rageMats) {
+        if (r.m instanceof THREE.MeshBasicMaterial) r.m.color.setHex(r.color);
+        else r.m.emissive?.setHex(r.emissive);
+      }
+      this.rageMats.length = 0;
+    }
+  }
+
+  /** Bar eşiğin altına inince form çıldırır; çıldırırken gövdeden kızıl buhar tüter. */
+  private updateBerserk(dt: number, p: Player) {
+    const B = this.def.berserk;
+    if (!B || this.emerging) return;
+    const g = this.game;
+    if (!this.berserk && g.meter.value <= g.meter.max * B.at) {
+      this.setBerserk(true);
+      g.audio.warcry();
+      g.shakeCam(1.2);
+      g.hud.callout('ÇILDIRDI');
+      g.hud.toast(`${this.def.name} çıldırdı — darbeler +%${Math.round((B.dmg - 1) * 100)}, yumruklar ve koşu hızlı; bar daha çabuk yanar`);
+      v.set(p.pos.x, p.pos.y + this.def.height * 0.6, p.pos.z);
+      g.particles.burst(v, 60, 18, 1.2, 0xff4a2a, this.def.height * 0.3);
+      this.ring(p, this.def.height * 2.4, this.def.height * 0.5, 0xff3a20);
+    }
+    if (!this.berserk) return;
+    this.rageSteamT -= dt;
+    if (this.rageSteamT <= 0) {
+      this.rageSteamT = 0.12;
+      const a = Math.random() * Math.PI * 2;
+      const r = this.def.radius * 0.8;
+      g.particles.emit(p.pos.x + Math.sin(a) * r, p.pos.y + this.def.height * (0.3 + Math.random() * 0.5), p.pos.z + Math.cos(a) * r, Math.sin(a) * 1.5, 3 + Math.random() * 2, Math.cos(a) * 1.5, 1.1, 0xff6a4a, 0, 0.8 + this.def.height * 0.04, 0.25);
+    }
   }
 
   /** Yakın dövüş darbesinin Hücum Ruhu katı: her zaman sert, gardda başladıysa daha sert. */
@@ -773,6 +844,7 @@ export class TitanForm {
       if (this.heatT <= 0) this.heat = 0;
     }
     this.updateCarry(dt, p);
+    this.updateBerserk(dt, p);
     if (this.comboT > 0) {
       this.comboT -= dt;
       if (this.comboT <= 0) this.combo = 0;
