@@ -274,6 +274,7 @@ export class Hud {
           pw('V', 'Tekme', CFG.kick.cost, cd(t.kickCd)) +
           `<span><kbd>G</kbd> Gard${t.guarding ? (t.combo > 1 ? ` <b>SERİ ×${t.combo}</b>` : ' <b>AÇIK</b>') : ''}</span>` +
           pw('Space', d.slam.name, d.slam.cost) +
+          (d.onslaught ? `<span>Hücum Ruhu${t.heat > 0 ? ` <b>×${t.heat} · +%${Math.round(t.heat * d.onslaught.chain * 100)}</b>` : ''}</span>` : '') +
           '<span><kbd>T</kbd> Çık</span>',
       );
     } else if (m.canTransform()) {

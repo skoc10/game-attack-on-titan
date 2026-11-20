@@ -61,6 +61,12 @@ export class TitanForm {
   /** Bu yumruğun süresi, hasar çarpanı, sersemletmesi ve seri bitirici olup olmadığı. */
   private punchDur = 0.5;
   private punchMult = 1;
+  /** Hücum Ruhu: art arda isabetlerle biriken yük ve sönmesine kalan süre. */
+  heat = 0;
+  private heatT = 0;
+  /** Tekme ya da ısırık gardda (ya da karşı saldırı penceresinde) mı başladı. */
+  private kickGuard = false;
+  private biteGuard = false;
   private punchStun = 0;
   private finisher = false;
   /** Gard (G basılıyken): kollar yüzün önünde, önden gelen darbelerin çoğu engellenir. */
@@ -134,6 +140,8 @@ export class TitanForm {
     this.combo = 0;
     this.comboT = 0;
     this.counterT = 0;
+    this.heat = 0;
+    this.heatT = 0;
     this.kickT = -1;
     this.kickCd = 0;
     this.jumped = false;
@@ -367,6 +375,9 @@ export class TitanForm {
     this.punchArm *= -1;
     this.punchDur = pn.time;
     this.punchMult = this.counterT > 0 ? G.counter : 1;
+    // Hücum Ruhu: yumruk sert; gardda ya da gardla karşıladıktan hemen sonra daha da sert.
+    const os = this.def.onslaught;
+    if (os) this.punchMult *= os.melee * (this.guarding || this.counterT > 0 ? os.guard : 1);
     this.punchStun = 0;
     this.finisher = false;
     if (this.guarding) {
@@ -407,6 +418,7 @@ export class TitanForm {
     this.kickDone = false;
     this.kickCd = K.cd;
     this.kickDur = Math.min(K.maxTime, Math.max(K.minTime, this.def.punch.time * 1.3));
+    this.kickGuard = this.guarding || this.counterT > 0;
     this.guarding = false;
     p.faceYaw = this.game.aimYaw();
     this.game.audio.kick();
@@ -427,7 +439,7 @@ export class TitanForm {
     v.set(p.pos.x + Math.sin(p.faceYaw) * d.radius * 1.2, p.pos.y + d.height * 0.72, p.pos.z + Math.cos(p.faceYaw) * d.radius * 1.2);
     g.particles.burst(v, 16, 10 + d.height * 0.4, 0.45, 0xfff0d0, d.radius * 0.6);
     g.smoke.burst(v, 5, 4, 1.2, 0x9a948a, d.radius * 0.5, 2, 2 + d.height * 0.12, 1.2);
-    return CFG.guard.block * (1 - pierce);
+    return (this.def.onslaught?.block ?? CFG.guard.block) * (1 - pierce);
   }
 
   /** Önündeki en yakın dev: ısırığın hedefi. */
@@ -465,6 +477,7 @@ export class TitanForm {
       return;
     }
     if (!this.pay(B.cost)) return;
+    this.biteGuard = this.guarding || this.counterT > 0;
     this.biteT = 0;
     this.biteDone = false;
     this.biteCd = B.cd;
@@ -647,7 +660,24 @@ export class TitanForm {
   }
 
   private get mult() {
-    return this.stone ? this.buffMult : 1;
+    const os = this.def.onslaught;
+    return (this.stone ? this.buffMult : 1) * (os ? 1 + os.chain * this.heat : 1);
+  }
+
+  /** Yakın dövüş darbesinin Hücum Ruhu katı: her zaman sert, gardda başladıysa daha sert. */
+  private melee(fromGuard: boolean) {
+    const os = this.def.onslaught;
+    return os ? os.melee * (fromGuard ? os.guard : 1) : 1;
+  }
+
+  /** Yakın dövüş isabeti: Hücum Ruhu yükü artar (en çok `max`), sönme süresi yenilenir. */
+  private landed() {
+    const os = this.def.onslaught;
+    if (!os) return;
+    this.heatT = os.hold;
+    if (this.heat >= os.max) return;
+    this.heat++;
+    if (this.heat >= 2) this.game.hud.callout(this.heat >= os.max ? 'HÜCUM DORUKTA' : `HÜCUM ×${this.heat}`);
   }
 
   /** Sıçrayıştan inerken (ya da zıplayamayan formda Space ile) çevreyi ezer. */
@@ -676,6 +706,10 @@ export class TitanForm {
     if (this.warnT > 0) this.warnT -= dt;
     if (this.kickCd > 0) this.kickCd -= dt;
     if (this.counterT > 0) this.counterT -= dt;
+    if (this.heatT > 0) {
+      this.heatT -= dt;
+      if (this.heatT <= 0) this.heat = 0;
+    }
     if (this.comboT > 0) {
       this.comboT -= dt;
       if (this.comboT <= 0) this.combo = 0;
@@ -701,6 +735,7 @@ export class TitanForm {
         const cz = p.pos.z + Math.cos(p.faceYaw) * d.punch.reach;
         const hits = this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult * this.punchMult, d.punch.armorBreak || this.stone, this.punchStun, undefined, { melee: true, guardBreak: this.finisher, push: this.finisher ? 6 : this.combo > 0 ? 1.2 : undefined });
         if (hits > 0) {
+          this.landed();
           g.audio.hit();
           g.shakeCam(this.finisher ? 0.9 : 0.6);
           // Yumruğun savrulduğu yönde bir darbe izi (aparkat yukarı doğru savrulur).
@@ -722,7 +757,8 @@ export class TitanForm {
         const reach = d.punch.reach * K.reach;
         const cx = p.pos.x + Math.sin(p.faceYaw) * reach;
         const cz = p.pos.z + Math.cos(p.faceYaw) * reach;
-        const hits = this.hitArea(p, cx, cz, d.punch.range * K.range, d.punch.dmg * K.dmg * this.mult, d.punch.armorBreak || this.stone, K.stun, undefined, { melee: true, guardBreak: true, push: K.push });
+        const hits = this.hitArea(p, cx, cz, d.punch.range * K.range, d.punch.dmg * K.dmg * this.mult * this.melee(this.kickGuard), d.punch.armorBreak || this.stone, K.stun, undefined, { melee: true, guardBreak: true, push: K.push });
+        if (hits > 0) this.landed();
         v.set(cx, p.pos.y + d.height * 0.35, cz);
         if (hits > 0) {
           g.audio.hit();
@@ -750,7 +786,8 @@ export class TitanForm {
         // Hedef bu arada uzaklaştıysa dişler boşa kapanır.
         if (gi && gi.alive && Math.hypot(gi.pos.x - p.pos.x, gi.pos.z - p.pos.z) - gi.radius < (d.height * 0.55 + 2) * 1.5) {
           g.biteFx(v, p.faceYaw, d.height * 0.16 + 1, d.color);
-          gi.titanHit(d.punch.dmg * B.dmgMult * this.mult, g, true, p.pos);
+          gi.titanHit(d.punch.dmg * B.dmgMult * this.mult * this.melee(this.biteGuard), g, true, p.pos);
+          this.landed();
           if (!gi.alive) {
             g.meter.refund(B.refund);
             g.hud.toast(`Isırık — bar +${B.refund}`);

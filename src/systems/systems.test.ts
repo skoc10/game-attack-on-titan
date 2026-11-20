@@ -189,7 +189,7 @@ describe('ilerleme', () => {
   });
 });
 
-describe('Haykıran Dev', () => {
+describe('Hücum Devi', () => {
   it('yumruğunu sertleştirir, kükreyişi devleri sersemletir ve barı sonuna kadar doldurur', () => {
     const d = TITANS.haykiran;
     expect(d.q.kind).toBe('buff');
@@ -199,6 +199,22 @@ describe('Haykıran Dev', () => {
     expect(d.e.call).toBeGreaterThan(d.e.radius);
     expect(d.e.cd).toBeGreaterThanOrEqual(45); // bar dolduran kükreyiş sık kullanılamaz
     expect(d.weight).toBeGreaterThan(0);
+  });
+
+  it('asıl özelliği Hücum Ruhu: yakın dövüşte sert, gardda daha sert; yükler bütün güçleri güçlendirir', () => {
+    const os = TITANS.haykiran.onslaught;
+    expect(os).toBeDefined();
+    if (!os) return;
+    expect(os.melee).toBeGreaterThan(1);
+    expect(os.guard).toBeGreaterThan(1);
+    expect(os.block).toBeGreaterThan(CFG.guard.block);
+    expect(os.block).toBeLessThan(1);
+    // Dolu yükle güçler en çok ~%50 artar; gardda başlayan yumruk iki katı aşar.
+    expect(os.chain * os.max).toBeLessThanOrEqual(0.5);
+    expect(os.melee * os.guard).toBeGreaterThan(1.9);
+    expect(TITANS.haykiran.name).toBe('Hücum Devi');
+    // Öbür formların bu özelliği yok.
+    for (const id of TITAN_IDS) if (id !== 'haykiran') expect(TITANS[id].onslaught).toBeUndefined();
   });
 
   it('Öfke Devi’nden iri, teni sıradan devler gibi tek renk, saçı dağınık', () => {
