@@ -225,7 +225,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     meter: 1.15,
     drain: 0.95,
     titan: 'haykiran',
-    look: { skin: 0xe6c2a0, hair: 0x2a1a10, hairStyle: 'bun', top: 0x3a4a3a, cloak: 0x2f6a52, eye: 0x3fa070 },
+    look: { skin: 0xe6c2a0, hair: 0x2a1a10, hairStyle: 'neat', top: 0x3a4a3a, cloak: 0x2f6a52, eye: 0x3fa070 },
   },
   oguz: {
     ...base,

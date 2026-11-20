@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lerp, mulberry32 } from '../core/rng';
 import { muscleTexture, skinTexture, toonGradient } from '../core/textures';
 
-export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob' | 'wild' | 'bun';
+export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob' | 'wild' | 'neat';
 export type BodyStyle = 'human' | 'giant' | 'titan';
 
 export interface Palette {
@@ -513,19 +513,16 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
         const x = -0.045 + i * 0.0225 + (rnd() - 0.5) * 0.01;
         lock(x, 0.125, 0.058, (rnd() - 0.5) * 0.9, -1, 0.25 + rnd() * 0.35, 0.05 + rnd() * 0.05, 0.012 + rnd() * 0.006);
       }
-    } else if (hairStyle === 'bun') {
-      // Toplu saç: yanlar ve arka başa yatırılıp ensenin üstünde sıkıca topuz yapılmış, bağı belli.
-      const tieMat = rig.toon(shade(pal.hair, 0.55));
-      rig.part(hairRoot, GEO.capsule, hairMat, 0.064, 0.03, 0.03, 0, 0.05, -0.05);
-      rig.part(hairRoot, GEO.sphere, hairMat, 0.03, 0.027, 0.03, 0, 0.106, -0.088, false);
-      rig.part(hairRoot, GEO.sphere, hairMat, 0.022, 0.02, 0.022, 0.006, 0.122, -0.094, false);
-      const band = rig.part(hairRoot, GEO.taper, tieMat, 0.021, 0.006, 0.021, 0, 0.094, -0.078, false);
-      band.rotation.x = -1.1;
-      // Toplanmaktan kaçan iki ince tutam: kulakların önünde.
+    } else if (hairStyle === 'neat') {
+      // Düzgün, taranmış saç: başı saran pürüzsüz bir kütle, enseye kadar inen düz bir arka,
+      // kulakların üstünden geriye taranmış yanlar ve tek yana yatırılmış kısa perçem. Dağınık uç yok.
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.068, 0.028, 0.03, 0, 0.044, -0.052);
       for (const s of [-1, 1]) {
-        const lock = rig.part(hairRoot, GEO.cone, hairMat, 0.009, 0.05, 0.008, s * 0.067, 0.052, 0.036, false);
-        lock.rotation.x = Math.PI;
+        const side = rig.part(hairRoot, GEO.capsule, hairMat, 0.016, 0.018, 0.04, s * 0.066, 0.07, -0.006, false);
+        side.rotation.x = 0.35;
       }
+      const sweep = rig.part(hairRoot, GEO.capsule, hairMat, 0.05, 0.012, 0.018, 0.012, 0.13, 0.05, false);
+      sweep.rotation.z = -0.32;
     } else if (hairStyle === 'bob') {
       // Küt kesim: ense hizasında biten arka perde ve çene hizasına inen yan tutamlar.
       rig.part(hairRoot, GEO.capsule, hairMat, 0.07, 0.026, 0.03, 0, 0.034, -0.05);
