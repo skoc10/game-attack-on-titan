@@ -5,6 +5,7 @@ import { buildWalls } from './walls';
 import { wallPush, wallSolid, wallTopAt } from './layout';
 import { buildForest, buildProps, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
+import { buildLandmarks, type Landmark } from './landmarks';
 
 const CELL = 32;
 
@@ -39,6 +40,9 @@ export class World {
   private readonly canopyGrid = new Map<number, Canopy[]>();
   private readonly boughGrid = new Map<number, Bough[]>();
   private readonly buildingGrid = new Map<number, Building[]>();
+  /** Anıtsal yapılar (kuleler, değirmenler, karakollar, kale...) ve dönen değirmen kanatları. */
+  readonly landmarks: Landmark[];
+  private readonly rotors: THREE.Mesh[];
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
     this.scene = scene;
@@ -82,15 +86,65 @@ export class World {
       if (!cell) this.treeGrid.set(k, (cell = []));
       cell.push(t);
     }
-    for (const b of this.buildings) {
-      for (let cx = Math.floor((b.minX - 1) / CELL); cx <= Math.floor((b.maxX + 1) / CELL); cx++) {
-        for (let cz = Math.floor((b.minZ - 1) / CELL); cz <= Math.floor((b.maxZ + 1) / CELL); cz++) {
-          const k = key(cx, cz);
-          let cell = this.buildingGrid.get(k);
-          if (!cell) this.buildingGrid.set(k, (cell = []));
-          cell.push(b);
+    for (const b of this.buildings) this.gridBuilding(b);
+
+    const lm = buildLandmarks(
+      {
+        blocked: (minX, maxX, minZ, maxZ, margin) => this.areaBlocked(minX, maxX, minZ, maxZ, margin),
+        addSolid: (b) => {
+          this.buildings.push(b);
+          this.gridBuilding(b);
+        },
+      },
+      this.villages,
+    );
+    this.landmarks = lm.marks;
+    this.rotors = lm.rotors;
+    scene.add(lm.group, ...lm.rotors);
+    this.grappleTargets.push(lm.group);
+  }
+
+  private gridBuilding(b: Building) {
+    for (let cx = Math.floor((b.minX - 1) / CELL); cx <= Math.floor((b.maxX + 1) / CELL); cx++) {
+      for (let cz = Math.floor((b.minZ - 1) / CELL); cz <= Math.floor((b.maxZ + 1) / CELL); cz++) {
+        const k = key(cx, cz);
+        let cell = this.buildingGrid.get(k);
+        if (!cell) this.buildingGrid.set(k, (cell = []));
+        cell.push(b);
+      }
+    }
+  }
+
+  /** Dikdörtgen alanda (`margin` payıyla) bir ağaç gövdesi, ağaç tacı ya da bina var mı. */
+  private areaBlocked(minX: number, maxX: number, minZ: number, maxZ: number, margin: number) {
+    const reach = margin + 10;
+    for (let cx = Math.floor((minX - reach) / CELL); cx <= Math.floor((maxX + reach) / CELL); cx++) {
+      for (let cz = Math.floor((minZ - reach) / CELL); cz <= Math.floor((maxZ + reach) / CELL); cz++) {
+        const k = key(cx, cz);
+        const tc = this.treeGrid.get(k);
+        if (tc) {
+          for (const t of tc) {
+            // Tacın yarıçapı boyuyla büyür; dev ağaçların dalları çok daha geniştir.
+            const m = margin + t.r + (t.kind === 2 ? 40 : t.h * 0.12);
+            if (t.x > minX - m && t.x < maxX + m && t.z > minZ - m && t.z < maxZ + m) return true;
+          }
+        }
+        const bc = this.buildingGrid.get(k);
+        if (bc) {
+          for (const b of bc) {
+            if (b.maxX > minX - margin && b.minX < maxX + margin && b.maxZ > minZ - margin && b.minZ < maxZ + margin) return true;
+          }
         }
       }
+    }
+    return false;
+  }
+
+  /** Yel değirmenlerinin kanatları döner (yalnızca yakındakiler). */
+  update(dt: number, x: number, z: number) {
+    for (const r of this.rotors) {
+      if (Math.abs(r.position.x - x) > 900 || Math.abs(r.position.z - z) > 900) continue;
+      r.rotation.z += dt * (r.userData.spin as number);
     }
   }
 
@@ -144,7 +198,7 @@ export class World {
     const cell = this.buildingGrid.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (cell) {
       for (const b of cell) {
-        if (x > b.minX - margin && x < b.maxX + margin && z > b.minZ - margin && z < b.maxZ + margin && y < roofY(b, x, z) + margin) return true;
+        if (x > b.minX - margin && x < b.maxX + margin && z > b.minZ - margin && z < b.maxZ + margin && y < roofY(b, x, z) + margin && y > (b.under ?? -Infinity) - margin) return true;
       }
     }
     return false;
@@ -259,6 +313,8 @@ export class World {
           if (cell) {
             for (const b of cell) {
               if (pos.y >= roofY(b, pos.x, pos.z) - 0.6) continue;
+              // Köprü gibi havadaki yapının altından geçilir.
+              if (b.under !== undefined && pos.y < b.under - 2) continue;
               const l = pos.x - (b.minX - radius);
               const r = b.maxX + radius - pos.x;
               const n = pos.z - (b.minZ - radius);

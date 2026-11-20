@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
-import type { Giant, NapeResult } from '../enemies/giant';
+import type { EyeResult, Giant, NapeResult } from '../enemies/giant';
 import { CFG } from '../data/config';
 import { angDiff, clamp, lerp, turnToward } from '../core/rng';
 import { CHARACTERS, type CharDef } from '../data/characters';
@@ -21,6 +21,7 @@ const wish = new THREE.Vector3();
 const look = new THREE.Vector3();
 const chest = new THREE.Vector3();
 const tmp = new THREE.Vector3();
+const eye = new THREE.Vector3();
 const COLLIDE = { trees: true, buildings: true };
 const BIG_COLLIDE = { trees: false, buildings: true };
 
@@ -754,6 +755,16 @@ export class Player {
       const span = gi.h + 12;
       if (Math.abs(gi.pos.x - this.pos.x) > span || Math.abs(gi.pos.z - this.pos.z) > span) continue;
       const reach = CFG.sword.reach * this.reachMul + extraReach;
+      // Yüzünün önündeyken gözlere yakın savruş gözleri keser: dev kör olur ve sersemler (kör dev yeniden kesilmez, ensesi açılır).
+      if (gi.blindT <= 0 && gi.faces(this.pos.x, this.pos.z)) {
+        gi.eyesWorld(eye);
+        const de = chest.distanceTo(eye);
+        if (de < reach + gi.eyeRadius && de < chest.distanceTo(gi.napeWorld(tmp))) {
+          this.swingHit.add(gi);
+          this.afterEyes(gi.hitEyes(sharp), eye, gi);
+          continue;
+        }
+      }
       gi.napeWorld(tmp);
       if (chest.distanceTo(tmp) < reach + gi.napeRadius) {
         // Tek temiz ense kesiği devi öldürür.
@@ -784,6 +795,30 @@ export class Player {
     this.blockedToastT = 3;
     this.game.audio.clang();
     this.game.hud.toast('Kılıç kör, kesmiyor — kutu bul ya da şehre dön');
+  }
+
+  private afterEyes(res: EyeResult, at: THREE.Vector3, gi: Giant) {
+    const g = this.game;
+    if (res === 'none') return;
+    if (res === 'dull') {
+      this.dullToast();
+      return;
+    }
+    if (res === 'blocked') {
+      g.audio.clang();
+      g.particles.burst(at, 12, 10, 0.4, 0xfff0b0, 0.4);
+      if (this.blockedToastT <= 0) {
+        this.blockedToastT = 4;
+        g.hud.toast('Yüzü zırhlı — gözlerine kılıç işlemiyor');
+      }
+      return;
+    }
+    this.useBlade();
+    g.audio.hit();
+    g.particles.burst(at, 26, 10, 0.6, 0xd8302a, 0.6 + gi.h * 0.02);
+    g.particles.burst(at, 14, 6, 1.2, 0xf4f0e8, gi.h * 0.04, 2);
+    g.hud.callout('GÖZLERİ KÖR');
+    g.hud.toast(`${gi.type.name} kör oldu ve sersemledi — arkasına dolan, enseye vur!`);
   }
 
   private afterNape(res: NapeResult, at: THREE.Vector3, gi: Giant) {
@@ -1006,7 +1041,10 @@ export class Player {
     this.pos.addScaledVector(this.vel, dt);
     // Çok büyük formlar ağaçları ezip geçer.
     // Sura karşı omuzlar ve kollarla birlikte gövde genişliği kadar itilir (kapıdan eğilerek geçer).
-    const walled = wallPush(this.pos, Math.max(T.radius, T.height * 0.24), this.pos.y);
+    const bodyW = Math.max(T.radius, T.height * 0.24);
+    const walled = wallPush(this.pos, bodyW, this.pos.y);
+    // Demir Koç formunun hücumu halka surda gedik açar; gövde gedikten geçip koşusunu sürdürür.
+    if (walled && T.id === 'koc' && this.titan.rushT > 0 && this.pos.y < CFG.world.wallH - 2) g.breaker.playerRam(this.pos.x, this.pos.z, bodyW + 2);
     if (g.world.resolve(this.pos, T.radius, T.height >= 20 ? BIG_COLLIDE : COLLIDE) || walled) {
       this.vel.x = (this.pos.x - px) / dt;
       this.vel.z = (this.pos.z - pz) / dt;

@@ -4,7 +4,7 @@ import { CFG } from '../data/config';
 import { angDiff } from '../core/rng';
 import { Giant } from '../enemies/giant';
 import { BOSSES, GIANT_TYPES, type CommonKind } from '../enemies/giantTypes';
-import { BREACHES, DIRS, HALF_T, inGiantForest, ringOf, spawnable, type Breach } from './layout';
+import { BREACHES, DIRS, HALF_T, breachAtAngle, inGiantForest, ringOf, spawnable, type Breach } from './layout';
 
 const W = CFG.world;
 const B = CFG.breaker;
@@ -20,6 +20,32 @@ export function breachAngle(phi: number) {
     if (Math.abs(off) < B.gateClear) a = d + Math.sign(off || 1) * B.gateClear;
   }
   return a;
+}
+
+/** Oyuncunun Demir Koç formuyla açtığı gedik ve onarılmasına kalan süre. */
+interface MadeBreach {
+  breach: Breach;
+  rubble: THREE.Mesh[];
+  t: number;
+}
+
+/**
+ * Halka surda (x, z)'de toslanan yerde gedik açılabilir mi: kapı kasabalarından uzak ve orada gedik yok.
+ * Açılabilirse halka ve açı, yoksa null.
+ */
+export function breachSpot(x: number, z: number, reach: number): { ring: number; ang: number } | null {
+  const r = Math.hypot(x, z);
+  const ang = Math.atan2(x, z);
+  for (let ring = 0; ring < W.walls.length; ring++) {
+    const w = W.walls[ring];
+    if (Math.abs(r - w.r) > HALF_T + reach) continue;
+    // Kapı kasabasının yayına ve kapı kulelerine değmesin.
+    const clear = (w.district + CFG.wallBreak.halfWidth + 25) / w.r;
+    if (DIRS.some((d) => Math.abs(angDiff(ang, d)) < clear)) return null;
+    if (breachAtAngle(ring, ang)) return null;
+    return { ring, ang };
+  }
+  return null;
 }
 
 /**
@@ -42,16 +68,20 @@ export class Breaker {
   /** Gedikten geçen devin gediği aştıktan sonraki hedefi (önce gediğin ortasına yürür). */
   private readonly beyond = new Map<Giant, { x: number; z: number }>();
   private readonly rubble: THREE.Mesh[] = [];
+  /** Oyuncunun Demir Koç formuyla açtığı gedikler. */
+  private readonly made: MadeBreach[] = [];
   private readonly rubbleGeo = new THREE.DodecahedronGeometry(1, 0);
   private readonly rubbleMat = new THREE.MeshLambertMaterial({ color: 0x8c877c, flatShading: true });
 
   constructor(private readonly game: Game) {}
 
-  /** Haritada gösterilecek gedik yeri. */
-  get breachPoint(): [number, number] | null {
-    if (!this.breach) return null;
-    const R = W.walls[this.breach.ring].r;
-    return [Math.sin(this.breach.ang) * R, Math.cos(this.breach.ang) * R];
+  /** Haritada gösterilecek gedikler: yer ve yarı genişlik (m). */
+  get breachPoints(): [number, number, number][] {
+    const list = this.breach ? [this.breach, ...this.made.map((m) => m.breach)] : this.made.map((m) => m.breach);
+    return list.map((b) => {
+      const R = W.walls[b.ring].r;
+      return [Math.sin(b.ang) * R, Math.cos(b.ang) * R, b.half * R];
+    });
   }
 
   // ---------------------------------------------------------------- doğuş
@@ -95,28 +125,26 @@ export class Breaker {
     this.game.hud.toast('Demir Koç surdan uzaklaşıp koşu yolu alıyor…');
   }
 
-  /** Toslayış sura değdi: gedik açılır, sur parçaları savrulur, devler içeri dolmaya başlar. */
-  onImpact(k: Giant) {
-    if (k !== this.koc) return;
+  /** Halka surda gedik açar: sur yeniden kurulur, toplar susar, toz kalkar, moloz yığılır. */
+  private openBreach(ring: number, ang: number, halfW: number, rubble: THREE.Mesh[]): Breach {
     const g = this.game;
-    const ring = 2;
     const R = W.walls[ring].r;
-    const ang = Math.atan2(k.pos.x, k.pos.z);
-    this.breach = { ring, ang, half: B.halfWidth / R };
-    BREACHES.push(this.breach);
+    const breach: Breach = { ring, ang, half: halfW / R };
+    BREACHES.push(breach);
     g.world.rebuildWalls();
     const bx = Math.sin(ang) * R;
     const bz = Math.cos(ang) * R;
-    g.cannons.setBroken(bx, bz, B.halfWidth + 6, true);
+    g.cannons.setBroken(bx, bz, halfW + 6, true);
     // Toz, taş ve moloz: gediğin iki yanına ve önüne yığılır.
     for (let i = 0; i < 6; i++) {
-      v.set(bx + (Math.random() - 0.5) * B.halfWidth * 1.4, W.wallH * (0.2 + i * 0.14), bz + (Math.random() - 0.5) * B.halfWidth * 1.4);
+      v.set(bx + (Math.random() - 0.5) * halfW * 1.4, W.wallH * (0.2 + i * 0.14), bz + (Math.random() - 0.5) * halfW * 1.4);
       g.smoke.burst(v, 26, 22, 6, 0xa39a8a, 14, 3, 14, 2.4);
       g.particles.burst(v, 40, 36, 1.8, 0xc0b8a8, 8, -10, 2.8, -0.2);
     }
-    for (let i = 0; i < 26; i++) {
+    const n = Math.round(26 * (halfW / B.halfWidth));
+    for (let i = 0; i < n; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      const along = (Math.random() - 0.5) * B.halfWidth * 2.4;
+      const along = (Math.random() - 0.5) * halfW * 2.4;
       const across = side * (HALF_T + Math.random() * 26);
       const x = bx + Math.cos(ang) * along + Math.sin(ang) * across;
       const z = bz - Math.sin(ang) * along + Math.cos(ang) * across;
@@ -127,11 +155,49 @@ export class Breaker {
       m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
       m.castShadow = m.receiveShadow = true;
       g.scene.add(m);
-      this.rubble.push(m);
+      rubble.push(m);
     }
     g.audio.explosion(bx, bz);
     g.audio.stomp(1.5);
     g.shakeCam(Math.max(0.3, 1.5 - Math.hypot(bx - g.player.pos.x, bz - g.player.pos.z) / 500));
+    return breach;
+  }
+
+  /** Gediği kapatır: sur yeniden kurulur, toplar yerine gelir, moloz kalkar. */
+  private closeBreach(b: Breach, rubble: THREE.Mesh[]) {
+    const g = this.game;
+    const i = BREACHES.indexOf(b);
+    if (i >= 0) BREACHES.splice(i, 1);
+    g.world.rebuildWalls();
+    const R = W.walls[b.ring].r;
+    g.cannons.setBroken(Math.sin(b.ang) * R, Math.cos(b.ang) * R, b.half * R + 6, false);
+    for (const m of rubble) g.scene.remove(m);
+    rubble.length = 0;
+    g.hud.toast(`${W.walls[b.ring].name}’ndaki gedik onarıldı`);
+  }
+
+  /**
+   * Oyuncu Demir Koç formunda hücumla sura toslayınca çağrılır: halka surda gedik açılabiliyorsa açar.
+   * `reach` gövdenin sura uzanan genişliği.
+   */
+  playerRam(x: number, z: number, reach: number) {
+    const spot = breachSpot(x, z, reach);
+    if (!spot) return false;
+    const rubble: THREE.Mesh[] = [];
+    const breach = this.openBreach(spot.ring, spot.ang, CFG.wallBreak.halfWidth, rubble);
+    this.made.push({ breach, rubble, t: CFG.wallBreak.repair });
+    this.game.hud.banner('SURU DELDİN', `${W.walls[spot.ring].name}’nda gedik açıldı — ${CFG.wallBreak.repair} sn sonra onarılır, devler de geçebilir`);
+    return true;
+  }
+
+  /** Toslayış sura değdi: gedik açılır, sur parçaları savrulur, devler içeri dolmaya başlar. */
+  onImpact(k: Giant) {
+    if (k !== this.koc) return;
+    const g = this.game;
+    const ring = 2;
+    const R = W.walls[ring].r;
+    const ang = Math.atan2(k.pos.x, k.pos.z);
+    this.breach = this.openBreach(ring, ang, B.halfWidth, this.rubble);
     g.hud.banner('SURDA GEDİK AÇILDI', `Demir Koç ${W.walls[ring].name}’nu deldi — devler içeri doluyor`);
     this.pourGiants(ang);
     // Gediğin içinden geçip surun içinde dolaşmaya başlar.
@@ -163,20 +229,12 @@ export class Breaker {
     }
   }
 
-  /** Gedik onarılır: sur yeniden kurulur, toplar yerine gelir, moloz kalkar. */
+  /** Demir Koç'un gediği onarılır. */
   private repair() {
-    const g = this.game;
     const b = this.breach;
     if (!b) return;
-    const i = BREACHES.indexOf(b);
-    if (i >= 0) BREACHES.splice(i, 1);
     this.breach = null;
-    g.world.rebuildWalls();
-    const R = W.walls[b.ring].r;
-    g.cannons.setBroken(Math.sin(b.ang) * R, Math.cos(b.ang) * R, B.halfWidth + 6, false);
-    for (const m of this.rubble) g.scene.remove(m);
-    this.rubble.length = 0;
-    g.hud.toast(`${W.walls[b.ring].name}’ndaki gedik onarıldı`);
+    this.closeBreach(b, this.rubble);
   }
 
   update(dt: number) {
@@ -207,6 +265,14 @@ export class Breaker {
     if (this.repairT > 0) {
       this.repairT -= dt;
       if (this.repairT <= 0) this.repair();
+    }
+    for (let i = this.made.length - 1; i >= 0; i--) {
+      const m = this.made[i];
+      m.t -= dt;
+      if (m.t <= 0) {
+        this.made.splice(i, 1);
+        this.closeBreach(m.breach, m.rubble);
+      }
     }
     const k = this.koc;
     if (!k || !k.alive || k.gone) {

@@ -69,6 +69,10 @@ export interface Humanoid {
   shinL: THREE.Group;
   shinR: THREE.Group;
   nape: THREE.Object3D;
+  /** İki gözün ortası (kılıçla göz kesiği için). */
+  eyes: THREE.Object3D;
+  /** Kesilmiş gözlerin yarası; göz iyileşene dek görünür. */
+  eyeWound: THREE.Group;
   footL: THREE.Object3D;
   footR: THREE.Object3D;
   handL: THREE.Object3D;
@@ -395,6 +399,29 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     }
   }
 
+  // ---- Gözler: kılıç hedefi ve kesilince görünen yara (kızıl, buharı tüten göz kapakları).
+  const giantEyes = style === 'giant';
+  const eyeY = giantEyes ? 0.09 : 0.084;
+  const eyeZ = giantEyes ? 0.066 : 0.068;
+  const eyes = new THREE.Object3D();
+  eyes.position.set(0, eyeY, eyeZ);
+  head.add(eyes);
+  const wound = new THREE.Group();
+  wound.visible = false;
+  head.add(wound);
+  {
+    const ew = giantEyes ? F.eye : 0.8;
+    const raw = new THREE.MeshBasicMaterial({ color: 0x8a1612 });
+    const cut = new THREE.MeshBasicMaterial({ color: 0xff4a32 });
+    rig.mats.push(raw, cut);
+    for (const s of [-1, 1]) {
+      const ex = s * (giantEyes ? 0.031 : 0.029);
+      rig.part(wound, GEO.sphere, raw, 0.02 * ew, 0.017 * ew, 0.01, ex, eyeY, eyeZ + 0.003, false);
+      const slit = rig.part(wound, GEO.box, cut, 0.05 * ew, 0.0045, 0.006, ex, eyeY, eyeZ + 0.011, false);
+      slit.rotation.z = s * 0.35;
+    }
+  }
+
   // ---- Saç
   const hairStyle = pal.hair !== undefined ? (pal.hairStyle ?? 'short') : 'none';
   let hairTail: THREE.Group | null = null;
@@ -700,6 +727,8 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
     shinL: lL.shin,
     shinR: lR.shin,
     nape,
+    eyes,
+    eyeWound: wound,
     footL: lL.foot,
     footR: lR.foot,
     handL: aL.hand,

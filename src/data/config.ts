@@ -87,6 +87,11 @@ export const CFG = {
   // Demir Koç: sur ötesinde dolaşır, oyuncu `notice` m yakınındayken `firstCharge` sn sonra surdan `runup` m geri çekilip
   // `speed` m/sn ile toslar; Kalkan Suru'nda 2×`halfWidth` m'lik gedik açar (kapılardan `gateClear` radyan uzakta).
   // Öldürülünce gedik `repair` sn sonra onarılır, kendisi `respawn` sn sonra yeniden doğar.
+  // Göz kesiği: kılıçla gözleri kesilen dev `blind` sn kör kalır ve `stun` sn sersemler (bölüm sonu devleri ve dönüşümcülerde `heavy` katı).
+  // Körken avını ancak `sense` m (+ boyunun üçte biri) yakınında sezer, el yordamıyla savurduğu darbelerin `miss` kadarı boşa gider.
+  eyes: { blind: 9, stun: 1.6, heavy: 0.5, sense: 12, miss: 0.6 },
+  // Oyuncunun Demir Koç formu: hücumla (Q) halka sura toslayınca 2×`halfWidth` m'lik gedik açar; gedik `repair` sn sonra onarılır.
+  wallBreak: { halfWidth: 13, repair: 90 },
   breaker: { first: 20, firstCharge: 25, notice: 700, runup: 260, speed: 44, halfWidth: 17, gateClear: 0.16, repair: 45, respawn: 480, again: 1e9 },
   // Çoban Dev: dış bölgede (Kalkan Suru'nun dışında) doğar; kükreyişi `radius` m içindeki devleri `dur` sn buyruğu altına alır.
   shepherd: { first: 60, respawn: 420, radius: 320, dur: 22 },

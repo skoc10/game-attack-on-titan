@@ -840,6 +840,7 @@ export class Game {
     this.sun.position.set(cx + SUN_DIR.x * 350, cy + SUN_DIR.y * 350, cz + SUN_DIR.z * 350);
     this.sun.target.updateMatrixWorld();
     this.grass.update(p.x, p.z);
+    this.world.update(dt, p.x, p.z);
   }
 
   /** Dinleyici, rüzgâr ve savaş müziği yoğunluğu. Yoğunluk saniyede birkaç kez yeniden hesaplanır. */

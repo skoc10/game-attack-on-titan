@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CFG } from '../data/config';
 import { BOSSES } from '../enemies/giantTypes';
 import { BREACHES, HALF_T, breachAtAngle, wallBetween, wallPush, wallSolid, wallTopAt } from './layout';
-import { breachAngle } from './breaker';
+import { breachAngle, breachSpot } from './breaker';
+import { FORMS } from '../data/titans';
 
 const W = CFG.world;
 const R = W.walls[2].r;
@@ -51,5 +52,21 @@ describe('surdaki gedik', () => {
     expect(k.breaker).toBe(true);
     expect(k.plating).toBeDefined();
     expect(k.maxH).toBeLessThan(W.wallH);
+  });
+
+  it('Demir Koç formundaki oyuncu halka surların her birinde gedik açabilir; kapı kasabalarında ve açık gedikte açamaz', () => {
+    for (let ring = 0; ring < 3; ring++) {
+      const r = W.walls[ring].r;
+      const p = at(r + HALF_T + 3);
+      expect(breachSpot(p.x, p.z, 6)).toEqual({ ring, ang: expect.closeTo(A, 6) });
+    }
+    const far = at(R + 200);
+    expect(breachSpot(far.x, far.z, 6)).toBeNull();
+    const gate = at(R + HALF_T + 3, 0.01);
+    expect(breachSpot(gate.x, gate.z, 6)).toBeNull();
+    BREACHES.push({ ring: 2, ang: A, half: 13 / R });
+    const p = at(R - HALF_T - 3);
+    expect(breachSpot(p.x, p.z, 6)).toBeNull();
+    expect(FORMS.koc.q.kind).toBe('rush');
   });
 });

@@ -240,12 +240,14 @@ export class Menu {
               <li>Gaz kendiliğinden dolmaz: <b>mavi bayraklı ikmal noktalarında</b> doldur.</li>
               <li>Büyük devler seni <b>yakalayıp ağzına götürür</b>: sol tıkla kes ya da Space ile sıyrıl.</li>
               <li>Enseye <b>tek temiz kesik</b> devi devirir.</li>
+              <li>Devin yüzünün önündeyken <b>gözlerine</b> vur: dev bir süre <b>kör olur</b> ve sersemler, seni ancak dibindeyken sezer. Zırhlıların yüzü kapalıdır.</li>
               <li>Renkli ışıklı sandıklardan <b>dev iğnesi</b> topla: her renk başka bir dev. Sarı ışık <b>patlar mızrak</b>, pembe sargı, yeşil ganimet.</li>
               <li>Sur içinde <b>Levazımcı Nuran</b> av puanına eşya satar; <b>Kağan</b> ve <b>Behram</b> ödüllü sözleşme verir (<kbd>E</kbd> ile konuş).</li>
               <li>Koyu yeşil ışıklı sandıktan çıkan <b>Orman Kapşonu</b>nu giyersen devler seni ancak yakından fark eder (<kbd>I</kbd> ile çanta).</li>
               <li>Sıkışınca <kbd>C</kbd> ile <b>billur kozaya</b> gir: devler sana dokunamaz, kırılınca çevreyi sersemletir.</li>
               <li><kbd>Q</kbd> ile <b>patlar mızrak</b> at: enseye yakın patlarsa zırhlıyı bile öldürür, gövdeye yakın patlarsa devi yere serer.</li>
               <li>Dev barı yarıyı geçince <kbd>T</kbd> ile deve dönüş. Bar <b>hareket ettikçe</b> yanar, yerinde durursan azalmaz; her güç bar harcar, <kbd>F</kbd> ile ısırırsın.</li>
+              <li><b>Demir Koç</b> formundayken <kbd>Q</kbd> hücumuyla sura toslarsan <b>surda gedik açarsın</b>; gedik bir süre sonra onarılır, o arada devler de geçebilir.</li>
               <li>Devler de <b>ısırır</b>: başını geri çekip çenesini açtığını görünce yana kaç.</li>
               <li>Her dev <b>av puanı</b> düşürür; puanla yeni karakter al. ★ işaretli karakterler bar <b>dolunca iğnesiz</b> kendi devine dönüşür.</li>
             </ol>
