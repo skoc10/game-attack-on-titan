@@ -56,6 +56,12 @@ export interface TitanDef {
    * Yükler `hold` sn yeni isabet olmazsa söner.
    */
   onslaught?: { melee: number; guard: number; block: number; chain: number; max: number; hold: number };
+  /**
+   * Ağzıyla taşıma: ısırık değdiğinde F basılı tutulursa dev ağıza alınır (boyu en çok `maxH` oranı kadar olan).
+   * Ağızdaki dev her `chomp` sn çiğnenir (yumruğun `dmg` katı), taşımak saniyede `drain` bar yakar;
+   * F bırakılınca ya da `time` sn dolunca dev `throw` m/sn hızla baktığı yöne fırlatılır.
+   */
+  carry?: { maxH: number; chomp: number; dmg: number; drain: number; time: number; throw: number };
   /** Kutudan çıkma ağırlığı. */
   weight: number;
   palette: Palette;
@@ -229,6 +235,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     e: { kind: 'stun', name: 'Kükreme', cost: 5, cd: 60, radius: 80, stun: 4, fill: true, call: 450 },
     slam: { name: 'Ezme', cost: 9, radius: 15, dmg: 95 },
     onslaught: { melee: 1.3, guard: 1.5, block: 0.9, chain: 0.08, max: 6, hold: 4 },
+    carry: { maxH: 0.8, chomp: 0.7, dmg: 0.35, drain: 2, time: 8, throw: 24 },
     weight: 8,
     // Ten sıradan devlerinki gibi baştan aşağı aynı renk; çatlak yok, yalnızca gözler parlar.
     palette: { skin: 0xc9a58c, top: 0xc9a58c, legs: 0xc9a58c, sleeve: 0xc9a58c, hair: 0x2a1a10, hairStyle: 'wild', eye: 0x36f0b0, glow: 0x36f0b0 },

@@ -61,6 +61,10 @@ export class TitanForm {
   /** Bu yumruğun süresi, hasar çarpanı, sersemletmesi ve seri bitirici olup olmadığı. */
   private punchDur = 0.5;
   private punchMult = 1;
+  /** Ağızda taşınan dev, taşıma süresi ve sıradaki çiğneyişe kalan süre. */
+  carried: Giant | null = null;
+  private carryT = 0;
+  private chompT = 0;
   /** Hücum Ruhu: art arda isabetlerle biriken yük ve sönmesine kalan süre. */
   heat = 0;
   private heatT = 0;
@@ -251,6 +255,10 @@ export class TitanForm {
 
   /** Formdan çıkış: gövde olduğu yerde kalır ve ölen bir dev gibi yıkılır. */
   exit() {
+    if (this.carried) {
+      this.carried.fling(this.game, this.game.player.faceYaw, 6);
+      this.carried = null;
+    }
     this.setStone(false);
     this.rushT = 0;
     this.guarding = false;
@@ -467,7 +475,7 @@ export class TitanForm {
    */
   bite(p: Player) {
     const B = CFG.titan.bite;
-    if (this.biteT >= 0 || this.punchT >= 0 || this.rushT > 0 || this.biteCd > 0) return;
+    if (this.biteT >= 0 || this.punchT >= 0 || this.rushT > 0 || this.biteCd > 0 || this.carried) return;
     const gi = this.biteTarget(p);
     if (!gi) {
       if (this.warnT <= 0) {
@@ -659,6 +667,60 @@ export class TitanForm {
     }
   }
 
+  /** Isırılan devi ağıza alır. */
+  private startCarry(gi: Giant) {
+    const g = this.game;
+    gi.hold();
+    this.carried = gi;
+    this.carryT = 0;
+    this.chompT = this.def.carry!.chomp;
+    g.hud.callout('AĞZINDA');
+    g.hud.toast(`${gi.type.name} ağzında — F basılıyken çiğnersin, bırakınca fırlatırsın`);
+  }
+
+  /** Ağızdaki dev: ağızla birlikte taşınır, aralıklarla çiğnenir; F bırakılınca fırlatılır. */
+  private updateCarry(dt: number, p: Player) {
+    const gi = this.carried;
+    const C = this.def.carry;
+    if (!gi) return;
+    if (!gi.alive || gi.state !== 'held' || !C) {
+      this.carried = null;
+      return;
+    }
+    const g = this.game;
+    const d = this.def;
+    this.carryT += dt;
+    // Ağzın önü: dev beliyle dişlerin arasında, gövdesi iki yana uzanır.
+    this.body.head.getWorldPosition(v);
+    v.x += Math.sin(p.faceYaw) * d.height * 0.1;
+    v.z += Math.cos(p.faceYaw) * d.height * 0.1;
+    v.y -= d.height * 0.025;
+    gi.heldAt(v, p.faceYaw);
+    this.chompT -= dt;
+    if (this.chompT <= 0) {
+      this.chompT = C.chomp;
+      gi.titanHit(d.punch.dmg * C.dmg * this.mult, g, true, p.pos, true);
+      g.audio.bite(0.7);
+      g.particles.burst(v, 10, 6, 0.5, 0xc8322a, d.height * 0.03);
+      if (!gi.alive) {
+        this.carried = null;
+        g.meter.refund(CFG.titan.bite.refund);
+        g.hud.toast(`Çiğnendi — bar +${CFG.titan.bite.refund}`);
+        return;
+      }
+    }
+    const tired = !g.meter.spend(C.drain * dt);
+    if (!g.input.down('KeyF') || this.carryT >= C.time || tired) {
+      // Bırak: baktığı yöne savurur.
+      gi.fling(g, p.faceYaw, C.throw);
+      this.carried = null;
+      g.audio.swing();
+      g.audio.kick();
+      g.shakeCam(0.5);
+      g.hud.callout('FIRLAT');
+    }
+  }
+
   private get mult() {
     const os = this.def.onslaught;
     return (this.stone ? this.buffMult : 1) * (os ? 1 + os.chain * this.heat : 1);
@@ -710,6 +772,7 @@ export class TitanForm {
       this.heatT -= dt;
       if (this.heatT <= 0) this.heat = 0;
     }
+    this.updateCarry(dt, p);
     if (this.comboT > 0) {
       this.comboT -= dt;
       if (this.comboT <= 0) this.combo = 0;
@@ -788,6 +851,8 @@ export class TitanForm {
           g.biteFx(v, p.faceYaw, d.height * 0.16 + 1, d.color);
           gi.titanHit(d.punch.dmg * B.dmgMult * this.mult * this.melee(this.biteGuard), g, true, p.pos);
           this.landed();
+          // F hâlâ basılıysa ısırılan dev ağıza alınır.
+          if (d.carry && g.input.down('KeyF') && gi.canBeHeld(d.height * d.carry.maxH)) this.startCarry(gi);
           if (!gi.alive) {
             g.meter.refund(B.refund);
             g.hud.toast(`Isırık — bar +${B.refund}`);
