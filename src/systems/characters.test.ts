@@ -161,6 +161,9 @@ describe('Yiğit ve Hücum Devi', () => {
     expect(c.price).toBeGreaterThan(CHARACTERS.alp.price);
     expect(c.level).toBeGreaterThan(1);
     expect(CHAR_IDS).toContain('yigit');
+    // Saçı toplu (devininki gibi dağınık değil), kılıcı keskin: dayanımı yüksek.
+    expect(c.look.hairStyle).toBe('bun');
+    expect(c.blades).toBeGreaterThanOrEqual(1.5);
   });
 
   it('kendi formu dolu barla iğnesiz, o formun iğnesi varsa yarım barla iğneyle açılır', () => {

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lerp, mulberry32 } from '../core/rng';
 import { muscleTexture, skinTexture, toonGradient } from '../core/textures';
 
-export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob' | 'wild';
+export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob' | 'wild' | 'bun';
 export type BodyStyle = 'human' | 'giant' | 'titan';
 
 export interface Palette {
@@ -512,6 +512,19 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       for (let i = 0; i < 5; i++) {
         const x = -0.045 + i * 0.0225 + (rnd() - 0.5) * 0.01;
         lock(x, 0.125, 0.058, (rnd() - 0.5) * 0.9, -1, 0.25 + rnd() * 0.35, 0.05 + rnd() * 0.05, 0.012 + rnd() * 0.006);
+      }
+    } else if (hairStyle === 'bun') {
+      // Toplu saç: yanlar ve arka başa yatırılıp ensenin üstünde sıkıca topuz yapılmış, bağı belli.
+      const tieMat = rig.toon(shade(pal.hair, 0.55));
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.064, 0.03, 0.03, 0, 0.05, -0.05);
+      rig.part(hairRoot, GEO.sphere, hairMat, 0.03, 0.027, 0.03, 0, 0.106, -0.088, false);
+      rig.part(hairRoot, GEO.sphere, hairMat, 0.022, 0.02, 0.022, 0.006, 0.122, -0.094, false);
+      const band = rig.part(hairRoot, GEO.taper, tieMat, 0.021, 0.006, 0.021, 0, 0.094, -0.078, false);
+      band.rotation.x = -1.1;
+      // Toplanmaktan kaçan iki ince tutam: kulakların önünde.
+      for (const s of [-1, 1]) {
+        const lock = rig.part(hairRoot, GEO.cone, hairMat, 0.009, 0.05, 0.008, s * 0.067, 0.052, 0.036, false);
+        lock.rotation.x = Math.PI;
       }
     } else if (hairStyle === 'bob') {
       // Küt kesim: ense hizasında biten arka perde ve çene hizasına inen yan tutamlar.
