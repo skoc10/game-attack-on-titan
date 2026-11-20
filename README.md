@@ -40,6 +40,7 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
    - Yumruk, tekme ve ısırık her zaman %30 sert vurur.
    - Gardda ya da bir darbeyi gardla karşıladıktan hemen sonra atılan yumruk, tekme ve ısırık bir de 1,5 kat sert vurur (toplam ~2 kat, gard serisinin artışı da üstüne eklenir).
    - Gard darbelerin %90'ını tutar (öbür formlarda %75).
+   - **Ağızda taşıma:** `F` ile ısırırken tuşu basılı tutarsan ısırdığın dev ağzına alınır (en çok kendi boyunun %80'i kadar devler; bölüm sonu devleri ve dönüşümcüler alınamaz). Dev ağzında çırpınır, kaçamaz; her 0,7 saniyede bir çiğnenir. Taşımak saniyede 2 bar yakar. `F`'yi bırakınca (ya da 8 saniye dolunca) dev baktığın yöne fırlatılır, yere çakılıp devrilir ve canının %15'ini kaybeder; ensesi bir süre açıktır.
    - Her yakın dövüş isabeti bir **hücum yükü** ekler (en çok 6). Her yük bütün güçleri (yumruk, tekme, ısırık, ezme, kükreme dışı tüm darbeler) %8 güçlendirir; 4 saniye isabet olmazsa yükler söner. Yükler dev formu panelinde görünür.
 
 7. Büyük devler (7 m ve üzeri) seni **eliyle yakalayıp ağzına götürür**. Ağza varmadan kurtulma barını doldur: sol tıkla seri basıp parmakları kes, `Space` ile gaz patlaması yap (12 gaz) ya da barın ve iğnen yetiyorsa `T` ile elinin içinde deve dönüş. Dev ne kadar büyükse kurtulmak o kadar zor; kurtulamazsan ağır bir ısırık yersin.

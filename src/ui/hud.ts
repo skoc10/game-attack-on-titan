@@ -269,7 +269,7 @@ export class Hud {
         pw('Sol tık', d.punch.name, d.punch.cost) +
           pw('Q', d.q.name, d.q.cost, d.q.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.qCd)) +
           pw('E', d.e.name, d.e.cost, d.e.kind === 'buff' && t.stone ? ' <b>AKTİF</b>' : cd(t.eCd)) +
-          pw('F', 'Isırık', CFG.titan.bite.cost, cd(t.biteCd)) +
+          (t.carried ? `<span><kbd>F</kbd> <b>AĞZINDA: ${t.carried.type.name}</b> — bırak: fırlat</span>` : pw('F', d.carry ? 'Isırık (basılı tut: ağza al)' : 'Isırık', CFG.titan.bite.cost, cd(t.biteCd))) +
           pw('R', CFG.titan.steam.name, CFG.titan.steam.cost, t.steamT > 0 ? ' <b>AKTİF</b>' : cd(t.steamCd)) +
           pw('V', 'Tekme', CFG.kick.cost, cd(t.kickCd)) +
           `<span><kbd>G</kbd> Gard${t.guarding ? (t.combo > 1 ? ` <b>SERİ ×${t.combo}</b>` : ' <b>AÇIK</b>') : ''}</span>` +

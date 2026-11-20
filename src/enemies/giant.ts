@@ -13,7 +13,7 @@ import { autoBend, buildHumanoid, disposeHumanoid, type HairStyle, type Humanoid
 import type { GiantType } from './giantTypes';
 import type { Ability, TitanDef } from '../data/titans';
 
-export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'guard' | 'climb' | 'dead';
+export type GiantState = 'wander' | 'chase' | 'windup' | 'recover' | 'stunned' | 'downed' | 'rising' | 'leap' | 'grab' | 'rush' | 'guard' | 'climb' | 'held' | 'dead';
 /** Dev formundaki oyuncunun vuruşunun nitelikleri: yakın dövüş mü (gard yalnızca buna işler), gardı kırar mı, ne kadar iter. */
 export interface TitanHitOpts {
   melee?: boolean;
@@ -69,6 +69,8 @@ export class Giant {
   raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
   /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
   breaching = false;
+  /** Fırlatıldı: yere çarpınca devrilir. */
+  private thrown = false;
   /** Gözleri kesildi: iyileşene dek kalan süre (sn). Körken avını yalnızca çok yakından sezer. */
   blindT = 0;
   readonly eyeRadius: number;
@@ -232,6 +234,55 @@ export class Giant {
   get alive() {
     return this.state !== 'dead';
   }
+
+  /** Dev formundaki oyuncu bu devi ağzına alabilir mi (bölüm sonu devleri ve dönüşümcüler alınamaz). */
+  canBeHeld(maxH: number) {
+    return this.alive && !this.heavy && this.h <= maxH && this.state !== 'leap' && this.state !== 'climb';
+  }
+
+  /** Oyuncunun dev formu bu devi ağzına aldı: dev çabalar ama kaçamaz. */
+  hold() {
+    if (this.state === 'grab') this.game.player.releaseGrab(this);
+    this.game.boulders.drop(this);
+    this.breaching = false;
+    this.setState('held');
+    this.body.root.rotation.order = 'YXZ';
+  }
+
+  /**
+   * Ağızdaki devi yerleştirir: gövdesi yatay, beli `mouth` noktasında, ağız yönüne dik uzanır.
+   * `yaw` taşıyanın baktığı yön.
+   */
+  heldAt(mouth: THREE.Vector3, yaw: number) {
+    const r = this.body.root;
+    this.yaw = yaw + Math.PI / 2;
+    r.rotation.set(Math.PI / 2 - 0.15, this.yaw, Math.sin(this.stateT * 9) * 0.12);
+    v.set(0, 1, 0).applyQuaternion(r.quaternion);
+    this.pos.set(mouth.x - v.x * this.h * 0.5, mouth.y - v.y * this.h * 0.5, mouth.z - v.z * this.h * 0.5);
+  }
+
+  /** Ağızdan çıkar: gövde dikilir, ayakları yere iner. */
+  private unhold(game: Game) {
+    const r = this.body.root;
+    r.rotation.set(0, this.yaw, 0);
+    r.rotation.order = 'XYZ';
+    this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
+  }
+
+  /** Ağızdaki dev fırlatılır: `yaw` yönünde savrulur, yere çarpınca devrilir. */
+  fling(game: Game, yaw: number, speed: number) {
+    if (this.state !== 'held') return;
+    const r = this.body.root;
+    // Gövde ağız hizasında dikilir, oradan savrulur.
+    const y = this.pos.y + v.set(0, 1, 0).applyQuaternion(r.quaternion).y * this.h * 0.5 - this.h * 0.5;
+    r.rotation.set(0, this.yaw, 0);
+    r.rotation.order = 'XYZ';
+    this.pos.y = Math.max(game.world.heightAt(this.pos.x, this.pos.z), y);
+    this.vel.set(Math.sin(yaw) * speed, speed * 0.45, Math.cos(yaw) * speed);
+    this.leapHit = true; // oyuncuya çarpmaz
+    this.thrown = true;
+    this.setState('leap');
+  }
   get isElite() {
     return this.type.meter !== 'normal';
   }
@@ -337,7 +388,7 @@ export class Giant {
   }
 
   stun(seconds: number) {
-    if (!this.alive || this.state === 'downed') return;
+    if (!this.alive || this.state === 'downed' || this.state === 'held') return;
     this.stunDur = seconds;
     this.setState('stunned');
   }
@@ -384,7 +435,7 @@ export class Giant {
 
   /** Bacağa kılıç darbesi: yeterli kesik devi yere düşürür. */
   hitLeg(bladeOk: boolean, armorBreak = false): LegResult {
-    if (!this.alive || this.state === 'downed' || this.state === 'leap') return 'none';
+    if (!this.alive || this.state === 'downed' || this.state === 'leap' || this.state === 'held') return 'none';
     if (!bladeOk && !armorBreak) return 'dull';
     this.flash();
     this.legCuts -= armorBreak ? 99 : 1;
@@ -402,6 +453,13 @@ export class Giant {
    */
   titanHit(dmg: number, game: Game, armorBreak: boolean, from: THREE.Vector3, quiet = false, hit: TitanHitOpts = {}): 'hit' | 'blocked' | 'none' {
     if (!this.alive) return 'none';
+    if (this.state === 'held') {
+      // Ağızdaki dev kaçamaz, savrulmaz: yalnızca can kaybeder.
+      this.flash(0.12);
+      this.hp -= dmg * (this.type.armored && !armorBreak ? 0.2 : 1);
+      if (this.hp <= 0) this.die(game, 'titan', from);
+      return 'hit';
+    }
     let d = dmg;
     let broke = false;
     if (hit.melee && this.guardsFrom(from)) {
@@ -465,7 +523,8 @@ export class Giant {
   private die(game: Game, source: 'blade' | 'titan', from?: THREE.Vector3) {
     // Zaten yerdeyse devrilmez; ayaktaysa önce sendeler, sonra kütük gibi devrilir.
     // Sürünen devler zaten yere yakındır: devrilmez, olduğu yerde yığılır.
-    this.lying = this.state === 'downed' || !!this.type.crawl;
+    if (this.state === 'held') this.unhold(game);
+    this.lying = this.state === 'downed' || this.state === 'held' || !!this.type.crawl;
     this.impacted = false;
     this.say(this.lying ? 'rattle' : 'death', this.heavy ? 2.5 : 1.4);
     this.fallDir = 1;
@@ -613,6 +672,12 @@ export class Giant {
       return;
     }
 
+    if (this.state === 'held') {
+      // Ağızda: çabalar (bacakları tepinir); yerini taşıyan belirler.
+      this.phase += dt * 9;
+      this.animate(dt, 0, 0);
+      return;
+    }
     const p = game.player;
     if (this.slowT > 0) {
       this.slowT -= dt;
@@ -963,7 +1028,19 @@ export class Giant {
           game.audio.stomp();
           game.rings.spawn(this.pos.x, gy, this.pos.z, this.h * 0.6 + 4, 0xd8cdb4, 0.5);
           this.attackCd = 1;
-          this.setState('recover');
+          if (this.thrown) {
+            // Fırlatılan dev yere çakılır ve devrilir: ensesi bir süre açıktır.
+            this.thrown = false;
+            game.shakeCam(Math.max(0, 0.7 - Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z) / 120));
+            game.smoke.burst(v.set(this.pos.x, gy + 1, this.pos.z), 10, 8, 1.6, 0xa39a86, this.h * 0.4, 1.5, 3 + this.h * 0.2, 1.4);
+            this.hp -= this.maxHp * 0.15;
+            if (this.hp <= 0) {
+              this.die(game, 'titan', p.pos);
+              break;
+            }
+            this.setState('downed');
+            this.say('pain', 1.3);
+          } else this.setState('recover');
         }
         break;
       }
@@ -1578,6 +1655,16 @@ export class Giant {
           tiltX = 0.45;
         }
         break;
+    }
+    if (this.state === 'held') {
+      // Ağızda çabalama: kollar savrulur, bacaklar tepinir, baş sarkık.
+      const c = Math.sin(this.phase);
+      aL = -1.2 + c * 0.7;
+      aR = -0.4 - c * 0.7;
+      lL = c * 0.8;
+      lR = -c * 0.8;
+      headX = 0.5;
+      tiltX = 0;
     }
     if (this.blindT > 0 && (this.state === 'chase' || this.state === 'wander')) {
       // Kör yürüyüş: bir eli kesik gözlerinde, öbürü önünde el yordamıyla yoklar.
