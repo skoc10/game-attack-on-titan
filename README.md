@@ -34,6 +34,7 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 | **Fırtına Devi** 11 m | Rüzgâr (mavi) | Çok hızlı, yüksek sıçrar; barı çabuk yakar, darbeye dayanıksız | Pençe −1 | Atılım −10: ileri fırlar | Girdap −16: çevresini biçer | Dalış −8 |
 | **Kaya Devi** 17 m | Taş (yeşil) | Yavaş, darbelere çok dayanıklı; her vuruşu zırh kırar | Ağır Yumruk −2,5 | Koç Hücumu −18: yolundakini ezer | Deprem −22: geniş alanı sarsar | Ezme −10 |
 | **Zirve Devi** 26 m | Doruk (mor) | En büyüğü; çok yavaş, zıplayamaz, ağaçları ezip geçer | Süpürme −3 | Kaya Fırlat −14: nişana kaya atar | Sarsıntı −25: çok geniş alanı sersemletir | Tepinme −10 |
+| **Haykıran Dev** 15 m | Haykırış (deniz yeşili) | Uzun saçlı, sırım gibi kaslı, çevik dövüşçü | Yumruk −1,5 | Sertleşme −22: yumruk taşlaşır, zırh kırar | Kükreme −5 (60 sn'de bir): 80 m içini sersemletir, **dev barını sonuna kadar doldurur**, 450 m içindeki devler sesini duyup gelir | Ezme −9 |
 
 7. Büyük devler (7 m ve üzeri) seni **eliyle yakalayıp ağzına götürür**. Ağza varmadan kurtulma barını doldur: sol tıkla seri basıp parmakları kes, `Space` ile gaz patlaması yap (12 gaz) ya da barın ve iğnen yetiyorsa `T` ile elinin içinde deve dönüş. Dev ne kadar büyükse kurtulmak o kadar zor; kurtulamazsan ağır bir ısırık yersin.
 8. Demir Sur kapısındaki **Kapı Kıran**'ı yen, Kalkan Suru'nu aş.
@@ -177,6 +178,14 @@ Demir Koç formundayken `Q` (**Sur Delen**) hücumuyla herhangi bir halka sura t
 ### Doğuş noktaları
 
 Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, karakol 45 m, diğerleri 26–32 m) sancak sararır ve orası **doğuş noktan** olur. Ölünce en son uğradığın yapının yanında doğarsın; baskın sürerken baskın yerinde doğarsın. Uğradığın yapılar kaydedilir ve büyük haritada sarı sancakla gösterilir, seçili olan **DOĞUŞ** yazısıyla işaretlenir.
+
+## Ses ve görüntü
+
+- **Rüzgâr:** alçak bir uğultu ve ıslıklı bir esinti sürekli çalar, esinti dalga dalga sertleşir. Ormanın içinde rüzgâr gürleşir; iki yandan yaprak hışırtısı, sert esintide gıcırdayan gövdeler duyulur. Sakin anlarda kuşlar öter.
+- **Yankı:** iki kanalda ayrı, erken yansımalı ve tizleri sönümlenen bir açık hava yankısı.
+- **Savaş müziği:** davul ve basın üstüne her ölçüde yaylı bir akor çalar.
+- **Ağaçlar ve otlar** rüzgârda sallanır; sallanış rüzgâr sesiyle aynı esintiyi izler.
+- **Renk:** ton eşlemeden sonra hafif keskinleştirme, yumuşak kontrast eğrisi ve sıcak–serin renk dengesi uygulanır.
 
 ## Sınır Ormanı
 

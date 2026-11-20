@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
 import { mulberry32, type Rng } from '../core/rng';
+import { applyWind } from '../core/wind';
 import { heightAt } from './terrain';
 import { DIRS, EDGE, GIANT_FOREST, ROAD_END, districtGap, inGiantForest, onRoad, wallDist } from './layout';
 
@@ -316,6 +317,8 @@ function giantGeo() {
 
 export function buildForest(trees: Tree[], rng: Rng) {
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  // Ağaçlar rüzgârda tepeden sallanır (dev ağaçlar çok az).
+  applyWind(mat, 0.02, 45);
   const kinds = [pineGeo(), leafyGeo(), giantGeo()];
   const meshes: THREE.InstancedMesh[] = [];
   const m = new THREE.Matrix4();

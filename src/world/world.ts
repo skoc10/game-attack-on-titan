@@ -282,6 +282,20 @@ export class World {
     return best;
   }
 
+  /** (x, z) çevresindeki orman yoğunluğu (0: açık ova, 1: sık orman); rüzgâr ve yaprak sesi için. */
+  forestDensity(x: number, z: number) {
+    const R = 70;
+    let n = 0;
+    for (let cx = Math.floor((x - R) / CELL); cx <= Math.floor((x + R) / CELL); cx++) {
+      for (let cz = Math.floor((z - R) / CELL); cz <= Math.floor((z + R) / CELL); cz++) {
+        const cell = this.treeGrid.get(key(cx, cz));
+        if (!cell) continue;
+        for (const t of cell) if (Math.abs(t.x - x) < R && Math.abs(t.z - z) < R) n += t.kind === 2 ? 4 : 1;
+      }
+    }
+    return Math.min(1, n / 36);
+  }
+
   /** (x, z) noktasının `margin` metre yakınında bir ağaç gövdesi var mı. */
   treeNear(x: number, z: number, margin: number) {
     const reach = margin + 8;

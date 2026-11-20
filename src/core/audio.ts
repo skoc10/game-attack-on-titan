@@ -25,6 +25,25 @@ const TOM = [0, 0, 0.5, 0, 0.4, 0, 0, 0.5, 0, 0, 0.5, 0, 0.6, 0, 0, 0.7];
 // Bas yürüyüşü (re minör): her vuruşta bir nota, Hz.
 const BASS = [73.4, 73.4, 87.3, 65.4, 73.4, 73.4, 98, 87.3];
 const STEP = 60 / 132 / 4;
+// Savaş müziğinin yaylı katmanı: her ölçüde bir akor (re minör: Dm, B♭, F, C), Hz.
+const PAD: number[][] = [
+  [146.8, 174.6, 220],
+  [116.5, 146.8, 174.6],
+  [174.6, 220, 261.6],
+  [130.8, 164.8, 196],
+];
+
+/** Ortam: bulunulan yerin orman yoğunluğu (0..1) ve rüzgârın o anki şiddeti (0..1). */
+export interface Ambience {
+  forest: number;
+  gust: number;
+}
+
+/** Ortam sesinin bir katmanı: süzülmüş, sürekli çalan gürültü. */
+interface Layer {
+  gain: GainNode;
+  filter: BiquadFilterNode;
+}
 
 /** WebAudio ile sentezlenen efektler, dev sesleri ve savaş müziği; harici ses dosyası yok. */
 export class GameAudio {
@@ -34,8 +53,12 @@ export class GameAudio {
   /** Efektlerin bağlandığı ana hat: doğrudan çıkışa ve yankıya gider. */
   private bus: GainNode | null = null;
   private musicBus: GainNode | null = null;
-  private windGain: GainNode | null = null;
-  private windFilter: BiquadFilterNode | null = null;
+  /** Rüzgâr katmanları: alçak uğultu, ıslıklı esinti; ormanda yaprak hışırtısı (iki yanda ayrı). */
+  private windLow: Layer | null = null;
+  private windMid: Layer | null = null;
+  private leaves: Layer[] = [];
+  private birdT = 4;
+  private creakT = 8;
   private listener: Listener = { x: 0, z: 0, yaw: 0 };
   private intensity = 0;
   private nextStep = 0;
@@ -71,34 +94,62 @@ export class GameAudio {
       this.master.connect(comp).connect(ctx.destination);
       this.bus = ctx.createGain();
       this.bus.connect(this.master);
+      // Yankı: iki kanalda ayrı, erken yansımalı ve tizleri sönümlenen bir açık hava kuyruğu.
       const verb = ctx.createConvolver();
-      const len = Math.floor(sr * 1.8);
+      const len = Math.floor(sr * 2.2);
       const ir = ctx.createBuffer(2, len, sr);
       for (let c = 0; c < 2; c++) {
         const ch = ir.getChannelData(c);
-        for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+        let lp = 0;
+        for (let i = 0; i < len; i++) {
+          const t = i / len;
+          // Zamanla tizleri yutulan gürültü: yumuşak bir kuyruk.
+          const k = 0.35 + t * 0.6;
+          lp += (Math.random() * 2 - 1 - lp) * (1 - k);
+          ch[i] = lp * Math.pow(1 - t, 2.4) * 1.6;
+        }
+        // Erken yansımalar: uzak tepelerden ve surlardan dönen birkaç belirgin yankı.
+        for (const [ms, a] of [[23, 0.5], [41, 0.35], [67, 0.28], [97, 0.2], [151, 0.12]]) {
+          const at = Math.floor(((ms + c * 7) / 1000) * sr);
+          if (at < len) ch[at] += a * (c ? -1 : 1);
+        }
       }
       verb.buffer = ir;
+      const damp = ctx.createBiquadFilter();
+      damp.type = 'lowpass';
+      damp.frequency.value = 5200;
       const wet = ctx.createGain();
-      wet.gain.value = 0.22;
-      this.bus.connect(verb).connect(wet).connect(this.master);
+      wet.gain.value = 0.26;
+      this.bus.connect(verb).connect(damp).connect(wet).connect(this.master);
       this.musicBus = ctx.createGain();
       this.musicBus.gain.value = 0;
       this.musicBus.connect(this.master);
       this.musicBus.connect(verb);
 
-      // Rüzgâr: sürekli çalan süzülmüş gürültü; hızlandıkça yükselir ve incelir.
-      const wind = ctx.createBufferSource();
-      wind.buffer = this.noiseBuf;
-      wind.loop = true;
-      this.windFilter = ctx.createBiquadFilter();
-      this.windFilter.type = 'bandpass';
-      this.windFilter.frequency.value = 320;
-      this.windFilter.Q.value = 0.6;
-      this.windGain = ctx.createGain();
-      this.windGain.gain.value = 0.03;
-      wind.connect(this.windFilter).connect(this.windGain).connect(this.master);
-      wind.start();
+      // Ortam: sürekli çalan süzülmüş gürültü katmanları. Hızlandıkça, rüzgâr esince ve ormanda yükselir.
+      const layer = (type: BiquadFilterType, freq: number, q: number, pan: number, offset: number): Layer => {
+        const src = ctx.createBufferSource();
+        src.buffer = this.noiseBuf;
+        src.loop = true;
+        const filter = ctx.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = freq;
+        filter.Q.value = q;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        let node: AudioNode = src.connect(filter).connect(gain);
+        if (pan !== 0 && ctx.createStereoPanner) {
+          const p = ctx.createStereoPanner();
+          p.pan.value = pan;
+          node = node.connect(p);
+        }
+        node.connect(this.master!);
+        src.start(0, offset);
+        return { gain, filter };
+      };
+      this.windLow = layer('lowpass', 160, 0.7, 0, 0);
+      this.windMid = layer('bandpass', 420, 0.8, 0, 0.6);
+      this.leaves = [layer('highpass', 2600, 0.5, -0.65, 0.3), layer('highpass', 3200, 0.5, 0.65, 1.1)];
     } catch {
       this.ctx = null;
     }
@@ -432,6 +483,22 @@ export class GameAudio {
     this.swell(0.9, 0.08 * size, 300, 120, 0.8, 0.05, 0.3, 'lowpass');
   }
 
+  /**
+   * Haykırış: derin, uzun ve katmanlı bir savaş kükreyişi; uzak tepelerden gecikmeli yankısı döner.
+   */
+  warcry() {
+    this.vocal(78, { dur: 2.8, f: [[0, 0.95], [0.1, 1.55], [0.6, 1.4], [1, 0.62]], vol: 1, formants: [500, 1120], tremHz: 29, breath: 0.55 }, 0);
+    this.vocal(156, { dur: 2.5, f: [[0, 1.05], [0.12, 1.5], [1, 0.8]], vol: 0.4, formants: [760, 1700], vibHz: 6, vibDepth: 10, breath: 0.7 }, 0, 0.04);
+    this.vocal(52, { dur: 2.6, f: [[0, 1], [0.2, 1.3], [1, 0.7]], vol: 0.45, formants: [300, 700], tremHz: 21, breath: 0.4 }, 0, 0.02);
+    this.tone('sawtooth', 62, 30, 2.6, 0.7);
+    this.noise(2.4, 0.55, 900, 180, 0.6);
+    this.tone('sine', 46, 24, 1.8, 0.9);
+    // Uzaktan dönen yankılar: sağdan ve soldan, kısılarak.
+    for (const [d, pan, k] of [[0.55, -0.7, 0.3], [0.9, 0.7, 0.2], [1.4, -0.4, 0.12]]) {
+      this.vocal(78, { dur: 2.2, f: [[0, 1.5], [0.5, 1.35], [1, 0.62]], vol: k, formants: [480, 1000], tremHz: 29, breath: 0.6 }, pan, d);
+    }
+  }
+
   roar() {
     this.vocal(92, { dur: 1.7, f: [[0, 1.2], [0.15, 1.5], [1, 0.6]], vol: 0.9, formants: [520, 1150], tremHz: 31, breath: 0.5 }, 0);
     this.tone('sawtooth', 68, 38, 1.6, 0.6);
@@ -513,14 +580,26 @@ export class GameAudio {
    * Her karede çağrılır: dinleyiciyi günceller, rüzgârı hıza göre ayarlar ve
    * savaş yoğunluğuna göre davul/bas vuruşlarını birkaç yüz milisaniye önceden planlar.
    */
-  frame(listener: Listener, speed: number, intensity: number, playing: boolean) {
+  frame(listener: Listener, speed: number, intensity: number, playing: boolean, amb: Ambience = { forest: 0, gust: 0.5 }) {
     this.listener = listener;
     const ctx = this.ctx;
-    if (!ctx || !this.musicBus || !this.windGain || !this.windFilter) return;
+    if (!ctx || !this.musicBus || !this.windLow || !this.windMid) return;
     const now = ctx.currentTime;
     const rush = Math.min(1, speed / 45);
-    this.windGain.gain.setTargetAtTime(playing ? 0.03 + rush * rush * 0.3 : 0.015, now, 0.25);
-    this.windFilter.frequency.setTargetAtTime(300 + rush * 1500, now, 0.25);
+    const on = playing ? 1 : 0.4;
+    const f = amb.forest;
+    const gust = amb.gust;
+    // Uğultu ve esinti: rüzgâr estikçe dalgalanır, ormanda ağaçların arasında daha gür çıkar.
+    this.windLow.gain.gain.setTargetAtTime(on * (0.05 + gust * 0.07 + f * 0.06 + rush * 0.12), now, 0.4);
+    this.windMid.gain.gain.setTargetAtTime(on * (0.012 + gust * gust * 0.05 + f * 0.035 + rush * rush * 0.28), now, 0.3);
+    this.windMid.filter.frequency.setTargetAtTime(320 + gust * 260 + rush * 1500, now, 0.4);
+    // Yaprak hışırtısı: yalnızca ağaçların arasında; kısa kıpırtılarla titrer.
+    for (const [i, l] of this.leaves.entries()) {
+      const flutter = 0.6 + Math.random() * 0.8;
+      l.gain.gain.setTargetAtTime(on * f * (0.012 + gust * 0.05) * flutter, now, 0.08 + i * 0.03);
+      l.filter.frequency.setTargetAtTime(2400 + gust * 1600 + i * 500, now, 0.5);
+    }
+    if (playing) this.wildlife(f, gust);
     this.intensity = playing ? intensity : 0;
     this.musicBus.gain.setTargetAtTime(this.intensity > 0.05 ? 0.35 + this.intensity * 0.45 : 0, now, this.intensity > 0.05 ? 0.4 : 1.2);
     if (this.intensity <= 0.05) {
@@ -535,6 +614,105 @@ export class GameAudio {
       this.beat(this.stepNo, this.nextStep - now);
       this.nextStep += STEP;
       this.stepNo += 1;
+    }
+  }
+
+  /** Ormanın canlı sesleri: sakin anlarda kuş cıvıltıları, sert rüzgârda gıcırdayan gövdeler. */
+  private wildlife(forest: number, gust: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const dt = 1 / 60;
+    this.birdT -= dt * (0.25 + forest * 1.2);
+    if (this.birdT <= 0 && this.intensity < 0.2) {
+      this.birdT = 3 + Math.random() * 7;
+      this.bird(Math.random() * 1.6 - 0.8, 0.5 + forest * 0.5);
+    }
+    this.creakT -= dt * forest * gust;
+    if (this.creakT <= 0) {
+      this.creakT = 4 + Math.random() * 6;
+      this.creak(Math.random() * 1.6 - 0.8, forest);
+    }
+  }
+
+  /** Kuş: birkaç kısa, perdesi kayan ıslık; her çağrı farklı bir ezgi. */
+  bird(pan = 0, loud = 1) {
+    const dest = this.out(pan);
+    if (!this.ctx || !dest) return;
+    const base = 2300 + Math.random() * 1800;
+    const n = 2 + Math.floor(Math.random() * 4);
+    const up = Math.random() < 0.5;
+    for (let i = 0; i < n; i++) {
+      const f0 = base * (1 + (Math.random() - 0.5) * 0.25);
+      const f1 = f0 * (up ? 1.35 : 0.7);
+      const d = i * (0.11 + Math.random() * 0.06);
+      this.tone('sine', f0, f1, 0.07 + Math.random() * 0.05, 0.035 * loud, d, dest, 0.01);
+      this.tone('sine', f0 * 2, f1 * 2, 0.05, 0.006 * loud, d, dest, 0.01);
+    }
+  }
+
+  /** Rüzgârda eğilen ağacın gövdesinden gelen alçak, uzun gıcırtı. */
+  private creak(pan: number, loud: number) {
+    const ctx = this.ctx;
+    const dest = this.out(pan);
+    if (!ctx || !dest) return;
+    const t = ctx.currentTime;
+    const dur = 0.6 + Math.random() * 0.7;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    const f0 = 70 + Math.random() * 60;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(f0 * (1.15 + Math.random() * 0.3), t + dur * 0.6);
+    o.frequency.linearRampToValueAtTime(f0 * 0.95, t + dur);
+    // Gıcırtının tırtıklı dokusu: hızlı titreşim.
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 18 + Math.random() * 14;
+    const lg = ctx.createGain();
+    lg.gain.value = 0.5;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 600 + Math.random() * 500;
+    bp.Q.value = 4;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.03 * loud, t + dur * 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const am = ctx.createGain();
+    am.gain.value = 0.5;
+    lfo.connect(lg).connect(am.gain);
+    o.connect(bp).connect(am).connect(g).connect(dest);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + dur + 0.05);
+    lfo.stop(t + dur + 0.05);
+  }
+
+  /** Yaylı katman: bir akorun hafif akortsuz testere dişleri, yumuşak süzgeçle; yavaş açılır, yavaş söner. */
+  private pad(freqs: number[], dur: number, vol: number, delay: number) {
+    const ctx = this.ctx;
+    const m = this.musicBus;
+    if (!ctx || !m) return;
+    const t = ctx.currentTime + delay;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(700, t);
+    lp.frequency.linearRampToValueAtTime(1500, t + dur * 0.5);
+    lp.frequency.linearRampToValueAtTime(800, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.25);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g).connect(m);
+    for (const f of freqs) {
+      for (const det of [-7, 7]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        o.detune.value = det;
+        o.connect(lp);
+        o.start(t);
+        o.stop(t + dur + 0.05);
+      }
     }
   }
 
@@ -555,5 +733,7 @@ export class GameAudio {
       if (v > 0.8) this.tone('square', f * 2, f * 2, STEP * 1.2, 0.05, delay, m, 0.01);
     }
     if (v > 0.7 && i % 4 === 2) this.noise(0.05, 0.12, 7000, 5000, 3, delay, m, 'highpass');
+    // Her ölçünün başında yaylılar bir akor çalar.
+    if (v > 0.3 && i === 0) this.pad(PAD[Math.floor(step / 16) % PAD.length], STEP * 16, 0.035 + v * 0.03, delay);
   }
 }

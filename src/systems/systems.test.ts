@@ -43,7 +43,7 @@ describe('TitanMeter', () => {
     expect(m.selected).toBe('kaya'); // seçim kendiliğinden değişmez
     expect(m.totalNeedles).toBe(3);
     expect(m.transform()).toBe(true);
-    expect(m.needles).toEqual({ ofke: 0, firtina: 2, kaya: 0, zirve: 0, isin: 0, buz: 0 });
+    expect(m.needles).toEqual({ ofke: 0, firtina: 2, kaya: 0, zirve: 0, isin: 0, buz: 0, haykiran: 0 });
     m.end();
     expect(m.selected).toBe('firtina'); // seçili tür bitince elde olana geçilir
   });
@@ -114,7 +114,7 @@ describe('TitanMeter', () => {
 describe('dev formları', () => {
   it('kutu zarı her türü ağırlığına göre verir', () => {
     expect(rollTitan(0)).toBe('ofke');
-    expect(rollTitan(0.999)).toBe('buz');
+    expect(rollTitan(0.999)).toBe('haykiran');
     const counts: Record<string, number> = {};
     for (let i = 0; i < 1000; i++) {
       const id = rollTitan((i + 0.5) / 1000);
@@ -186,5 +186,18 @@ describe('ilerleme', () => {
     expect(s.cls).toBe('nefer'); // seviye 1'de taktisyen kilitli
     expect(s.bossDefeated).toBe(false);
     expect(sanitizeSave({ level: 7, cls: 'taktisyen' }).cls).toBe('taktisyen');
+  });
+});
+
+describe('Haykıran Dev', () => {
+  it('yumruğunu sertleştirir, kükreyişi devleri sersemletir ve barı sonuna kadar doldurur', () => {
+    const d = TITANS.haykiran;
+    expect(d.q.kind).toBe('buff');
+    expect(d.e.kind).toBe('stun');
+    if (d.e.kind !== 'stun') return;
+    expect(d.e.fill).toBe(true);
+    expect(d.e.call).toBeGreaterThan(d.e.radius);
+    expect(d.e.cd).toBeGreaterThanOrEqual(45); // bar dolduran kükreyiş sık kullanılamaz
+    expect(d.weight).toBeGreaterThan(0);
   });
 });
