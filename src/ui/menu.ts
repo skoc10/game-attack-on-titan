@@ -238,6 +238,7 @@ export class Menu {
               <li>Kapıdan çık; atınla uzak surlara doğru yol al.</li>
               <li>Kancayla ağaçlara ve devlere tutun, hızlanıp <b>enseden</b> vur.</li>
               <li>Gaz kendiliğinden dolmaz: <b>mavi bayraklı ikmal noktalarında</b> doldur.</li>
+              <li>Kulelere, değirmenlere, şapellere, karakollara ve kaleye uğra: yanındaki sancak sararır ve orası <b>doğuş noktan</b> olur, ölünce orada doğarsın.</li>
               <li>Büyük devler seni <b>yakalayıp ağzına götürür</b>: sol tıkla kes ya da Space ile sıyrıl.</li>
               <li>Enseye <b>tek temiz kesik</b> devi devirir.</li>
               <li>Devin yüzünün önündeyken <b>gözlerine</b> vur: dev bir süre <b>kör olur</b> ve sersemler, seni ancak dibindeyken sezer. Zırhlıların yüzü kapalıdır.</li>

@@ -728,12 +728,14 @@ export class Player {
     this.grabbedBy = null;
     this.moveTarget = null;
     this.mode = 'foot';
-    // Baskın sürerken savunulan yerin yanında doğar.
+    // Baskın sürerken savunulan yerin yanında, değilse en son uğranan yapının yanında doğar.
     const rp = g.raid.respawnPoint();
+    const camp = rp ? null : g.camps.respawnPoint();
     if (rp) this.pos.set(rp[0], rp[1], rp[2]);
+    else if (camp) this.pos.set(camp.pos[0], camp.pos[1], camp.pos[2]);
     else this.pos.set(P.spawn.x, 0, P.spawn.z);
     this.vel.set(0, 0, 0);
-    this.onGround = rp === null;
+    this.onGround = rp === null && camp === null;
     this.hp = this.maxHp;
     this.gas = this.maxGas;
     this.blades = this.maxBlades;
@@ -742,7 +744,7 @@ export class Player {
     g.meter.value = Math.floor(g.meter.value * 0.5);
     g.horse.pos.set(this.pos.x + 4, g.world.heightAt(this.pos.x + 4, this.pos.z), this.pos.z);
     g.horse.mode = 'idle';
-    g.hud.toast(rp ? 'Baskın yerinde yeniden doğdun' : 'Taç Suru’nda yeniden doğdun');
+    g.hud.toast(rp ? 'Baskın yerinde yeniden doğdun' : camp ? `${camp.name} yanında yeniden doğdun` : 'Taç Suru’nda yeniden doğdun');
   }
 
   // ---------------------------------------------------------------- kılıç

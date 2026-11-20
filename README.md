@@ -174,6 +174,14 @@ Demir Koç formundayken `Q` (**Sur Delen**) hücumuyla herhangi bir halka sura t
 - **Sur asansörleri:** her surun her kapısının iç yanında ahşap iskele, vinç ve yük kafesi. Tepesi sur hizasındadır.
 - **Talim alanları:** Taç Suru kasabalarının dışında çitli alanlar. İçlerinde ensesi kırmızı işaretli ahşap dev kuklaları vardır.
 
+### Doğuş noktaları
+
+Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, karakol 45 m, diğerleri 26–32 m) sancak sararır ve orası **doğuş noktan** olur. Ölünce en son uğradığın yapının yanında doğarsın; baskın sürerken baskın yerinde doğarsın. Uğradığın yapılar kaydedilir ve büyük haritada sarı sancakla gösterilir, seçili olan **DOĞUŞ** yazısıyla işaretlenir.
+
+## Sınır Ormanı
+
+Haritanın dış kenarını baştan sona sık bir orman sarar. Kuşak dünyanın sınırından yaklaşık 480 m içeride seyrek başlar, sınıra yaklaştıkça sıklaşır. Sınırda uzun çamlar ve geniş yapraklılar gövde gövdeye durur, dışarısı görünmez. Orman yalnızca yakındayken çizilir.
+
 ## Yeni dev türleri
 
 | Tür | Boy | Özelliği | Nerede |

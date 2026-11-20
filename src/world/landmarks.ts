@@ -19,6 +19,9 @@ export interface Landmark {
   name?: string;
   x2?: number;
   z2?: number;
+  /** Yapının yanındaki doğuş noktası (yerde, açıkta). */
+  sx: number;
+  sz: number;
 }
 
 /** Yerleşim denetimi için dünyanın sorguları (yapılar birbirine, ağaçlara ve evlere girmesin). */
@@ -219,7 +222,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
       kit.put('cloth', tbox(0.08, 2.4, 3.6), x + 3.6, g + h + 7.6, z + 1.7, BANNER[ring]);
     }
     solid(x, z, 9, 9, g, g + h);
-    marks.push({ kind: 'tower', x, z });
+    marks.push({ kind: 'tower', x, z, sx: x, sz: z + 8 });
   };
 
   // ---------------------------------------------------------------- yel değirmeni
@@ -263,7 +266,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     rotor.userData.spin = 0.5 + rng() * 0.4;
     rotors.push(rotor);
     solid(x, z, 7, 7, g, g + h, 4.5);
-    marks.push({ kind: 'windmill', x, z });
+    marks.push({ kind: 'windmill', x, z, sx: x + Math.sin(yaw) * 8, sz: z + Math.cos(yaw) * 8 });
   };
 
   // ---------------------------------------------------------------- çan kuleli şapel
@@ -297,7 +300,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     kit.put('cloth', tbox(1.4, 0.5, 0.06), tx + 0.6, g + T + 14.6, tz, 0x3a3a3a);
     solid(x, z, alongX ? L : Wd, alongX ? Wd : L, g, g + H, 6);
     solid(tx, tz, 7, 7, g, g + T);
-    marks.push({ kind: 'chapel', x, z });
+    marks.push({ kind: 'chapel', x, z, sx: fxp - fx * 5, sz: fzp - fz * 5 });
   };
 
   // ---------------------------------------------------------------- ahşap karakol
@@ -377,7 +380,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     kit.put('wood', tbox(0.25, 14, 0.25), x, g + 7, z, WOOD_DARK);
     kit.put('cloth', tbox(0.08, 2.6, 4), x, g + 12.6, z + 2.1, BANNER[2]);
     claim(x, z, S + 10);
-    marks.push({ kind: 'fort', x, z, name });
+    marks.push({ kind: 'fort', x, z, name, sx: x + (gx - x) * 0.45, sz: z + (gz - z) * 0.45 });
   };
 
   // ---------------------------------------------------------------- eski kale harabesi
@@ -438,7 +441,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
       kit.put('stone', new THREE.DodecahedronGeometry(s, 0), px, heightAt(px, pz) - 0.3 + s * 0.3, pz, rng() < 0.5 ? MOSS : STONE_DARK, rng() * 3, rng() * 3);
     }
     claim(x, z, S + 20);
-    marks.push({ kind: 'castle', x, z, name: 'Eski Kale' });
+    marks.push({ kind: 'castle', x, z, name: 'Eski Kale', sx: x + 26, sz: z + 26 });
   };
 
   // ---------------------------------------------------------------- su kemeri
@@ -476,7 +479,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     kit.put('water', tbox(alongX ? L : 3.2, 0.2, alongX ? 3.2 : L), cx, top + 0.25, cz, 0xffffff);
     solid(cx, cz, alongX ? L : 4.6, alongX ? 4.6 : L, top - 3, top, 0, top - 3);
     const [ex, ez] = at(n * SP);
-    marks.push({ kind: 'aqueduct', x: x0, z: z0, x2: ex, z2: ez, name: 'Su Kemeri' });
+    marks.push({ kind: 'aqueduct', x: x0, z: z0, x2: ex, z2: ez, name: 'Su Kemeri', sx: cx + (alongX ? 0 : 10), sz: cz + (alongX ? 10 : 0) });
   };
 
   // ---------------------------------------------------------------- sur asansörü
@@ -505,7 +508,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
       for (const [px, pz] of [[-2.1, -2.1], [-2.1, 2.1], [2.1, -2.1], [2.1, 2.1]] as const) kit.put('wood', tbox(0.15, 2.2, 0.15), x + px, cy + 1.1, z + pz, WOOD_DARK);
       kit.put('wood', tbox(0.12, top + 5.6 - cy - 2.2, 0.12), x, (top + 5.6 + cy + 2.2) / 2, z, 0x2a241e);
       solid(x, z, 6.4, 6.4, g, top);
-      marks.push({ kind: 'lift', x, z });
+      marks.push({ kind: 'lift', x, z, sx: Math.sin(a) * (rr - 7), sz: Math.cos(a) * (rr - 7) });
       return;
     }
   };
@@ -541,7 +544,7 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     for (const s of [-1, 1]) kit.put('wood', tbox(0.5, 12, 0.5), x + s * 16, g + 6, z + 11, WOOD_DARK);
     kit.put('wood', tbox(32, 0.1, 0.1), x, g + 11.5, z + 11, 0x2a241e);
     claim(x, z, HX + 6);
-    marks.push({ kind: 'yard', x, z, name: 'Talim Alanı' });
+    marks.push({ kind: 'yard', x, z, name: 'Talim Alanı', sx: x, sz: z + 8 });
   };
 
   // ================================================================ yerleşim
