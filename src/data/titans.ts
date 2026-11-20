@@ -62,6 +62,11 @@ export interface TitanDef {
    * F bırakılınca ya da `time` sn dolunca dev `throw` m/sn hızla baktığı yöne fırlatılır.
    */
   carry?: { maxH: number; chomp: number; dmg: number; drain: number; time: number; throw: number };
+  /**
+   * Çıldırma: dev formundayken bar `at` oranına (ör. yarısına) inince form çıldırır ve dönüşüm bitene dek öyle kalır.
+   * Darbeler `dmg` kat sert, yumruklar `speed` kat kısa sürede, koşu `move` kat hızlı; bar `drain` kat hızlı yanar.
+   */
+  berserk?: { at: number; dmg: number; speed: number; move: number; drain: number };
   /** Kutudan çıkma ağırlığı. */
   weight: number;
   palette: Palette;
@@ -236,6 +241,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     slam: { name: 'Ezme', cost: 9, radius: 15, dmg: 95 },
     onslaught: { melee: 1.3, guard: 1.5, block: 0.9, chain: 0.08, max: 6, hold: 4 },
     carry: { maxH: 0.8, chomp: 0.7, dmg: 0.35, drain: 2, time: 8, throw: 24 },
+    berserk: { at: 0.5, dmg: 1.4, speed: 0.75, move: 1.25, drain: 1.25 },
     weight: 8,
     // Ten sıradan devlerinki gibi baştan aşağı aynı renk; çatlak yok, yalnızca gözler parlar.
     palette: { skin: 0xc9a58c, top: 0xc9a58c, legs: 0xc9a58c, sleeve: 0xc9a58c, hair: 0x2a1a10, hairStyle: 'wild', eye: 0x36f0b0, glow: 0x36f0b0 },

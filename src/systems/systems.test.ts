@@ -229,6 +229,18 @@ describe('Hücum Devi', () => {
     for (const id of TITAN_IDS) if (id !== 'haykiran') expect(TITANS[id].carry).toBeUndefined();
   });
 
+  it('bar yarıya inince çıldırır: daha sert ve hızlı vurur, hızlı koşar, bar daha çabuk yanar', () => {
+    const b = TITANS.haykiran.berserk;
+    expect(b).toBeDefined();
+    if (!b) return;
+    expect(b.at).toBe(0.5);
+    expect(b.dmg).toBeGreaterThan(1);
+    expect(b.speed).toBeLessThan(1);
+    expect(b.move).toBeGreaterThan(1);
+    expect(b.drain).toBeGreaterThan(1);
+    for (const id of TITAN_IDS) if (id !== 'haykiran') expect(TITANS[id].berserk).toBeUndefined();
+  });
+
   it('Öfke Devi’nden iri, teni sıradan devler gibi tek renk, saçı dağınık', () => {
     const d = TITANS.haykiran;
     expect(d.height).toBeGreaterThan(TITANS.ofke.height);

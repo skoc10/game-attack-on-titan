@@ -274,6 +274,7 @@ export class Hud {
           pw('V', 'Tekme', CFG.kick.cost, cd(t.kickCd)) +
           `<span><kbd>G</kbd> Gard${t.guarding ? (t.combo > 1 ? ` <b>SERİ ×${t.combo}</b>` : ' <b>AÇIK</b>') : ''}</span>` +
           pw('Space', d.slam.name, d.slam.cost) +
+          (t.berserk ? '<span><b style="color:#ff5a3a">ÇILDIRMA</b></span>' : d.berserk ? `<span>Çıldırma: bar %${Math.round(d.berserk.at * 100)}</span>` : '') +
           (d.onslaught ? `<span>Hücum Ruhu${t.heat > 0 ? ` <b>×${t.heat} · +%${Math.round(t.heat * d.onslaught.chain * 100)}</b>` : ''}</span>` : '') +
           '<span><kbd>T</kbd> Çık</span>',
       );
