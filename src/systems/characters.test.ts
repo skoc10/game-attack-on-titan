@@ -48,7 +48,8 @@ describe('av puanı ve karakterler', () => {
     expect([...prices].sort((a, b) => a - b)).toEqual(prices);
     expect(new Set(prices).size).toBe(prices.length);
     const forms = CHAR_IDS.flatMap((id) => (CHARACTERS[id].titan ? [CHARACTERS[id].titan] : []));
-    expect([...forms].sort()).toEqual([...INNATE_IDS].sort());
+    // Her özgün formun tek sahibi var; iğneyle de alınan Haykıran Dev'in sahibi Yiğit.
+    expect([...forms].sort()).toEqual([...INNATE_IDS, 'haykiran'].sort());
     for (const id of CHAR_IDS) {
       const c = CHARACTERS[id];
       expect(c.id).toBe(id);
@@ -150,5 +151,37 @@ describe('karakterin kendi dev formu', () => {
     expect(m.selected).toBe('firtina'); // eldeki iğne seçili kalır
     m.clearNeedles();
     expect(m.selected).toBe('simsek');
+  });
+});
+
+describe('Yiğit ve Haykıran Dev', () => {
+  it('Yiğit’in kendi formu Haykıran Dev’dir; hem av puanı hem seviye ister', () => {
+    const c = CHARACTERS.yigit;
+    expect(c.titan).toBe('haykiran');
+    expect(c.price).toBeGreaterThan(CHARACTERS.alp.price);
+    expect(c.level).toBeGreaterThan(1);
+    expect(CHAR_IDS).toContain('yigit');
+  });
+
+  it('kendi formu dolu barla iğnesiz, o formun iğnesi varsa yarım barla iğneyle açılır', () => {
+    const m = new TitanMeter();
+    m.setInnate('haykiran');
+    expect(m.selected).toBe('haykiran');
+    m.value = m.max * 0.6;
+    expect(m.canTransform()).toBe(false); // iğne yok, bar dolu değil
+    m.addNeedle('haykiran');
+    expect(m.selected).toBe('haykiran');
+    expect(m.canTransform()).toBe(true);
+    expect(m.transform()).toBe(true);
+    expect(m.needles.haykiran).toBe(0); // yarım barla iğne harcandı
+    m.end();
+    m.value = m.max;
+    expect(m.transform()).toBe(true);
+    expect(m.needles.haykiran).toBe(0); // dolu barla iğnesiz
+    m.end();
+    // Döngüde aynı form iki kez yer almaz.
+    m.addNeedle('kaya');
+    expect(m.cycle()).toBe('kaya');
+    expect(m.cycle()).toBe('haykiran');
   });
 });

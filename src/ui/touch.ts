@@ -220,7 +220,7 @@ export class TouchControls {
       grabbed: p.grabbedBy !== null,
       cocoon: g.cocoon.active,
       canTransform: m.canTransform(),
-      formChoices: TITAN_IDS.filter((id) => m.needles[id] > 0).length + (m.innate ? 1 : 0),
+      formChoices: TITAN_IDS.filter((id) => m.needles[id] > 0 && id !== m.innate).length + (m.innate ? 1 : 0),
       interact: p.interactKind(),
       hooked: p.grapple.active,
       aimHook: g.aim !== null,

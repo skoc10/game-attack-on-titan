@@ -1,8 +1,8 @@
 import type { HairStyle } from '../enemies/humanoid';
-import type { InnateId } from './titans';
+import type { FormId } from './titans';
 
-export type CharId = 'aras' | 'defne' | 'bora' | 'ilkim' | 'kuzey' | 'zeren' | 'tugrul' | 'ece' | 'mete' | 'aybuke' | 'nehir' | 'kaan' | 'sena' | 'alp' | 'oguz';
-export const CHAR_IDS: CharId[] = ['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke', 'nehir', 'kaan', 'sena', 'alp', 'oguz'];
+export type CharId = 'aras' | 'defne' | 'bora' | 'ilkim' | 'kuzey' | 'zeren' | 'tugrul' | 'ece' | 'mete' | 'aybuke' | 'nehir' | 'kaan' | 'sena' | 'alp' | 'yigit' | 'oguz';
+export const CHAR_IDS: CharId[] = ['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke', 'nehir', 'kaan', 'sena', 'alp', 'yigit', 'oguz'];
 
 /**
  * Av puanıyla alınan karakter. Sayılar sınıfın değerleriyle çarpılır (1 = değişmez).
@@ -28,7 +28,8 @@ export interface CharDef {
   meter: number;
   /** Dev formunda barın tükenme hızı (küçük = uzun süre). */
   drain: number;
-  titan: InnateId | null;
+  /** Kendi dev formu: karakterlere özgü bir form ya da iğnesi de bulunan bir form. */
+  titan: FormId | null;
   look: { skin: number; hair: number; hairStyle: HairStyle; top: number; cloak: number; eye: number };
 }
 
@@ -209,6 +210,21 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     blades: 1.3,
     titan: 'koc',
     look: { skin: 0xb98a66, hair: 0x1a1412, hairStyle: 'short', top: 0x3c444c, cloak: 0x8a6a34, eye: 0xff9a3a },
+  },
+  yigit: {
+    ...base,
+    id: 'yigit',
+    name: 'Yiğit',
+    title: 'Vadi Haykırığı',
+    bio: 'Sur ötesinde, yıkık bir köyde büyüdü. Kükreyişi vadide yankılanınca devler bile durup dinler.',
+    perk: 'Can +%10 · dev barı %15 hızlı dolar · kendi formu: Haykıran Dev',
+    price: 10000,
+    level: 13,
+    hp: 1.1,
+    meter: 1.15,
+    drain: 0.95,
+    titan: 'haykiran',
+    look: { skin: 0xe6c2a0, hair: 0x2a1a10, hairStyle: 'wild', top: 0x3a4a3a, cloak: 0x2f6a52, eye: 0x3fa070 },
   },
   oguz: {
     ...base,
