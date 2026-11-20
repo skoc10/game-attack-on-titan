@@ -1,4 +1,5 @@
 import { RAIDS, type RaidId } from '../data/raids';
+import { sanitizeCamps } from './camps';
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
 import { NPC_IDS, NPCS, type NpcId } from '../data/npcs';
@@ -36,6 +37,9 @@ export interface SaveData {
   inv: InvState;
   /** Püskürtülen baskınlar. */
   raids: RaidId[];
+  /** Uğranan yapılar (doğuş noktaları, yapı sırasıyla) ve şu an seçili olanı (-1: şehir). */
+  camps: number[];
+  camp: number;
 }
 
 export const MAX_UPGRADE = 5;
@@ -68,6 +72,8 @@ export function newSave(): SaveData {
     contracts: { nuran: newContractState(), kagan: newContractState(), behram: newContractState() },
     inv: newInv(),
     raids: [],
+    camps: [],
+    camp: -1,
   };
 }
 
@@ -173,6 +179,10 @@ export function sanitizeSave(raw: unknown): SaveData {
   d.inv = sanitizeInv(r.inv);
   const won = Array.isArray(r.raids) ? r.raids : [];
   d.raids = RAIDS.map((x) => x.id).filter((id) => won.includes(id));
+  // Yapı sayısı burada bilinmez; oyun açılınca yeniden sınırlanır.
+  const cp = sanitizeCamps(r.camps, r.camp, 100000);
+  d.camps = cp.camps;
+  d.camp = cp.camp;
   if (typeof r.cls === 'string' && r.cls in CLASS_UNLOCK && classUnlocked(d, r.cls as ClassId)) d.cls = r.cls as ClassId;
   return d;
 }

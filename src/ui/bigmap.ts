@@ -4,6 +4,7 @@ import { hex } from '../data/titans';
 import { RAIDS } from '../data/raids';
 import { crateColor } from '../world/crates';
 import { ARCS, DIRS, DISTRICTS, GIANT_FOREST, ROAD_END } from '../world/layout';
+import { EDGE_FOREST } from '../world/forest';
 
 const W = CFG.world;
 /** Yakınlaştırma sınırları (ekran pikseli / metre). */
@@ -46,6 +47,7 @@ export class BigMap {
         <span><i style="background:#ff4a3a"></i>Baskın</span>
         <span><i style="background:#c9564c"></i>Dev</span>
         <span><i style="background:#9c7a52"></i>Köy</span>
+        <span><i style="background:#c9a24a"></i>Doğuş noktası</span>
         <span><i style="background:#7fc8f0"></i>Gaz</span>
         <span><i style="background:#8fd18a"></i>At</span>
       </div>`;
@@ -263,6 +265,20 @@ export class BigMap {
     const [ex, ey] = P(W.size / 2, W.size / 2);
     const [fx, fy] = P(-W.size / 2, -W.size / 2);
     c.fillRect(Math.min(ex, fx), Math.min(ey, fy), Math.abs(fx - ex), Math.abs(fy - ey));
+    // Haritayı saran sınır ormanı: dış kenarda koyu yeşil bir kuşak.
+    {
+      const [x, y] = P(0, 0);
+      c.fillStyle = '#12261a';
+      c.beginPath();
+      c.arc(x, y, EDGE_FOREST.outer * s, 0, Math.PI * 2);
+      c.arc(x, y, EDGE_FOREST.dense * s, 0, Math.PI * 2, true);
+      c.fill('evenodd');
+      c.fillStyle = 'rgba(18, 38, 26, 0.55)';
+      c.beginPath();
+      c.arc(x, y, EDGE_FOREST.dense * s, 0, Math.PI * 2);
+      c.arc(x, y, EDGE_FOREST.inner * s, 0, Math.PI * 2, true);
+      c.fill('evenodd');
+    }
     disc(W.walls[2].r, '#223020');
     disc(W.walls[1].r, '#2a3a24');
     disc(W.walls[0].r, '#3a3a30');
@@ -344,6 +360,26 @@ export class BigMap {
         c.fillStyle = '#a07a50';
         c.fillRect(x - 22 * s, y - 15 * s, 44 * s, 30 * s);
       }
+    }
+
+    // Doğuş noktaları: uğranan yapıların sancakları; seçili olan parlak ve adıyla.
+    for (const cp of g.camps.points) {
+      if (!cp.seen) continue;
+      const [x, y] = P(cp.x, cp.z);
+      if (x < -20 || y < -20 || x > Wd + 20 || y > Ht + 20) continue;
+      const k = cp.active ? 1.6 : 1;
+      c.fillStyle = cp.active ? '#ffe27a' : '#c9a24a';
+      c.strokeStyle = '#2a2014';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x, y - 12 * k);
+      c.lineTo(x + 8 * k, y - 9 * k);
+      c.lineTo(x, y - 6 * k);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      if (cp.active) this.label('DOĞUŞ', x, y - 24, 11, '#ffe27a');
     }
 
     // Surlar ve kapılar
@@ -442,6 +478,11 @@ export class BigMap {
       {
         const [x, y] = P(GIANT_FOREST.x, GIANT_FOREST.z + GIANT_FOREST.r * 0.55);
         this.label(GIANT_FOREST.name.toLocaleUpperCase('tr'), x, y, 13, '#9fe0a0');
+      }
+      {
+        const r = (EDGE_FOREST.inner + EDGE_FOREST.dense) / 2;
+        const [x, y] = P(Math.sin(Math.PI * 0.62) * r, Math.cos(Math.PI * 0.62) * r);
+        this.label('SINIR ORMANI', x, y, 13, '#9fe0a0');
       }
       W.walls.forEach((w, i) => {
         const [x, y] = P(Math.sin(-Math.PI * 0.25) * w.r, Math.cos(-Math.PI * 0.25) * w.r);

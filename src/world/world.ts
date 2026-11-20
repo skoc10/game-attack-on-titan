@@ -3,7 +3,7 @@ import { mulberry32 } from '../core/rng';
 import { buildMountains, buildSky, buildTerrain, heightAt } from './terrain';
 import { buildWalls } from './walls';
 import { wallPush, wallSolid, wallTopAt } from './layout';
-import { buildForest, buildProps, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
+import { EDGE_FOREST, buildForest, buildProps, edgeForest, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
 import { buildLandmarks, type Landmark } from './landmarks';
 
@@ -43,6 +43,8 @@ export class World {
   /** Anıtsal yapılar (kuleler, değirmenler, karakollar, kale...) ve dönen değirmen kanatları. */
   readonly landmarks: Landmark[];
   private readonly rotors: THREE.Mesh[];
+  /** Kenar ormanının parçaları (uzaktakiler gizlenir). */
+  private readonly edgeMeshes: THREE.InstancedMesh[];
 
   constructor(scene: THREE.Scene, fogColor: THREE.Color) {
     this.scene = scene;
@@ -67,6 +69,14 @@ export class World {
     scene.add(ruins.walls, ruins.roofs);
 
     this.grappleTargets.push(walls, ...forest, ruins.walls, ruins.roofs);
+
+    // Haritayı saran orman kuşağı: köylerin içine girmez; yalnızca yakındaki parçaları çizilir.
+    const outerVillages = this.villages.filter((v) => Math.hypot(v.x, v.z) > EDGE_FOREST.inner - 150);
+    const edge = edgeForest((x, z) => outerVillages.some((v) => Math.hypot(v.x - x, v.z - z) < 95));
+    this.edgeMeshes = buildForest(edge, mulberry32(4243));
+    scene.add(...this.edgeMeshes);
+    this.grappleTargets.push(...this.edgeMeshes);
+    for (const t of edge) this.trees.push(t);
 
     const put = <T>(grid: Map<number, T[]>, x: number, z: number, item: T) => {
       const k = key(Math.floor(x / CELL), Math.floor(z / CELL));
@@ -142,6 +152,11 @@ export class World {
 
   /** Yel değirmenlerinin kanatları döner (yalnızca yakındakiler). */
   update(dt: number, x: number, z: number) {
+    // Kenar ormanı yalnızca oyuncu yakınındayken çizilir (sis zaten 2,2 km'de kapanır).
+    for (const m of this.edgeMeshes) {
+      const c = m.boundingSphere!.center;
+      m.visible = Math.hypot(c.x - x, c.z - z) < 2600 + m.boundingSphere!.radius;
+    }
     for (const r of this.rotors) {
       if (Math.abs(r.position.x - x) > 900 || Math.abs(r.position.z - z) > 900) continue;
       r.rotation.z += dt * (r.userData.spin as number);

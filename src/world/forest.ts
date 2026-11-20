@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG } from '../data/config';
-import type { Rng } from '../core/rng';
+import { mulberry32, type Rng } from '../core/rng';
 import { heightAt } from './terrain';
 import { DIRS, EDGE, GIANT_FOREST, ROAD_END, districtGap, inGiantForest, onRoad, wallDist } from './layout';
 
@@ -66,6 +66,40 @@ export function generateTrees(rng: Rng): Tree[] {
         if (!validSpot(x, z)) continue;
         trees.push({ x, z, y: heightAt(x, z) - 1, r: 1.2 + rng() * 0.6, h: 30 + rng() * 14, kind: rng() < 0.3 ? 1 : 0 });
       }
+    }
+  }
+  return trees;
+}
+
+/** Haritayı saran orman kuşağı: iç kenarı seyrek başlar, dünyanın sınırına doğru sıklaşır. */
+export const EDGE_FOREST = { inner: EDGE - 480, dense: EDGE - 160, outer: EDGE + 300 } as const;
+
+/**
+ * Dünyanın kenarını baştan sona saran sık orman. Kendi rastgele sayı akışını kullanır (öbür ağaçların,
+ * köylerin ve evlerin yeri değişmez). `skip` doğruysa o noktaya ağaç konmaz (köyler gibi).
+ */
+export function edgeForest(skip: (x: number, z: number) => boolean): Tree[] {
+  const rng = mulberry32(4242);
+  const F = EDGE_FOREST;
+  const half = CFG.world.size / 2 - 6;
+  const trees: Tree[] = [];
+  const STEP = 16;
+  for (let gx = -half; gx <= half; gx += STEP) {
+    for (let gz = -half; gz <= half; gz += STEP) {
+      const r0 = Math.hypot(gx, gz);
+      if (r0 < F.inner - STEP || r0 > F.outer + STEP) continue;
+      const x = gx + (rng() - 0.5) * STEP * 0.9;
+      const z = gz + (rng() - 0.5) * STEP * 0.9;
+      const r = Math.hypot(x, z);
+      if (r < F.inner || r > F.outer || Math.abs(x) > half || Math.abs(z) > half) continue;
+      // İç kenarda seyrek, sınıra yaklaştıkça sık.
+      const k = r >= F.dense ? 1 : (r - F.inner) / (F.dense - F.inner);
+      if (rng() > 0.15 + 0.85 * k * k) continue;
+      if (inGiantForest(x, z, 30) || skip(x, z)) continue;
+      const tall = r > F.dense;
+      const kind = rng() < 0.7 ? 0 : 1;
+      const h = (kind === 0 ? 32 + rng() * 22 : 26 + rng() * 16) * (tall ? 1.15 : 1);
+      trees.push({ x, z, y: heightAt(x, z) - 1, r: 1.3 + rng() * 1.1, h, kind });
     }
   }
   return trees;

@@ -16,6 +16,7 @@ import { Inventory } from './player/inventory';
 import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
+import { Camps } from './world/camps';
 import { clamp, lerp } from './core/rng';
 import { World } from './world/world';
 import { crateColor, Crates, type Crate } from './world/crates';
@@ -78,6 +79,8 @@ export class Game {
   readonly horse: Horse;
   readonly crates: Crates;
   readonly stations: Stations;
+  /** Yapılardaki doğuş noktaları. */
+  readonly camps: Camps;
   readonly grass: Grass;
   private readonly sun: THREE.DirectionalLight;
   private skyTime = 0;
@@ -184,6 +187,7 @@ export class Game {
     this.horse = new Horse(this, CFG.player.spawn.x + 4, CFG.player.spawn.z + 2);
     this.crates = new Crates(this.scene, this.world.villages);
     this.stations = new Stations(this.scene, this.world);
+    this.camps = new Camps(this);
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
     this.story = new Story(this);
@@ -426,6 +430,7 @@ export class Game {
     this.save = newSave();
     this.save.mode = mode;
     this.story.restart();
+    this.camps.paint();
     this.loadoutDirty = true;
     this.meter.value = 0;
     this.meter.clearNeedles();
@@ -959,6 +964,7 @@ export class Game {
     this.spawner.update(sdt, this);
     this.raid.update(sdt);
     this.breaker.update(sdt);
+    this.camps.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);
     const gasRatio = this.player.gas / this.player.maxGas;
