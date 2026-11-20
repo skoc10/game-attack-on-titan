@@ -154,8 +154,8 @@ describe('karakterin kendi dev formu', () => {
   });
 });
 
-describe('Yiğit ve Haykıran Dev', () => {
-  it('Yiğit’in kendi formu Haykıran Dev’dir; hem av puanı hem seviye ister', () => {
+describe('Yiğit ve Hücum Devi', () => {
+  it('Yiğit’in kendi formu Hücum Devi’dir; hem av puanı hem seviye ister', () => {
     const c = CHARACTERS.yigit;
     expect(c.titan).toBe('haykiran');
     expect(c.price).toBeGreaterThan(CHARACTERS.alp.price);

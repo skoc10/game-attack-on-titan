@@ -34,7 +34,13 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 | **Fırtına Devi** 11 m | Rüzgâr (mavi) | Çok hızlı, yüksek sıçrar; barı çabuk yakar, darbeye dayanıksız | Pençe −1 | Atılım −10: ileri fırlar | Girdap −16: çevresini biçer | Dalış −8 |
 | **Kaya Devi** 17 m | Taş (yeşil) | Yavaş, darbelere çok dayanıklı; her vuruşu zırh kırar | Ağır Yumruk −2,5 | Koç Hücumu −18: yolundakini ezer | Deprem −22: geniş alanı sarsar | Ezme −10 |
 | **Zirve Devi** 26 m | Doruk (mor) | En büyüğü; çok yavaş, zıplayamaz, ağaçları ezip geçer | Süpürme −3 | Kaya Fırlat −14: nişana kaya atar | Sarsıntı −25: çok geniş alanı sersemletir | Tepinme −10 |
-| **Haykıran Dev** 18 m | Haykırış (deniz yeşili) | Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü | Yumruk −1,5 | Sertleşme −22: yumruk taşlaşır, zırh kırar | Kükreme −5 (60 sn'de bir): 80 m içini sersemletir, **dev barını sonuna kadar doldurur**, 450 m içindeki devler sesini duyup gelir | Ezme −9 |
+| **Hücum Devi** 18 m | Hücum (deniz yeşili) | Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü. **Asıl özelliği Hücum Ruhu** (aşağıda) | Yumruk −1,5 | Sertleşme −22: yumruk taşlaşır, zırh kırar | Kükreme −5 (60 sn'de bir): 80 m içini sersemletir, **dev barını sonuna kadar doldurur**, 450 m içindeki devler sesini duyup gelir | Ezme −9 |
+
+   **Hücum Ruhu (Hücum Devi'nin asıl özelliği):**
+   - Yumruk, tekme ve ısırık her zaman %30 sert vurur.
+   - Gardda ya da bir darbeyi gardla karşıladıktan hemen sonra atılan yumruk, tekme ve ısırık bir de 1,5 kat sert vurur (toplam ~2 kat, gard serisinin artışı da üstüne eklenir).
+   - Gard darbelerin %90'ını tutar (öbür formlarda %75).
+   - Her yakın dövüş isabeti bir **hücum yükü** ekler (en çok 6). Her yük bütün güçleri (yumruk, tekme, ısırık, ezme, kükreme dışı tüm darbeler) %8 güçlendirir; 4 saniye isabet olmazsa yükler söner. Yükler dev formu panelinde görünür.
 
 7. Büyük devler (7 m ve üzeri) seni **eliyle yakalayıp ağzına götürür**. Ağza varmadan kurtulma barını doldur: sol tıkla seri basıp parmakları kes, `Space` ile gaz patlaması yap (12 gaz) ya da barın ve iğnen yetiyorsa `T` ile elinin içinde deve dönüş. Dev ne kadar büyükse kurtulmak o kadar zor; kurtulamazsan ağır bir ısırık yersin.
 8. Demir Sur kapısındaki **Kapı Kıran**'ı yen, Kalkan Suru'nu aş.
@@ -278,7 +284,7 @@ Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kada
 | Kaan | Uzak Nişancı | 5200 · Sv 8 | Kılıç erişimi +%20, gaz +%10 | Uzunkol Devi (20 m): kolları dizini geçer; uzaktan savuruş, kapan (sersemletme), taş fırlatma |
 | Sena | İz Sürücü | 6800 · Sv 10 | Hız +%12, gaz +%15 | Avcı Devi (22 m): derisiz, kasları dışarıda; en hızlı büyük form, av atılımı, kök sarsıntısı |
 | Alp | Sur Demircisi | 8800 · Sv 12 | Can +%40, kılıç dayanımı +%30 | Demir Koç (19 m): metal plakalı, darbelere en dayanıklı form; zırh delen yumruk, sur delen tos, kızgın plaka |
-| Yiğit | Vadi Haykırığı | 10000 · Sv 13 | Can +%10, bar %15 hızlı dolar, formda %5 yavaş biter | Haykıran Dev (18 m): dağınık saçlı, sertleşen yumruk, barı dolduran kükreyiş. Haykırış İğnesi varsa yarım barla da dönüşür |
+| Yiğit | Vadi Haykırığı | 10000 · Sv 13 | Can +%10, bar %15 hızlı dolar, formda %5 yavaş biter | Hücum Devi (18 m): dağınık saçlı; Hücum Ruhu ile yakın dövüşte en sert form, sertleşen yumruk, barı dolduran kükreyiş. Hücum İğnesi varsa yarım barla da dönüşür |
 | Oğuz | Dağ Çobanı | 11500 · Sv 14 | Bar %25 hızlı dolar, formda %10 yavaş biter | Çoban Devi (24 m): kürklü, boynuzlu; dev kaya fırlatma, geniş buyruk kükreyişi |
 
 Son altı karakter yeni devlerin formlarına sahiptir ve almak için **hem av puanı hem seviye** gerekir: seviye XP ile yükselir, menüde eksik kalan şart kırmızı görünür. Yalnızca av puanı harcanır; seviye düşmez.

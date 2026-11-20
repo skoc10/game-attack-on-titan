@@ -217,7 +217,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Yiğit',
     title: 'Vadi Haykırığı',
     bio: 'Sur ötesinde, yıkık bir köyde büyüdü. Kükreyişi vadide yankılanınca devler bile durup dinler.',
-    perk: 'Can +%10 · dev barı %15 hızlı dolar · kendi formu: Haykıran Dev',
+    perk: 'Can +%10 · dev barı %15 hızlı dolar · kendi formu: Hücum Devi',
     price: 10000,
     level: 13,
     hp: 1.1,

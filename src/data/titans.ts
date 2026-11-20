@@ -49,6 +49,13 @@ export interface TitanDef {
   q: Ability;
   e: Ability;
   slam: { name: string; cost: number; radius: number; dmg: number };
+  /**
+   * Hücum Ruhu (formun asıl özelliği): yumruk, tekme ve ısırık `melee` kat sert vurur; gardda ya da gardla
+   * karşıladıktan hemen sonra atılan darbe bir de `guard` kat sert vurur, gard daha çok darbe tutar (`block`).
+   * Her isabet bir hücum yükü ekler (en çok `max`): her yük bütün güçleri `chain` oranında güçlendirir.
+   * Yükler `hold` sn yeni isabet olmazsa söner.
+   */
+  onslaught?: { melee: number; guard: number; block: number; chain: number; max: number; hold: number };
   /** Kutudan çıkma ağırlığı. */
   weight: number;
   palette: Palette;
@@ -200,12 +207,13 @@ export const TITANS: Record<TitanId, TitanDef> = {
     palette: { skin: 0xa8c0e0, top: 0x98b0d2, legs: 0x869fc4, hair: 0xe8f4ff, hairStyle: 'spiky', eye: 0x3f6bff, glow: 0x7fa8ff },
     opts: { style: 'titan', outline: 0.003, bulk: 1.12, head: 0.92, arm: 1.08, armor: true, plateColor: 0xd4e8ff, cracks: true },
   },
-  // Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü: yumruğunu taşa kestirir; kükreyişi barını sonuna kadar doldurur.
+  // Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü. Asıl özelliği Hücum Ruhu: yakın dövüşte
+  // her darbesi sert, gardda daha da sert; art arda isabetlerle bütün güçleri güçlenir. Kükreyişi barını doldurur.
   haykiran: {
     id: 'haykiran',
-    name: 'Haykıran Dev',
-    needle: 'Haykırış İğnesi',
-    tagline: 'Kükre, sertleş, yık.',
+    name: 'Hücum Devi',
+    needle: 'Hücum İğnesi',
+    tagline: 'Saldır, durma, yık.',
     color: 0x36f0b0,
     height: 18,
     radius: 3,
@@ -220,6 +228,7 @@ export const TITANS: Record<TitanId, TitanDef> = {
     q: { kind: 'buff', name: 'Sertleşme', cost: 22, cd: 16, dur: 9, mult: 2.6 },
     e: { kind: 'stun', name: 'Kükreme', cost: 5, cd: 60, radius: 80, stun: 4, fill: true, call: 450 },
     slam: { name: 'Ezme', cost: 9, radius: 15, dmg: 95 },
+    onslaught: { melee: 1.3, guard: 1.5, block: 0.9, chain: 0.08, max: 6, hold: 4 },
     weight: 8,
     // Ten sıradan devlerinki gibi baştan aşağı aynı renk; çatlak yok, yalnızca gözler parlar.
     palette: { skin: 0xc9a58c, top: 0xc9a58c, legs: 0xc9a58c, sleeve: 0xc9a58c, hair: 0x2a1a10, hairStyle: 'wild', eye: 0x36f0b0, glow: 0x36f0b0 },
