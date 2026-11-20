@@ -4,7 +4,7 @@ import { buildMountains, buildSky, buildTerrain, heightAt } from './terrain';
 import { buildWalls } from './walls';
 import { wallPush, wallSolid, wallTopAt } from './layout';
 import { EDGE_FOREST, buildForest, buildProps, edgeForest, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
-import { buildRuins, generateBuildings, roofY, type Building, type Village } from './ruins';
+import { buildRuins, generateBuildings, roofY, type Building, type HousePiece, type Village } from './ruins';
 import { buildLandmarks, type Landmark } from './landmarks';
 
 const CELL = 32;
@@ -43,6 +43,8 @@ export class World {
   /** Anıtsal yapılar (kuleler, değirmenler, karakollar, kale...) ve dönen değirmen kanatları. */
   readonly landmarks: Landmark[];
   private readonly rotors: THREE.Mesh[];
+  /** Evlerin birleşik ağlardaki yerleri (yıkılınca biçimleri değiştirilir). */
+  private readonly pieces: Map<Building, HousePiece>;
   /** Kenar ormanının parçaları (uzaktakiler gizlenir). */
   private readonly edgeMeshes: THREE.InstancedMesh[];
 
@@ -67,6 +69,7 @@ export class World {
     this.villages = gen.villages;
     const ruins = buildRuins(this.buildings, rng);
     scene.add(ruins.walls, ruins.roofs);
+    this.pieces = ruins.pieces;
 
     this.grappleTargets.push(walls, ...forest, ruins.walls, ruins.roofs);
 
@@ -148,6 +151,54 @@ export class World {
       }
     }
     return false;
+  }
+
+  /** (x, z)'ye `r` metreden yakın, ayakta duran evler (kuleler ve öbür yapılar değil). */
+  housesNear(x: number, z: number, r: number) {
+    const out: Building[] = [];
+    for (let cx = Math.floor((x - r) / CELL); cx <= Math.floor((x + r) / CELL); cx++) {
+      for (let cz = Math.floor((z - r) / CELL); cz <= Math.floor((z + r) / CELL); cz++) {
+        const cell = this.buildingGrid.get(key(cx, cz));
+        if (!cell) continue;
+        for (const b of cell) {
+          if (b.wrecked || !this.pieces.has(b) || out.includes(b)) continue;
+          const dx = Math.max(b.minX - x, 0, x - b.maxX);
+          const dz = Math.max(b.minZ - z, 0, z - b.maxZ);
+          if (Math.hypot(dx, dz) < r) out.push(b);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Evi yıkar: duvarlar kırık, alçak bir harabeye iner (üst kenarı düzensiz), çatı çöker.
+   * Geriye kalan kırık duvarların içinden geçilir.
+   */
+  wreckHouse(b: Building) {
+    const pc = this.pieces.get(b);
+    if (!pc || b.wrecked) return false;
+    b.wrecked = true;
+    const stub = 2 + Math.random() * 1.8;
+    const jag = (x: number, z: number) => {
+      const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+      return 0.45 + (s - Math.floor(s)) * 0.8;
+    };
+    const wp = pc.walls.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = pc.wallStart; i < pc.wallStart + pc.wallCount; i++) {
+      const y = wp.getY(i);
+      wp.setY(i, b.base + Math.min(y - b.base, stub * jag(wp.getX(i), wp.getZ(i))));
+    }
+    wp.needsUpdate = true;
+    if (pc.roof && pc.roofCount > 0) {
+      const rp = pc.roof.geometry.attributes.position as THREE.BufferAttribute;
+      for (let i = pc.roofStart; i < pc.roofStart + pc.roofCount; i++) rp.setY(i, b.base - 1);
+      rp.needsUpdate = true;
+    }
+    b.roofH = 0;
+    b.eave = b.base;
+    b.top = b.base;
+    return true;
   }
 
   /** Yel değirmenlerinin kanatları döner (yalnızca yakındakiler). */

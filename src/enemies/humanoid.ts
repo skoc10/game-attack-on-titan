@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lerp, mulberry32 } from '../core/rng';
 import { muscleTexture, skinTexture, toonGradient } from '../core/textures';
 
-export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob';
+export type HairStyle = 'none' | 'short' | 'spiky' | 'long' | 'ponytail' | 'bob' | 'wild';
 export type BodyStyle = 'human' | 'giant' | 'titan';
 
 export interface Palette {
@@ -482,6 +482,36 @@ export function buildHumanoid(height: number, pal: Palette, o: HumanoidOpts = {}
       for (const s of [-1, 1]) {
         const lock = rig.part(hairRoot, GEO.cone, hairMat, 0.012, 0.07, 0.011, s * 0.067, 0.045, 0.034, false);
         lock.rotation.x = Math.PI;
+      }
+    } else if (hairStyle === 'wild') {
+      // Dağınık, birbirine girmiş uzun saç: kabarık bir kütle, omuza inen boyları ve yönleri farklı tutamlar,
+      // tepede ve yanlarda fırlamış uçlar, alnına düşen düzensiz perçemler. Her seferinde aynı biçim.
+      let sd = 4271;
+      const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      rig.part(hairRoot, GEO.capsule, hairMat, 0.074, 0.046, 0.036, 0, 0.012, -0.056);
+      rig.part(hairRoot, GEO.sphere, hairMat, 0.08, 0.06, 0.06, 0, 0.1, -0.03, false);
+      const lock = (x: number, y: number, z: number, dx: number, dy: number, dz: number, len: number, w: number) => {
+        dirBuf.set(dx, dy, dz).normalize();
+        const m = rig.part(hairRoot, GEO.cone, hairMat, w, len, w * 0.8, x + dirBuf.x * len * 0.45, y + dirBuf.y * len * 0.45, z + dirBuf.z * len * 0.45, false);
+        m.quaternion.setFromUnitVectors(UP, dirBuf);
+      };
+      // Arkaya ve yanlara sarkan, uçları kıvrılıp ayrılan tutamlar.
+      for (let i = 0; i < 26; i++) {
+        const a = -2.5 + (i / 25) * 5 + (rnd() - 0.5) * 0.25;
+        const sx = Math.sin(a);
+        const sz = -Math.cos(a);
+        const y = 0.03 + rnd() * 0.09;
+        lock(sx * 0.068, y, -0.02 + sz * 0.066, sx * (0.25 + rnd() * 0.6) + (rnd() - 0.5) * 0.5, -1 + rnd() * 0.55, sz * (0.2 + rnd() * 0.5) + (rnd() - 0.5) * 0.3, 0.07 + rnd() * 0.11, 0.016 + rnd() * 0.012);
+      }
+      // Tepede ve yanlarda fırlamış, kabarık uçlar.
+      for (let i = 0; i < 12; i++) {
+        const a = rnd() * Math.PI * 2;
+        lock(Math.sin(a) * 0.05, 0.13 + rnd() * 0.02, -0.02 + Math.cos(a) * 0.05, Math.sin(a) * (0.6 + rnd()), 0.4 + rnd() * 0.8, Math.cos(a) * (0.6 + rnd()) - 0.3, 0.04 + rnd() * 0.04, 0.014 + rnd() * 0.01);
+      }
+      // Yüzün önüne düşen düzensiz perçemler.
+      for (let i = 0; i < 5; i++) {
+        const x = -0.045 + i * 0.0225 + (rnd() - 0.5) * 0.01;
+        lock(x, 0.125, 0.058, (rnd() - 0.5) * 0.9, -1, 0.25 + rnd() * 0.35, 0.05 + rnd() * 0.05, 0.012 + rnd() * 0.006);
       }
     } else if (hairStyle === 'bob') {
       // Küt kesim: ense hizasında biten arka perde ve çene hizasına inen yan tutamlar.

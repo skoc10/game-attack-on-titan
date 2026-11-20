@@ -17,6 +17,7 @@ import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { Camps } from './world/camps';
+import { Demolition } from './world/demolish';
 import { tickWind } from './core/wind';
 import { clamp, lerp } from './core/rng';
 import { World } from './world/world';
@@ -82,6 +83,8 @@ export class Game {
   readonly stations: Stations;
   /** Yapılardaki doğuş noktaları. */
   readonly camps: Camps;
+  /** Dev tekmesiyle yıkılan evler ve molozları. */
+  readonly demolition: Demolition;
   readonly grass: Grass;
   private readonly sun: THREE.DirectionalLight;
   private skyTime = 0;
@@ -189,6 +192,7 @@ export class Game {
     this.crates = new Crates(this.scene, this.world.villages);
     this.stations = new Stations(this.scene, this.world);
     this.camps = new Camps(this);
+    this.demolition = new Demolition(this);
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
     this.story = new Story(this);
@@ -719,6 +723,13 @@ export class Game {
     this.grantXp(10);
   }
 
+  /** Dev formunda bir ev yıkıldı: ilkinde ne olduğunu söyler. */
+  onHouseWrecked() {
+    const n = this.demolition.count;
+    if (n === 1) this.hud.toast('Evi tekmeyle yıktın — dev formunda tekme evleri yerle bir eder');
+    else if (n % 10 === 0) this.hud.toast(`${n} ev yıkıldı`);
+  }
+
   onTransform() {
     const p = this.player.pos;
     this.stats.transforms += 1;
@@ -974,6 +985,7 @@ export class Game {
     this.raid.update(sdt);
     this.breaker.update(sdt);
     this.camps.update(sdt);
+    this.demolition.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);
     const gasRatio = this.player.gas / this.player.maxGas;

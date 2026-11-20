@@ -34,7 +34,7 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 | **Fırtına Devi** 11 m | Rüzgâr (mavi) | Çok hızlı, yüksek sıçrar; barı çabuk yakar, darbeye dayanıksız | Pençe −1 | Atılım −10: ileri fırlar | Girdap −16: çevresini biçer | Dalış −8 |
 | **Kaya Devi** 17 m | Taş (yeşil) | Yavaş, darbelere çok dayanıklı; her vuruşu zırh kırar | Ağır Yumruk −2,5 | Koç Hücumu −18: yolundakini ezer | Deprem −22: geniş alanı sarsar | Ezme −10 |
 | **Zirve Devi** 26 m | Doruk (mor) | En büyüğü; çok yavaş, zıplayamaz, ağaçları ezip geçer | Süpürme −3 | Kaya Fırlat −14: nişana kaya atar | Sarsıntı −25: çok geniş alanı sersemletir | Tepinme −10 |
-| **Haykıran Dev** 15 m | Haykırış (deniz yeşili) | Uzun saçlı, sırım gibi kaslı, çevik dövüşçü | Yumruk −1,5 | Sertleşme −22: yumruk taşlaşır, zırh kırar | Kükreme −5 (60 sn'de bir): 80 m içini sersemletir, **dev barını sonuna kadar doldurur**, 450 m içindeki devler sesini duyup gelir | Ezme −9 |
+| **Haykıran Dev** 18 m | Haykırış (deniz yeşili) | Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü | Yumruk −1,5 | Sertleşme −22: yumruk taşlaşır, zırh kırar | Kükreme −5 (60 sn'de bir): 80 m içini sersemletir, **dev barını sonuna kadar doldurur**, 450 m içindeki devler sesini duyup gelir | Ezme −9 |
 
 7. Büyük devler (7 m ve üzeri) seni **eliyle yakalayıp ağzına götürür**. Ağza varmadan kurtulma barını doldur: sol tıkla seri basıp parmakları kes, `Space` ile gaz patlaması yap (12 gaz) ya da barın ve iğnen yetiyorsa `T` ile elinin içinde deve dönüş. Dev ne kadar büyükse kurtulmak o kadar zor; kurtulamazsan ağır bir ısırık yersin.
 8. Demir Sur kapısındaki **Kapı Kıran**'ı yen, Kalkan Suru'nu aş.
@@ -186,6 +186,10 @@ Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, ka
 - **Savaş müziği:** davul ve basın üstüne her ölçüde yaylı bir akor çalar.
 - **Ağaçlar ve otlar** rüzgârda sallanır; sallanış rüzgâr sesiyle aynı esintiyi izler.
 - **Renk:** ton eşlemeden sonra hafif keskinleştirme, yumuşak kontrast eğrisi ve sıcak–serin renk dengesi uygulanır.
+
+## Ev yıkma
+
+Dev formundayken **tekme** (`V`, dokunmatikte TEKME) değdiği evleri yıkar. Duvarlar düzensiz kenarlı, alçak bir harabeye iner, çatı çöker. Sıva, kiremit ve kiriş parçaları tekmenin yönünde savrulup yere yığılır, toz bulutu kalkar, çöküş sesi duyulur. Yıkılan evin içinden geçilir. Kuleler, şapeller ve öbür anıtsal yapılar yıkılmaz. Yıkılan evler oyunu yeniden açınca yerine gelir.
 
 ## Sınır Ormanı
 

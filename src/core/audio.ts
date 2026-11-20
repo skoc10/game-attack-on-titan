@@ -313,6 +313,18 @@ export class GameAudio {
     this.noise(1.1, v * 0.9, 700, 60, 0.6, 0.02, dest, 'lowpass');
     this.noise(1.8, v * 0.35, 2400, 300, 0.5, 0.08, dest);
   }
+  /** Ev çöküşü: kırılan kirişlerin çatırtısı, dökülen taş ve kiremit, derin bir gümbürtü. Uzaklaştıkça kısılır. */
+  crumble(x: number, z: number, size = 1) {
+    const sp = spatial(this.listener, x, z, 60);
+    const v = Math.max(0.12, sp.gain) * size;
+    const dest = this.out(sp.pan);
+    this.tone('sine', 70, 28, 0.9, v * 0.8, 0, dest);
+    this.noise(1.4, v * 0.7, 900, 90, 0.6, 0, dest, 'lowpass');
+    // Kirişler çatırdar, taşlar ve kiremitler döküldükçe tıkırdar.
+    for (let i = 0; i < 9; i++) this.noise(0.05 + Math.random() * 0.06, v * (0.25 + Math.random() * 0.35), 1400 + Math.random() * 2600, 400, 1.5, Math.random() * 0.25, dest);
+    for (let i = 0; i < 12; i++) this.noise(0.04, v * (0.12 + Math.random() * 0.2), 3000 + Math.random() * 4000, 1500, 3, 0.25 + Math.random() * 1.1, dest);
+    this.noise(1.8, v * 0.3, 2400, 600, 0.5, 0.1, dest);
+  }
   /** Dev formunun ışını: yükselen vızıltı ve yakıcı hışırtı. */
   beam() {
     this.tone('sawtooth', 180, 900, 0.5, 0.35);
