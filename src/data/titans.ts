@@ -200,29 +200,30 @@ export const TITANS: Record<TitanId, TitanDef> = {
     palette: { skin: 0xa8c0e0, top: 0x98b0d2, legs: 0x869fc4, hair: 0xe8f4ff, hairStyle: 'spiky', eye: 0x3f6bff, glow: 0x7fa8ff },
     opts: { style: 'titan', outline: 0.003, bulk: 1.12, head: 0.92, arm: 1.08, armor: true, plateColor: 0xd4e8ff, cracks: true },
   },
-  // Uzun saçlı, sırım gibi kaslı dövüşçü: yumruğunu taşa kestirir; kükreyişi barını sonuna kadar doldurur.
+  // Dağınık uzun saçlı, sıradan devler gibi çıplak tenli iri dövüşçü: yumruğunu taşa kestirir; kükreyişi barını sonuna kadar doldurur.
   haykiran: {
     id: 'haykiran',
     name: 'Haykıran Dev',
     needle: 'Haykırış İğnesi',
     tagline: 'Kükre, sertleş, yık.',
     color: 0x36f0b0,
-    height: 15,
-    radius: 2.5,
+    height: 18,
+    radius: 3,
     speed: 16,
     sprint: 24,
     jump: 25,
     gravity: 42,
     drain: 1.5,
-    armor: 0.9,
-    camDist: 30,
-    punch: { name: 'Yumruk', dmg: 140, range: 8, reach: 6, time: 0.46, cost: 1.5, armorBreak: false },
+    armor: 0.85,
+    camDist: 35,
+    punch: { name: 'Yumruk', dmg: 150, range: 9, reach: 7, time: 0.48, cost: 1.5, armorBreak: false },
     q: { kind: 'buff', name: 'Sertleşme', cost: 22, cd: 16, dur: 9, mult: 2.6 },
     e: { kind: 'stun', name: 'Kükreme', cost: 5, cd: 60, radius: 80, stun: 4, fill: true, call: 450 },
     slam: { name: 'Ezme', cost: 9, radius: 15, dmg: 95 },
     weight: 8,
-    palette: { skin: 0xa47a64, top: 0x96705c, legs: 0x8a6654, hair: 0x22160f, hairStyle: 'long', eye: 0x36f0b0, glow: 0x36f0b0 },
-    opts: { style: 'titan', outline: 0.0028, bulk: 1.02, head: 0.94, arm: 1.1, cracks: true, muscle: true },
+    // Ten sıradan devlerinki gibi baştan aşağı aynı renk; çatlak yok, yalnızca gözler parlar.
+    palette: { skin: 0xc9a58c, top: 0xc9a58c, legs: 0xc9a58c, sleeve: 0xc9a58c, hair: 0x2a1a10, hairStyle: 'wild', eye: 0x36f0b0, glow: 0x36f0b0 },
+    opts: { style: 'titan', outline: 0.0028, bulk: 1.05, head: 0.94, arm: 1.1 },
   },
 };
 

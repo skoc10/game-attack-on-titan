@@ -732,6 +732,8 @@ export class TitanForm {
           g.slashes.spawn(v, look, d.height * 0.25 + 1.5, this.stone ? 0xbfe0ff : d.color, 0, 0.3);
         }
         g.smoke.burst(v, 6, 6, 1.1, 0xa39a86, d.radius, 1.5, 2 + d.height * 0.15, 1.3);
+        // Tekme evlere de değer: değdiği evleri yıkar.
+        g.demolition.kickAt(cx, cz, d.punch.range * K.range * 0.8 + d.radius * 0.5, p.pos);
       }
       if (this.kickT >= this.kickDur) this.kickT = -1;
     }

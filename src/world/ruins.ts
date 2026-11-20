@@ -25,6 +25,18 @@ export interface Building {
   town: boolean;
   /** Havadaki yapılarda (su kemeri köprüsü) alt yüzün yüksekliği: altından geçilir. */
   under?: number;
+  /** Ev yıkıldı: geriye alçak, kırık duvarlar kalır; içinden geçilir. */
+  wrecked?: boolean;
+}
+
+/** Bir evin birleşik ağlardaki yeri: duvar ve çatı ağındaki ilk köşe ve köşe sayısı. */
+export interface HousePiece {
+  walls: THREE.Mesh;
+  wallStart: number;
+  wallCount: number;
+  roof: THREE.Mesh | null;
+  roofStart: number;
+  roofCount: number;
 }
 
 /** Çatının duvardan dışarı taşma payı. */
@@ -107,12 +119,16 @@ export function buildRuins(buildings: Building[], rng: Rng) {
   const CHUNK = 420;
   const wallBuckets = new Map<string, THREE.BufferGeometry[]>();
   const roofBuckets = new Map<string, THREE.BufferGeometry[]>();
+  const chunkKey = (x: number, z: number) => `${Math.floor(x / CHUNK)}:${Math.floor(z / CHUNK)}`;
   const bucket = (map: Map<string, THREE.BufferGeometry[]>, x: number, z: number) => {
-    const k = `${Math.floor(x / CHUNK)}:${Math.floor(z / CHUNK)}`;
+    const k = chunkKey(x, z);
     let list = map.get(k);
     if (!list) map.set(k, (list = []));
     return list;
   };
+  /** Bir kovadaki parçaların toplam köşe sayısı (sıradaki parçanın birleşik ağdaki başlangıcı). */
+  const used = (list: THREE.BufferGeometry[]) => list.reduce((n, g) => n + g.attributes.position.count, 0);
+  const marks = new Map<Building, { key: string; wallStart: number; wallCount: number; roofStart: number; roofCount: number }>();
   const FW = 4; // cephe karosu genişliği (m)
   const FH = 3.2; // kat yüksekliği (m)
   const RT = 3; // çatı karosu (m)
@@ -126,6 +142,8 @@ export function buildRuins(buildings: Building[], rng: Rng) {
     const ruin = b.roofH <= 0;
     const wallParts = bucket(wallBuckets, cx, cz);
     const roofParts = bucket(roofBuckets, cx, cz);
+    const mark = { key: chunkKey(cx, cz), wallStart: used(wallParts), wallCount: 0, roofStart: used(roofParts), roofCount: 0 };
+    marks.set(b, mark);
 
     // Duvarlar
     const box = new THREE.BoxGeometry(w, h, d).toNonIndexed();
@@ -143,6 +161,7 @@ export function buildRuins(buildings: Building[], rng: Rng) {
     const shade = ruin ? 0.45 + rng() * 0.15 : b.town ? 0.9 + rng() * 0.14 : 0.7 + rng() * 0.16;
     const warm = b.town ? 1 - rng() * 0.08 : 0.92;
     wallParts.push(tint(box, shade, shade * (0.97 + (1 - warm) * 0.3), shade * warm));
+    mark.wallCount = box.attributes.position.count;
     if (ruin) continue;
 
     // Beşik çatı: yerel eksende mahya X boyunca kurulur, gerekirse 90° döndürülür.
@@ -180,22 +199,32 @@ export function buildRuins(buildings: Building[], rng: Rng) {
     const rs = b.town ? 0.85 + rng() * 0.25 : 0.55 + rng() * 0.2;
     roofParts.push(tint(roof, rs, rs * (b.town ? 1 : 0.95), rs * (b.town ? 1 : 0.9)));
     wallParts.push(tint(gable, shade, shade * 0.97, shade * warm));
+    mark.wallCount += gable.attributes.position.count;
+    mark.roofCount = roof.attributes.position.count;
   }
 
   const group = (buckets: Map<string, THREE.BufferGeometry[]>, mat: THREE.Material) => {
     const g = new THREE.Group();
-    for (const list of buckets.values()) {
+    const byKey = new Map<string, THREE.Mesh>();
+    for (const [k, list] of buckets) {
       if (list.length === 0) continue;
       const m = new THREE.Mesh(mergeGeometries(list, false)!, mat);
       m.castShadow = true;
       m.receiveShadow = true;
       g.add(m);
+      byKey.set(k, m);
     }
-    return g;
+    return { g, byKey };
   };
   const walls = group(wallBuckets, new THREE.MeshLambertMaterial({ map: facadeTexture(), vertexColors: true }));
   const roofs = group(roofBuckets, new THREE.MeshLambertMaterial({ map: roofTexture(), vertexColors: true, side: THREE.DoubleSide }));
-  return { walls, roofs };
+  const pieces = new Map<Building, HousePiece>();
+  for (const [b, m] of marks) {
+    const wm = walls.byKey.get(m.key);
+    if (!wm) continue;
+    pieces.set(b, { walls: wm, wallStart: m.wallStart, wallCount: m.wallCount, roof: roofs.byKey.get(m.key) ?? null, roofStart: m.roofStart, roofCount: m.roofCount });
+  }
+  return { walls: walls.g, roofs: roofs.g, pieces };
 }
 
 export const TOWN_R = CFG.world.townR;

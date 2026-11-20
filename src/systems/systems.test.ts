@@ -200,4 +200,13 @@ describe('Haykıran Dev', () => {
     expect(d.e.cd).toBeGreaterThanOrEqual(45); // bar dolduran kükreyiş sık kullanılamaz
     expect(d.weight).toBeGreaterThan(0);
   });
+
+  it('Öfke Devi’nden iri, teni sıradan devler gibi tek renk, saçı dağınık', () => {
+    const d = TITANS.haykiran;
+    expect(d.height).toBeGreaterThan(TITANS.ofke.height);
+    expect(d.palette.top).toBe(d.palette.skin);
+    expect(d.palette.legs).toBe(d.palette.skin);
+    expect(d.opts.muscle).toBeFalsy();
+    expect(d.palette.hairStyle).toBe('wild');
+  });
 });
