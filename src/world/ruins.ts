@@ -23,6 +23,8 @@ export interface Building {
   /** En yüksek nokta (mahya). */
   top: number;
   town: boolean;
+  /** Havadaki yapılarda (su kemeri köprüsü) alt yüzün yüksekliği: altından geçilir. */
+  under?: number;
 }
 
 /** Çatının duvardan dışarı taşma payı. */

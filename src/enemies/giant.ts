@@ -22,6 +22,7 @@ export interface TitanHitOpts {
 }
 export type NapeResult = 'kill' | 'hit' | 'blocked' | 'dull' | 'none';
 export type LegResult = 'down' | 'hit' | 'dull' | 'none';
+export type EyeResult = 'blind' | 'blocked' | 'dull' | 'none';
 
 const v = new THREE.Vector3();
 const LEAP_G = 30;
@@ -68,6 +69,9 @@ export class Giant {
   raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
   /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
   breaching = false;
+  /** Gözleri kesildi: iyileşene dek kalan süre (sn). Körken avını yalnızca çok yakından sezer. */
+  blindT = 0;
+  readonly eyeRadius: number;
   /** Dev formundaki oyuncunun yumruğuna gard alma olasılığı, gardın süresi ve yeniden gard için bekleme. */
   private guardChance = 0;
   private guardDur = 0;
@@ -179,6 +183,7 @@ export class Giant {
     this.radius = this.h * 0.14;
     this.napeRadius = this.h * 0.05 + 0.45;
     this.legRadius = this.h * 0.08 + 0.6;
+    this.eyeRadius = this.h * 0.03 + 0.5;
     this.maxHp = (type.hpBase + type.hpPerM * this.h) * (form ? 1 : P.hp) * (this.big ? 1.6 : 1);
     this.hp = this.maxHp;
     this.legCuts = type.legCuts;
@@ -245,6 +250,18 @@ export class Giant {
   }
   footWorld(i: number, out: THREE.Vector3) {
     return (i === 0 ? this.body.footL : this.body.footR).getWorldPosition(out);
+  }
+  eyesWorld(out: THREE.Vector3) {
+    return this.body.eyes.getWorldPosition(out);
+  }
+  /** (x, z) noktası devin yüzünün önünde mi (başının baktığı yöne göre). */
+  faces(x: number, z: number) {
+    const a = this.yaw + this.lookYaw;
+    return Math.sin(a) * (x - this.pos.x) + Math.cos(a) * (z - this.pos.z) > 0;
+  }
+  /** Kör devin avını sezdiği uzaklık. */
+  private get blindSense() {
+    return CFG.eyes.sense + this.h * 0.3;
   }
   /** Ense zırhı şu an açık mı (zırhlı devler yalnızca yere düşünce vurulabilir). */
   get napeOpen() {
@@ -345,6 +362,24 @@ export class Giant {
     }
     this.hp = Math.min(this.hp, (this.maxHp * this.napeCuts) / this.type.napeCuts);
     return 'hit';
+  }
+
+  /**
+   * Gözlere kılıç darbesi: dev bir süre kör kalır ve sersemler (elindeki av da kurtulur).
+   * Zırhlı devlerin yüzü kapalıdır; kör dev yeniden kör edilemez.
+   */
+  hitEyes(bladeOk: boolean): EyeResult {
+    if (!this.alive || this.blindT > 0) return 'none';
+    if (this.type.armored) return 'blocked';
+    if (!bladeOk) return 'dull';
+    const E = CFG.eyes;
+    const k = this.heavy ? E.heavy : 1;
+    this.flash();
+    this.blindT = E.blind * k;
+    this.body.eyeWound.visible = true;
+    this.say('pain', 1.4);
+    if (this.state !== 'downed' && this.state !== 'leap') this.stun(E.stun * k);
+    return 'blind';
   }
 
   /** Bacağa kılıç darbesi: yeterli kesik devi yere düşürür. */
@@ -456,6 +491,8 @@ export class Giant {
   private strike(game: Game) {
     const p = game.player;
     if (p.dead) return false;
+    // Kör devin savurduğu darbe çoğu kez boşa gider.
+    if (this.blindT > 0 && (this.attackKind === 'swipe' || this.attackKind === 'stomp') && Math.random() < CFG.eyes.miss) return false;
     const dx = p.pos.x - this.pos.x;
     const dz = p.pos.z - this.pos.z;
     const dist = Math.hypot(dx, dz);
@@ -586,6 +623,15 @@ export class Giant {
     if (this.guardCd > 0) this.guardCd -= dt;
     if (this.chargeCd > 0) this.chargeCd -= dt;
     if (this.commandCd > 0) this.commandCd -= dt;
+    if (this.blindT > 0) {
+      this.blindT -= dt;
+      // Kesik gözlerden buhar tüter; iyileşince yara kaybolur.
+      if (Math.random() < 0.35) {
+        this.eyesWorld(v);
+        game.particles.emit(v.x, v.y, v.z, (Math.random() - 0.5) * 1.5, 2.5 + this.h * 0.05, (Math.random() - 0.5) * 1.5, 0.9, 0xf0ece4, 0, 0.6 + this.h * 0.05, 0.25);
+      }
+      if (this.blindT <= 0) this.body.eyeWound.visible = false;
+    }
     if (this.commandT > 0) {
       this.commandT -= dt;
       // Buyruk altındaki devin başının üstünde kızıl kıvılcımlar.
@@ -622,6 +668,7 @@ export class Giant {
     const slow = this.slowT > 0 ? 0.45 : 1;
     const speed = this.type.speed * (0.8 + this.h / 40) * CFG.giantPace.walk * slow * (this.commandT > 0 ? 1.3 : 1);
     const commanded = this.commandT > 0 && dist < 700;
+    const blind = this.blindT > 0;
     let move = 0;
     let moveYaw = this.yaw;
     this.moving = false;
@@ -641,7 +688,7 @@ export class Giant {
             this.say('grunt', R.siege ? 3 : 1.2);
             break;
           }
-          if (targetable && dist < this.type.aggro * 0.45 * p.sightMult) {
+          if (targetable && dist < (blind ? this.blindSense : this.type.aggro * 0.45 * p.sightMult)) {
             this.setState('chase');
             this.say(this.type.kind === 'boss' ? 'growl' : this.voice, this.type.kind === 'boss' ? 2.5 : 1.2);
           }
@@ -659,8 +706,9 @@ export class Giant {
           moveYaw = this.wanderYaw;
         }
         // Kapşon giyen oyuncu ancak daha yakından fark edilir.
-        const sight = this.type.aggro * p.sightMult;
-        const aggro = this.home ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < sight : dist < sight;
+        // Kör dev avını ancak dibindeyken sezer.
+        const sight = blind ? this.blindSense : this.type.aggro * p.sightMult;
+        const aggro = this.home && !blind ? Math.hypot(p.pos.x - this.home.x, p.pos.z - this.home.z) < sight : dist < sight;
         if (targetable && (aggro || commanded)) {
           this.setState('chase');
           // Avını fark etti: hızlı türler çığlık atar, diğerleri kendi sesiyle seslenir.
@@ -684,6 +732,21 @@ export class Giant {
         }
         moveYaw = Math.atan2(dx, dz);
         const reach = this.reach(titan);
+        if (blind) {
+          // Kör: avını uzaklaşınca kaybeder; yakındaysa el yordamıyla, sendeleyerek ona yönelir ve savurur.
+          if (dist > this.blindSense * 2.2 && !commanded) {
+            this.setState('wander');
+            break;
+          }
+          moveYaw += Math.sin(this.stateT * 1.7 + this.phase) * 0.7;
+          if (dist > reach * 0.7) move = speed * 0.55;
+          if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
+            this.attackKind = this.heavy ? 'stomp' : 'swipe';
+            this.setState('windup');
+            this.say('grunt');
+          }
+          break;
+        }
         if (this.screamT > 0) {
           this.screamT -= dt; // çığlık atarken olduğu yerde durur
           break;
@@ -1467,6 +1530,15 @@ export class Giant {
         tiltX = 0.12;
         aL = aR = 0.1;
         lL = lR = 0;
+        if (this.blindT > 0) {
+          // Gözleri kesildi: iki eli yüzünde, başı eğik, gövde geri sendeliyor.
+          aL = aR = -1.5;
+          elbowL = elbowR = -2.2;
+          twistL = 0.6;
+          twistR = -0.6;
+          headX = 0.35;
+          tiltX = -0.08 + Math.sin(this.stateT * 9) * 0.05;
+        }
         break;
       case 'downed':
         tiltX = Math.PI / 2;
@@ -1506,6 +1578,14 @@ export class Giant {
           tiltX = 0.45;
         }
         break;
+    }
+    if (this.blindT > 0 && (this.state === 'chase' || this.state === 'wander')) {
+      // Kör yürüyüş: bir eli kesik gözlerinde, öbürü önünde el yordamıyla yoklar.
+      aR = -1.5;
+      elbowR = -2.2;
+      twistR = -0.6;
+      aL = -1.25 + Math.sin(this.phase) * 0.2;
+      headX = 0.25;
     }
     if (this.state === 'windup' && this.attackKind === 'power' && this.power) {
       // Güç hazırlığı: her güç kendi duruşuyla belli olur.

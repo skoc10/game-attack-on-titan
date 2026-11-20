@@ -315,6 +315,37 @@ export class BigMap {
       c.fillRect(x - sz / 2, y - sz / 2, sz, sz);
     }
 
+    // Anıtsal yapılar: kale, karakollar, su kemeri, talim alanları ve kuleler.
+    for (const m of g.world.landmarks) {
+      const [x, y] = P(m.x, m.z);
+      if (m.kind === 'aqueduct' && m.x2 !== undefined && m.z2 !== undefined) {
+        c.strokeStyle = '#cfc6b2';
+        c.lineWidth = Math.max(2, 5 * s);
+        c.beginPath();
+        c.moveTo(x, y);
+        c.lineTo(...P(m.x2, m.z2));
+        c.stroke();
+        continue;
+      }
+      if (x < -40 || y < -40 || x > Wd + 40 || y > Ht + 40) continue;
+      if (m.kind === 'castle' || m.kind === 'fort') {
+        const sz = Math.max(6, (m.kind === 'castle' ? 104 : 62) * s);
+        c.strokeStyle = m.kind === 'castle' ? '#b9b2a2' : '#a07a50';
+        c.lineWidth = 2;
+        c.strokeRect(x - sz / 2, y - sz / 2, sz, sz);
+        if (m.name && (m.kind === 'castle' || s > 0.05)) this.label(m.name, x, y - sz / 2 - 8, 11, '#e8dcc0');
+      } else if (m.kind === 'tower' || m.kind === 'chapel' || m.kind === 'windmill') {
+        if (s < 0.06) continue;
+        c.fillStyle = m.kind === 'tower' ? '#d6cfbd' : m.kind === 'chapel' ? '#7f8ea0' : '#e8e0cc';
+        c.beginPath();
+        c.arc(x, y, 2.5, 0, Math.PI * 2);
+        c.fill();
+      } else if (m.kind === 'yard' && s > 0.05) {
+        c.fillStyle = '#a07a50';
+        c.fillRect(x - 22 * s, y - 15 * s, 44 * s, 30 * s);
+      }
+    }
+
     // Surlar ve kapılar
     c.strokeStyle = '#d6cfbd';
     c.lineWidth = Math.max(2, W.wallT * s);
@@ -330,13 +361,12 @@ export class BigMap {
       }
       c.stroke();
     }
-    // Surdaki gedik
-    const br = g.breaker.breachPoint;
-    if (br) {
+    // Surlardaki gedikler
+    for (const br of g.breaker.breachPoints) {
       const [x, y] = P(br[0], br[1]);
       c.fillStyle = '#ff4a3a';
       c.beginPath();
-      c.arc(x, y, Math.max(5, CFG.breaker.halfWidth * s), 0, Math.PI * 2);
+      c.arc(x, y, Math.max(5, br[2] * s), 0, Math.PI * 2);
       c.fill();
       this.label('GEDİK', x, y - 16, 12, '#ff8a7a');
     }

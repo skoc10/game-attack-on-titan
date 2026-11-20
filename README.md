@@ -23,6 +23,7 @@ Açılan adresi (varsayılan `http://localhost:5173`) tarayıcıda aç. Diğer k
 1. **Taç Suru**'nun kapısından çık. Surlar birbirinden çok uzak (yarıçap 300 m / 1600 m / 3000 m); **atınla** yol al. Haritanın düzeni aşağıda, [Dünya haritası](#dünya-haritası) bölümünde.
 2. **Kanca Teçhizatı** ile ağaçlara, binalara, surlara ve devlere tutun.
 3. Devler yalnızca **enseden** ölür ve keskin kılıçla **tek temiz kesik yeter**: dev sendeler, devrilir, yere çarpar ve buharlaşır. Bacağına vurursan yere düşer; yerdeki deve de tek ense kesiği yeter. Zırhlı devin ensesi yalnızca yerdeyken kesilir (bacağına iki kesik); bölüm sonu devi üç ense kesiği ister. Kılıç körelmişse kesmez.
+   - **Göz kesiği:** devin yüzünün önündeyken gözlerine kılıç savurursan gözlerini kesersin. Dev 9 saniye **kör** kalır (gözleri kızarır, buhar tüter) ve 1,6 saniye sersemleyip ellerini yüzüne kapatır; elindeki av kurtulur. Körken seni ancak 12 m'den (artı boyunun üçte biri) yakındayken sezer, el yordamıyla sendeleyerek yürür, savurduğu darbelerin çoğu boşa gider. Kör devin önünden de enseye uzanabilirsin. Zırhlıların yüzü kapalıdır, dönüşümcüler ve bölüm sonu devleri yarı süre kör kalır.
 4. **Gaz kendiliğinden dolmaz.** Mavi bayraklı **ikmal noktalarının** yanında durunca dolar (şehirde, sur kapılarında, her kapı kasabasında ve köylerde var); gaz kutuları da doldurur.
 5. Renkli ışıklı **kutulardan dev iğnesi** çıkar. Dört tür iğne var, her biri başka bir deve dönüştürür; ışığın rengi türü gösterir. Gaz kutuları beyaz, kılıç kutuları gri ışıklıdır.
 6. Dev öldürdükçe **dev barı** dolar. Bar **en az yarıya** gelmişse ve iğnen varsa `T` ile dönüşürsün; birden fazla türün varsa `Tab` ile seçersin. Dev formunda bar güç kaynağındır: **yalnızca hareket ederken** azalır (yerinde durursan dev dinlenir, bar yanmaz), her güç kendi bedeli kadar bar harcar, bar bitince insana dönersin. Erken çıkarsan (`T`) artan bar sende kalır.
@@ -155,6 +156,23 @@ Kalkan Suru'nun dışında (orman dışında) dolaşırken bir süre sonra 300�
 - **İçeri dolanlar:** gediğin dışında dokuz dev (sıradan, koşucu, zırhlı, sıçrayan, toslayan) belirir. Önce gediğin ortasından geçer, sonra surun içine dağılırlar. Demir Koç da gedikten içeri girip surun içinde dolaşır.
 - **Öldürmek:** zırhlıdır, ensesi ancak yere düşünce kesilir. Bacaklarına dört kesik, patlar mızrak ya da sur topu onu yere serer; yerdeyken ensesine üç temiz kesik gerekir.
 - **Onarım:** Demir Koç düşünce gedik 45 saniye sonra onarılır, toplar yerine gelir. Kendisi 8 dakika sonra yeniden doğar. Büyük haritada gedik kırmızı bir işaretle görünür.
+
+### Oyuncunun Demir Koç formu surları yıkar
+
+Demir Koç formundayken `Q` (**Sur Delen**) hücumuyla herhangi bir halka sura toslarsan orada 26 m'lik bir gedik açılır; gövden gedikten geçip koşusunu sürdürür. Kapı kasabalarının hizasında ve zaten gedik olan yerde açılmaz. Gedik 90 saniye sonra onarılır; o arada devler de geçebilir. Büyük haritada kırmızıyla görünür.
+
+## Sur içi ve sur ötesi yapılar
+
+Özgün yapılar ovalara dağılmıştır. Hepsinin üstünde durulur, kanca atılır; büyük haritada işaretlidir.
+
+- **Gözcü kuleleri:** 29 taş kule, tepeleri dişli ve sancaklıdır. Sur ötesindekilerin çoğu yıkıktır.
+- **Yel değirmenleri:** köylerin yanında, kanatları döner. Sur ötesindekiler çoğunlukla yıkıktır.
+- **Çan kuleli şapeller:** şehirde iki tane, sur içindeki köylerin yanında ayrıca var.
+- **Ahşap karakollar:** yedi tane, Kalkan Suru'nun ötesinde ve Demir–Kalkan arasında. Kazık çitlidir, köşelerinde gözetleme kuleleri, içinde kışla, çadırlar ve erzak bulunur.
+- **Eski Kale:** Dev Ağaçlar Ormanı yolunun kenarında yıkık bir kale. Burcu ve kuleleri durur, perde surları yer yer gediklidir.
+- **Su Kemeri:** Taç ile Demir Sur arasındaki ovada kemerli, uzun bir köprü. Altından geçilir, üstünde yürünür.
+- **Sur asansörleri:** her surun her kapısının iç yanında ahşap iskele, vinç ve yük kafesi. Tepesi sur hizasındadır.
+- **Talim alanları:** Taç Suru kasabalarının dışında çitli alanlar. İçlerinde ensesi kırmızı işaretli ahşap dev kuklaları vardır.
 
 ## Yeni dev türleri
 
