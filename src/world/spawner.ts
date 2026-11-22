@@ -43,10 +43,10 @@ export class Spawner {
   private timer = 0;
   /** Sıradaki dönüşümcüye kalan süre. */
   private shifterT: number = CFG.shifter.first;
-  /** Çoban Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
+  /** Canavar Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
   shepherd: Giant | null = null;
   private shepherdT: number = CFG.shepherd.first;
-  /** Çoban Dev'in sürüsü: o yaşadıkça uzaklaşınca kaybolmaz. */
+  /** Canavar Dev'in sürüsü: o yaşadıkça uzaklaşınca kaybolmaz. */
   private herd: Giant[] = [];
   /** Avcı Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
   huntress: Giant | null = null;
@@ -107,14 +107,14 @@ export class Spawner {
     return g;
   }
 
-  /** Çoban Dev, oyuncu Kalkan Suru'nun dışındayken (orman dışında) 350–500 m uzakta doğar ve orada sürüsüyle bekler. */
+  /** Canavar Dev, oyuncu Kalkan Suru'nun dışındayken (orman dışında) 350–500 m uzakta doğar ve orada sürüsüyle bekler. */
   private updateShepherd(dt: number, game: Game) {
     const s = this.shepherd;
     if (s && s.alive && !s.gone) return;
     if (s) {
       this.shepherd = null;
       this.shepherdT = CFG.shepherd.respawn;
-      // Çoban düştü: sürüsü sıradan devler gibi dolaşır.
+      // Canavar Dev düştü: sürüsü sıradan devler gibi dolaşır.
       for (const h of this.herd) h.persistent = false;
       this.herd = [];
     }
@@ -139,7 +139,7 @@ export class Spawner {
         h.home = new THREE.Vector3(x, 0, z);
         this.herd.push(h);
       }
-      game.hud.banner('ÇOBAN DEV', 'Kürklü, boynuzlu bir dev sürüsüyle ufukta — dev kayalar atar, devleri buyruğuna alır');
+      game.hud.banner('CANAVAR DEV', 'Kürklü, boynuzlu bir dev sürüsüyle ufukta — dev kayalar atar, devleri buyruğuna alır');
       return;
     }
     this.shepherdT = 5;

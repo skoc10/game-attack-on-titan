@@ -467,10 +467,10 @@ export const INNATE: Record<InnateId, TitanDef> = {
     palette: { skin: 0x8a7a6c, top: 0x7e6e60, legs: 0x705f52, eye: 0xff9a3a, glow: 0xff9a3a },
     opts: { style: 'titan', outline: 0.0022, bulk: 1.3, head: 0.9, arm: 1.1, plating: { color: 0x5a636c, trim: 0xa8834a, glow: 0xff9a3a } },
   },
-  // Çoban Dev'in formu: kürklü, boynuzlu; dev kaya fırlatır, kükreyişiyle çevreyi sindirir.
+  // Canavar Dev'in formu: kürklü, boynuzlu; dev kaya fırlatır, kükreyişiyle çevreyi sindirir.
   coban: {
     id: 'coban',
-    name: 'Çoban Devi',
+    name: 'Canavar Dev',
     needle: '',
     tagline: 'Sürü onu dinler.',
     color: 0xc8a070,

@@ -48,7 +48,7 @@ export interface GiantType {
   plating?: { color: number; trim: number; glow: number };
   /** Surlara toslayıp gedik açar (Zırhlı Dev). */
   breaker?: boolean;
-  /** Çoban Dev: dev kayalar fırlatır, kaya ezip parça saçar, çevresindeki devleri yönetir. */
+  /** Canavar Dev: dev kayalar fırlatır, kaya ezip parça saçar, çevresindeki devleri yönetir. */
   shepherd?: boolean;
   /** Kürk ve boynuz (görünüş). */
   fur?: { color: number; tip: number };
@@ -364,11 +364,11 @@ export const BOSSES: Record<BossId, GiantType> = {
     xp: 1500,
     skins: [0x5a4a52],
   },
-  // Çoban Dev: kürklü, kıvrık boynuzlu, sakallı, kolları uzun. Uzaktan dev kayalar atar, kaya ezip parça saçar,
+  // Canavar Dev: kürklü, kıvrık boynuzlu, sakallı, kolları uzun. Uzaktan dev kayalar atar, kaya ezip parça saçar,
   // kükreyişiyle çevresindeki devleri sürü gibi avına salar.
   coban: {
     ...GIANT_TYPES.boss,
-    name: 'Çoban Dev',
+    name: 'Canavar Dev',
     minH: 24,
     maxH: 24,
     speed: 3.6,
