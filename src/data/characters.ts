@@ -203,7 +203,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Alp',
     title: 'Sur Demircisi',
     bio: 'Yıkılan surları yeniden ören ustaların başı; zırhını kendi dövdü.',
-    perk: 'Can +%40 · kılıç dayanımı +%30 · kendi formu: Demir Koç',
+    perk: 'Can +%40 · kılıç dayanımı +%30 · kendi formu: Zırhlı Dev',
     price: 8800,
     level: 12,
     hp: 1.4,

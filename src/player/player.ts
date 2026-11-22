@@ -1045,7 +1045,7 @@ export class Player {
     // Sura karşı omuzlar ve kollarla birlikte gövde genişliği kadar itilir (kapıdan eğilerek geçer).
     const bodyW = Math.max(T.radius, T.height * 0.24);
     const walled = wallPush(this.pos, bodyW, this.pos.y);
-    // Demir Koç formunun hücumu halka surda gedik açar; gövde gedikten geçip koşusunu sürdürür.
+    // Zırhlı Dev formunun hücumu halka surda gedik açar; gövde gedikten geçip koşusunu sürdürür.
     if (walled && T.id === 'koc' && this.titan.rushT > 0 && this.pos.y < CFG.world.wallH - 2) g.breaker.playerRam(this.pos.x, this.pos.z, bodyW + 2);
     if (g.world.resolve(this.pos, T.radius, T.height >= 20 ? BIG_COLLIDE : COLLIDE) || walled) {
       this.vel.x = (this.pos.x - px) / dt;

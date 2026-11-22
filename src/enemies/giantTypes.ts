@@ -44,9 +44,9 @@ export interface GiantType {
   pack?: number;
   /** Kolunun yetiştiği mesafenin çarpanı (uzun kollu devler). */
   reach?: number;
-  /** Baştan aşağı metal plaka zırh (Demir Koç). */
+  /** Baştan aşağı metal plaka zırh (Zırhlı Dev). */
   plating?: { color: number; trim: number; glow: number };
-  /** Surlara toslayıp gedik açar (Demir Koç). */
+  /** Surlara toslayıp gedik açar (Zırhlı Dev). */
   breaker?: boolean;
   /** Çoban Dev: dev kayalar fırlatır, kaya ezip parça saçar, çevresindeki devleri yönetir. */
   shepherd?: boolean;
@@ -389,10 +389,10 @@ export const BOSSES: Record<BossId, GiantType> = {
     fur: { color: 0x4a3628, tip: 0x8a6c50 },
     horns: 0xb4a27e,
   },
-  // Demir Koç: baştan aşağı metal plakalı, sur ötesinde dolaşan zırhlı dev. Kollarıyla yüzünü kapatıp sura toslar, gedik açar.
+  // Zırhlı Dev: baştan aşağı metal plakalı, sur ötesinde dolaşan zırhlı dev. Kollarıyla yüzünü kapatıp sura toslar, gedik açar.
   koc: {
     ...GIANT_TYPES.boss,
-    name: 'Demir Koç',
+    name: 'Zırhlı Dev',
     minH: 19,
     maxH: 19,
     speed: 4.4,

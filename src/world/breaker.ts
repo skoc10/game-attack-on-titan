@@ -22,7 +22,7 @@ export function breachAngle(phi: number) {
   return a;
 }
 
-/** Oyuncunun Demir Koç formuyla açtığı gedik ve onarılmasına kalan süre. */
+/** Oyuncunun Zırhlı Dev formuyla açtığı gedik ve onarılmasına kalan süre. */
 interface MadeBreach {
   breach: Breach;
   rubble: THREE.Mesh[];
@@ -49,9 +49,9 @@ export function breachSpot(x: number, z: number, reach: number): { ring: number;
 }
 
 /**
- * Demir Koç: sur ötesinde dolaşan, metal plakalı zırhlı dev. Oyuncu yakındayken Kalkan Suru'na doğru
+ * Zırhlı Dev: sur ötesinde dolaşan, metal plakalı zırhlı dev. Oyuncu yakındayken Kalkan Suru'na doğru
  * geri çekilip koşu yolu alır, kollarıyla yüzünü kapatarak sura toslar ve gedik açar. Gedikten devler içeri dolar.
- * Öldürülünce gedik bir süre sonra onarılır; Demir Koç bir süre sonra yeniden doğar.
+ * Öldürülünce gedik bir süre sonra onarılır; Zırhlı Dev bir süre sonra yeniden doğar.
  */
 export class Breaker {
   koc: Giant | null = null;
@@ -68,7 +68,7 @@ export class Breaker {
   /** Gedikten geçen devin gediği aştıktan sonraki hedefi (önce gediğin ortasına yürür). */
   private readonly beyond = new Map<Giant, { x: number; z: number }>();
   private readonly rubble: THREE.Mesh[] = [];
-  /** Oyuncunun Demir Koç formuyla açtığı gedikler. */
+  /** Oyuncunun Zırhlı Dev formuyla açtığı gedikler. */
   private readonly made: MadeBreach[] = [];
   private readonly rubbleGeo = new THREE.DodecahedronGeometry(1, 0);
   private readonly rubbleMat = new THREE.MeshLambertMaterial({ color: 0x8c877c, flatShading: true });
@@ -104,7 +104,7 @@ export class Breaker {
       this.koc = k;
       this.phase = 'roam';
       this.cd = B.firstCharge;
-      g.hud.banner('DEMİR KOÇ', 'Sur ötesinde metal plakalı bir dev dolaşıyor — surlara toslayıp gedik açar');
+      g.hud.banner('ZIRHLI DEV', 'Sur ötesinde metal plakalı bir dev dolaşıyor — surlara toslayıp gedik açar');
       return;
     }
     this.spawnT = 10;
@@ -122,7 +122,7 @@ export class Breaker {
     k.home = null;
     k.raid = { x: this.runup.x, z: this.runup.z, r: 10, siege: false, march: true };
     this.phase = 'approach';
-    this.game.hud.toast('Demir Koç surdan uzaklaşıp koşu yolu alıyor…');
+    this.game.hud.toast('Zırhlı Dev surdan uzaklaşıp koşu yolu alıyor…');
   }
 
   /** Halka surda gedik açar: sur yeniden kurulur, toplar susar, toz kalkar, moloz yığılır. */
@@ -177,7 +177,7 @@ export class Breaker {
   }
 
   /**
-   * Oyuncu Demir Koç formunda hücumla sura toslayınca çağrılır: halka surda gedik açılabiliyorsa açar.
+   * Oyuncu Zırhlı Dev formunda hücumla sura toslayınca çağrılır: halka surda gedik açılabiliyorsa açar.
    * `reach` gövdenin sura uzanan genişliği.
    */
   playerRam(x: number, z: number, reach: number) {
@@ -198,7 +198,7 @@ export class Breaker {
     const R = W.walls[ring].r;
     const ang = Math.atan2(k.pos.x, k.pos.z);
     this.breach = this.openBreach(ring, ang, B.halfWidth, this.rubble);
-    g.hud.banner('SURDA GEDİK AÇILDI', `Demir Koç ${W.walls[ring].name}’nu deldi — devler içeri doluyor`);
+    g.hud.banner('SURDA GEDİK AÇILDI', `Zırhlı Dev ${W.walls[ring].name}’nu deldi — devler içeri doluyor`);
     this.pourGiants(ang);
     // Gediğin içinden geçip surun içinde dolaşmaya başlar.
     const inside = R - 160;
@@ -229,7 +229,7 @@ export class Breaker {
     }
   }
 
-  /** Demir Koç'un gediği onarılır. */
+  /** Zırhlı Dev'in gediği onarılır. */
   private repair() {
     const b = this.breach;
     if (!b) return;
@@ -277,7 +277,7 @@ export class Breaker {
     const k = this.koc;
     if (!k || !k.alive || k.gone) {
       if (k) {
-        // Demir Koç düştü: gedik bir süre sonra onarılır, kendisi bir süre sonra yeniden doğar.
+        // Zırhlı Dev düştü: gedik bir süre sonra onarılır, kendisi bir süre sonra yeniden doğar.
         this.koc = null;
         this.spawnT = B.respawn;
         if (this.breach) this.repairT = B.repair;
@@ -300,7 +300,7 @@ export class Breaker {
         if (!busy && Math.hypot(this.runup.x - k.pos.x, this.runup.z - k.pos.z) < 16) {
           k.charge(this.impact.x, this.impact.z, B.speed);
           g.audio.giant('growl', k.h, k.pos.x, k.pos.z, 3);
-          g.hud.banner('DEMİR KOÇ TOSLUYOR', 'Kollarıyla yüzünü kapatıp sura koşuyor — önünden çekil!');
+          g.hud.banner('ZIRHLI DEV TOSLUYOR', 'Kollarıyla yüzünü kapatıp sura koşuyor — önünden çekil!');
           this.phase = 'charge';
         }
         break;

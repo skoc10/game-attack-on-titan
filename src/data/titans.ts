@@ -443,10 +443,10 @@ export const INNATE: Record<InnateId, TitanDef> = {
     palette: { skin: 0xc0907a, top: 0xb4544a, legs: 0xa24a42, sleeve: 0xaa4e44, hair: 0x24140e, hairStyle: 'ponytail', eye: 0x7dff9a, glow: 0x7dff9a },
     opts: { style: 'titan', outline: 0.0022, bulk: 0.88, head: 0.92, arm: 1.08, female: true, muscle: true },
   },
-  // Demir Koç'un formu: baştan aşağı metal plaka; neredeyse yıkılmaz, toslayıp zırh deler.
+  // Zırhlı Dev'in formu: baştan aşağı metal plaka; neredeyse yıkılmaz, toslayıp zırh deler.
   koc: {
     id: 'koc',
-    name: 'Demir Koç',
+    name: 'Zırhlı Dev',
     needle: '',
     tagline: 'Duvar diye bir şey yok.',
     color: 0xff9a3a,
