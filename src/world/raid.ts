@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
 import { CFG } from '../data/config';
-import { RAID_BY_ID, type RaidDef, type RaidId } from '../data/raids';
+import { RAID_BY_ID, TIERS, harderTier, tierRaid, type RaidDef, type RaidId, type RaidTier } from '../data/raids';
 import { Giant } from '../enemies/giant';
 import { BOSSES, GIANT_TYPES, type CommonKind } from '../enemies/giantTypes';
 import { RaidState, smashDamage, type RaidEvent } from '../systems/raidState';
@@ -65,6 +65,8 @@ function crackTexture() {
 export class Raid {
   state: RaidState | null = null;
   private def: RaidDef | null = null;
+  /** Sürmekte olan baskının zorluğu. */
+  tier: RaidTier = 'B';
   /** Savunulan yerin merkezi (köy meydanı ya da surun dövülen noktası). */
   private readonly site = new THREE.Vector3();
   /** Devlerin geldiği yön (dışarıya doğru açı). */
@@ -103,10 +105,12 @@ export class Raid {
   }
 
   // ---------------------------------------------------------------- başlangıç
-  begin(id: RaidId) {
+  begin(id: RaidId, tier: RaidTier = this.game.save.raidTier) {
     const g = this.game;
     this.clear();
-    const def = RAID_BY_ID[id];
+    // Zorluk dalgaları, hazırlığı, eşlik eden devleri ve ödülü ayarlar; can, vuruş ve yıkım hızı devlere işlenir.
+    this.tier = tier;
+    const def = tierRaid(RAID_BY_ID[id], tier);
     this.def = def;
     this.state = new RaidState(def);
     this.farT = 0;
@@ -204,7 +208,7 @@ export class Raid {
           big--;
           type = { ...type, name: `İri ${type.name}`, minH: type.maxH * 1.35, maxH: type.maxH * 1.6, hpBase: type.hpBase * 2 };
         }
-        const gi = new Giant(type, x, z, g);
+        const gi = new Giant(this.tiered(type), x, z, g);
         g.giants.push(gi);
         this.enlist(gi, this.wave);
       }
@@ -212,9 +216,17 @@ export class Raid {
     g.hud.banner(`DALGA ${i + 1}/${def.waves.length}`, `${w.giants.reduce((a, [, c]) => a + c, 0)} dev köye yürüyor${w.shifter ? ' — aralarında bir dönüşümcü var' : ''}`);
     if (w.shifter) {
       const [x, z] = spot();
-      this.enlist(g.spawner.spawnShifter(w.shifter, x, z, g), this.wave);
+      const sh = g.spawner.spawnShifter(w.shifter, x, z, g);
+      sh.scaleHp(TIERS[this.tier].hp);
+      this.enlist(sh, this.wave);
     }
     g.audio.giant('shriek', 14, this.site.x + Math.sin(this.outward) * 200, this.site.z + Math.cos(this.outward) * 200, 3);
+  }
+
+  /** Baskın zorluğuna göre devin canı ve vuruşu. */
+  private tiered<T extends { hpBase: number; hpPerM: number; dmg: number }>(type: T): T {
+    const Z = TIERS[this.tier];
+    return Z.hp === 1 && Z.dmg === 1 ? type : { ...type, hpBase: type.hpBase * Z.hp, hpPerM: type.hpPerM * Z.hp, dmg: type.dmg * Z.dmg };
   }
 
   /** Dev baskına katılır: köyün bir yerine (ya da sura) yürür, uzaklaşınca kaybolmaz. */
@@ -236,7 +248,7 @@ export class Raid {
     const a = this.outward;
     const x = Math.sin(a) * (R + 340);
     const z = Math.cos(a) * (R + 340);
-    const gi = new Giant(BOSSES.yikici, x, z, g);
+    const gi = new Giant(this.tiered(BOSSES.yikici), x, z, g);
     g.giants.push(gi);
     const stand = R + HALF_T + gi.bodyR + 2;
     this.enlist(gi, this.wave, false);
@@ -256,7 +268,7 @@ export class Raid {
       const a = Math.random() * Math.PI * 2;
       const x = c.pos.x + Math.sin(a) * (40 + Math.random() * 30);
       const z = c.pos.z + Math.cos(a) * (40 + Math.random() * 30);
-      const gi = new Giant(GIANT_TYPES[ESCORTS[Math.floor(Math.random() * ESCORTS.length)]], x, z, g);
+      const gi = new Giant(this.tiered(GIANT_TYPES[ESCORTS[Math.floor(Math.random() * ESCORTS.length)]]), x, z, g);
       g.giants.push(gi);
       this.enlist(gi, this.escorts, false);
     }
@@ -303,7 +315,7 @@ export class Raid {
       g.smoke.burst(v, 8, 6, 2.6, 0x8f857a, 3, 2, 4, 2);
     }
     const before = st.integrity;
-    this.handle(st.damage(smashDamage(gi.h, siege)));
+    this.handle(st.damage(smashDamage(gi.h, siege) * TIERS[this.tier].smash));
     // Sağlamlık düştükçe köyde yeni evler tutuşur, surda duman yükselir.
     const step = siege ? 20 : 12;
     if (!st.over && Math.floor((100 - st.integrity) / step) > Math.floor((100 - before) / step)) this.ignite();
@@ -397,10 +409,11 @@ export class Raid {
       g.grantCoins(def.reward.coins);
       g.grantXp(def.reward.xp);
       if (!g.save.raids.includes(def.id)) g.save.raids.push(def.id);
+      g.save.raidBest[def.id] = harderTier(g.save.raidBest[def.id], this.tier);
       storeSave(g.save);
       g.meter.value = Math.min(g.meter.max, g.meter.value + 40);
       g.audio.kill(true);
-      g.hud.banner('BASKIN PÜSKÜRTÜLDÜ', `${def.place} kurtuldu · +${def.reward.coins} puan · +${def.reward.xp} XP`);
+      g.hud.banner(`BASKIN PÜSKÜRTÜLDÜ · ${this.tier}`, `${def.place} kurtuldu · +${def.reward.coins} puan · +${def.reward.xp} XP`);
     } else {
       if (def.kind === 'wall' && this.state!.integrity <= 0) this.collapse();
       g.hud.banner(def.kind === 'wall' ? 'SUR YIKILDI' : 'KÖY DÜŞTÜ', why || (def.kind === 'wall' ? 'Sur Yıkan kalkanı deldi — yeniden dene' : 'Devler köyü yerle bir etti — yeniden dene'));
@@ -531,6 +544,6 @@ export class Raid {
     else if (st.phase === 'lost') line = def.kind === 'wall' ? 'Sur yıkıldı' : 'Köy düştü';
     else if (def.kind === 'wall') line = this.colossus?.state === 'downed' ? 'Yıkıcı yerde — ensesine vur!' : 'Sur Yıkan suru dövüyor';
     else line = `Dalga ${st.wave + 1}/${def.waves.length} · ${alive} dev`;
-    return { name: def.name, place: def.kind === 'wall' ? 'SUR' : 'KÖY', line, integrity: st.integrity / 100, over: st.over, won: st.phase === 'won' };
+    return { name: `${def.name} · ${this.tier}`, place: def.kind === 'wall' ? 'SUR' : 'KÖY', line, integrity: st.integrity / 100, over: st.over, won: st.phase === 'won' };
   }
 }

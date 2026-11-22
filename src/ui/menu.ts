@@ -1,5 +1,6 @@
-import { RAIDS, waveSize, type RaidId } from '../data/raids';
+import { RAIDS, RAID_TIERS, TIERS, tierRaid, waveSize, type RaidId, type RaidTier } from '../data/raids';
 import type { Game } from '../game';
+import { storeSave } from '../core/save';
 import { CLASSES } from '../player/classes';
 import { buyUpgrade, canBuyChar, ownsChar, classUnlocked, CLASS_UNLOCK, MAX_UPGRADE, UPGRADES, type ClassId, type GameMode, type UpgradeId } from '../systems/progression';
 import { CHAPTERS, missionCount } from '../data/story';
@@ -93,6 +94,10 @@ export class Menu {
       return;
     }
     if (act === 'raidQuit') g.raid.abort();
+    if (act === 'raidTier' && (RAID_TIERS as string[]).includes(arg)) {
+      g.save.raidTier = arg as RaidTier;
+      storeSave(g.save);
+    }
     if (act === 'raids') this.raidView = !this.raidView;
     if (act === 'mode') {
       this.raidView = false;
@@ -195,20 +200,28 @@ export class Menu {
       </div>`;
     const freeBox = `<div class="story"><p class="storyLead">Hikâye yok, sıra yok: surların dışında dilediğin gibi avlan. Seviye, sınıf ve yükseltmeler iki modda ortaktır.</p></div>`;
     const g = this.game;
-    const raidCards = RAIDS.map((r, i) => {
-      const won = s.raids.includes(r.id);
+    // Zorluk: C kolay, B orta, A zor, S en zor. Seçilen zorluk kartlardaki dev sayısını ve ödülü değiştirir.
+    const tier = s.raidTier;
+    const tierRow = `<div class="tiers"><span>ZORLUK</span>${RAID_TIERS.map(
+      (t) => `<button class="tier t${t} ${t === tier ? 'sel' : ''}" data-act="raidTier" data-arg="${t}"><b>${t}</b><i>${TIERS[t].name}</i></button>`,
+    ).join('')}<em>${TIERS[tier].desc}</em></div>`;
+    const raidCards = RAIDS.map((base, i) => {
+      const r = tierRaid(base, tier);
+      const best = s.raidBest[r.id];
+      const won = best !== undefined;
       const live = g.raid.active && g.raid.id === r.id;
-      const waves = r.kind === 'wall' ? 'Tek dev · eşlik eden devler' : `${r.waves.length} dalga · ${r.waves.reduce((n, w) => n + waveSize(w), 0)} dev`;
+      const waves = r.kind === 'wall' ? `Tek dev · ${r.escortCount} eşlikçi dev` : `${r.waves.length} dalga · ${r.waves.reduce((n, w) => n + waveSize(w), 0)} dev`;
       return `<button class="raid ${won ? 'done' : ''} ${live ? 'live' : ''}" data-act="raid" data-arg="${r.id}">
-        <small>BASKIN ${i + 1} · ${r.kind === 'wall' ? 'SUR SAVUNMASI' : 'KÖY SAVUNMASI'}</small><b>${r.name}</b>
+        <small>BASKIN ${i + 1} · ${r.kind === 'wall' ? 'SUR SAVUNMASI' : 'KÖY SAVUNMASI'}${best ? ` · <b class="rank r${best}">${best}</b>` : ''}</small><b>${r.name}</b>
         <p>${r.desc}</p>
         <span>${r.place} · ${waves}</span>
-        <em>${live ? 'SÜRÜYOR — yeniden başlat' : won ? '✓ Püskürtüldü · yeniden oyna' : `Ödül: ◆ ${r.reward.coins} · ${r.reward.xp} XP`}</em></button>`;
+        <em>${live ? `SÜRÜYOR (${g.raid.tier}) — yeniden başlat` : `${tier} ödülü: ◆ ${r.reward.coins} · ${r.reward.xp} XP${won ? ` · en iyi: ${best}` : ''}`}</em></button>`;
     }).join('');
     const raidBox = `<div class="story">
         <p class="storyLead">Devler bir köye ya da sura saldırıyor; savun. Baskını seçince oraya götürülürsün. Sağlamlık biterse ya da bölgeden çok uzaklaşırsan baskın kaybedilir.${
           g.raid.active ? ` <button class="ghost" data-act="raidQuit">Baskından çekil</button>` : ''
         }<span>${s.raids.length}/${RAIDS.length} püskürtüldü</span></p>
+        ${tierRow}
         <div class="raids">${raidCards}</div>
       </div>`;
     const startLabel = this.game.started ? 'DEVAM ET' : story ? (missionsDone(s.story) > 0 && !done ? 'HİKÂYEYE DEVAM ET' : 'HİKÂYEYE BAŞLA') : 'SURLARIN DIŞINA ÇIK';

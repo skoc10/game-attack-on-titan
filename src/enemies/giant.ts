@@ -37,7 +37,10 @@ export class Giant {
   readonly radius: number;
   readonly napeRadius: number;
   readonly legRadius: number;
-  readonly maxHp: number;
+  private _maxHp: number;
+  get maxHp() {
+    return this._maxHp;
+  }
   yaw: number;
   state: GiantState = 'wander';
   stateT = 0;
@@ -188,7 +191,7 @@ export class Giant {
     this.napeRadius = this.h * 0.05 + 0.45;
     this.legRadius = this.h * 0.08 + 0.6;
     this.eyeRadius = this.h * 0.03 + 0.5;
-    this.maxHp = (type.hpBase + type.hpPerM * this.h) * (form ? 1 : P.hp) * (this.big ? 1.6 : 1);
+    this._maxHp = (type.hpBase + type.hpPerM * this.h) * (form ? 1 : P.hp) * (this.big ? 1.6 : 1);
     this.hp = this.maxHp;
     this.legCuts = type.legCuts;
     this.napeCuts = type.napeCuts;
@@ -235,6 +238,12 @@ export class Giant {
 
   get alive() {
     return this.state !== 'dead';
+  }
+
+  /** Canını `k` katına çıkarır (baskın zorluğu); can yeniden dolar. */
+  scaleHp(k: number) {
+    this._maxHp *= k;
+    this.hp = this._maxHp;
   }
 
   /** Dev formundaki oyuncu bu devi ağzına alabilir mi (bölüm sonu devleri ve dönüşümcüler alınamaz). */
