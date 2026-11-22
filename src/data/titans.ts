@@ -419,10 +419,10 @@ export const INNATE: Record<InnateId, TitanDef> = {
     palette: { skin: 0xb0a090, top: 0xa49484, legs: 0x968676, hair: 0x2a2420, hairStyle: 'long', eye: 0x8ad0c8, glow: 0x8ad0c8 },
     opts: { style: 'titan', outline: 0.0024, bulk: 0.74, head: 0.84, arm: 1.75, cracks: true },
   },
-  // Avcı Dev'in formu: derisiz, kasları dışarıda; dörtnala yetişen koşucu, atılıp çarpar, yeri dövüp sarsar.
+  // Kız Dev'in formu: derisiz, kasları dışarıda; dörtnala yetişen koşucu, atılıp çarpar, yeri dövüp sarsar.
   avci: {
     id: 'avci',
-    name: 'Avcı Devi',
+    name: 'Kız Dev',
     needle: '',
     tagline: 'Kaçan yetişilir.',
     color: 0x7dff9a,

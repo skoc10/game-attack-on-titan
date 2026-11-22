@@ -82,7 +82,7 @@ export const CFG = {
   giantPower: { hp: 1.4, dmg: 1.3, bigChance: 0.16, big: [1.35, 1.8] as [number, number] },
   // Düşman dönüşümcüler: oyuncunun dönüşebildiği dev formlarına giren düşmanlar. İlki `first` sn sonra,
   // sonrakiler `every` aralığında, oyuncudan `dist` uzaklıkta, kendi güçleriyle saldırır.
-  // Avcı Dev: dev ağaçlar ormanına giren oyuncuyu kovalar. hp dev gücüne karşı can, respawn öldükten sonra yeniden doğma
+  // Kız Dev: dev ağaçlar ormanına giren oyuncuyu kovalar. hp dev gücüne karşı can, respawn öldükten sonra yeniden doğma
   // süresi (sn), bonus öldürünce ek av puanı, mountedChase oyuncu attayken koşusuna eklenen çarpan (dörtnala yetişmeye yakın).
   // Zırhlı Dev: sur ötesinde dolaşır, oyuncu `notice` m yakınındayken `firstCharge` sn sonra surdan `runup` m geri çekilip
   // `speed` m/sn ile toslar; Kalkan Suru'nda 2×`halfWidth` m'lik gedik açar (kapılardan `gateClear` radyan uzakta).
