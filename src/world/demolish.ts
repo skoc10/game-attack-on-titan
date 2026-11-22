@@ -12,6 +12,9 @@ interface Chunk {
 }
 
 const MAX = 320;
+/** Moloz paletleri (malzeme sırası; sonuncusu kiriş). */
+const HOUSE = [0, 1, 2, 3, 4];
+const STONE = [5, 6, 5, 7];
 const GRAVITY = 30;
 const v = new THREE.Vector3();
 
@@ -23,8 +26,9 @@ export class Demolition {
   private readonly chunks: Chunk[] = [];
   private readonly geo = new THREE.DodecahedronGeometry(1, 0);
   private readonly beam = new THREE.BoxGeometry(0.35, 0.35, 3);
-  private readonly mats = [0xd8cfbf, 0xc9bca6, 0xa0553f, 0x8a4636, 0x5a4030].map((c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
-  /** Yıkılan ev sayısı. */
+  /** Moloz renkleri: 0–4 ev (sıva, kiremit, kiriş), 5–7 taş yapı (taş, koyu taş, ahşap). */
+  private readonly mats = [0xd8cfbf, 0xc9bca6, 0xa0553f, 0x8a4636, 0x5a4030, 0xc9c2b4, 0x8f897c, 0x6a4e34].map((c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
+  /** Oyuncunun dev formuyla yıktığı ev sayısı. */
   count = 0;
 
   constructor(private readonly game: Game) {}
@@ -33,17 +37,40 @@ export class Demolition {
    * Tekme (x, z)'de `r` metrelik alana değdi: oradaki evleri yıkar. `from` tekmeyi atanın yeri.
    * Yıkılan ev sayısını döner.
    */
-  kickAt(x: number, z: number, r: number, from: THREE.Vector3) {
+  kickAt(x: number, z: number, r: number, from: THREE.Vector3, byPlayer = true) {
     let n = 0;
-    for (const b of this.game.world.housesNear(x, z, r)) if (this.wreck(b, from)) n++;
+    for (const b of this.game.world.housesNear(x, z, r)) if (this.wreck(b, from, byPlayer)) n++;
     return n;
   }
 
-  wreck(b: Building, from: THREE.Vector3) {
-    const g = this.game;
+  /**
+   * Darbe ya da çarpma (x, z)'de `r` metrelik alana değdi: oradaki evleri ve anıtsal yapı parçalarını yıkar.
+   * `structures` yanlışsa yalnızca evler yıkılır; `byPlayer` oyuncunun dev formu mu yıktı. Yıkılan şey sayısını döner.
+   */
+  smash(x: number, z: number, r: number, from: THREE.Vector3, structures = true, byPlayer = true) {
+    let n = this.kickAt(x, z, r, from, byPlayer);
+    if (!structures) return n;
+    for (const b of this.game.world.wreckArea(x, z, r)) {
+      this.rubble(b, from, STONE);
+      n++;
+    }
+    return n;
+  }
+
+  wreck(b: Building, from: THREE.Vector3, byPlayer = true) {
     const h = b.eave - b.base + b.roofH;
-    if (!g.world.wreckHouse(b)) return false;
-    this.count++;
+    const snapshot = { ...b };
+    if (!this.game.world.wreckHouse(b)) return false;
+    if (byPlayer) this.count++;
+    this.rubble({ ...snapshot, eave: snapshot.base + h, roofH: 0 } as Building, from, HOUSE);
+    if (byPlayer) this.game.onHouseWrecked();
+    return true;
+  }
+
+  /** Yıkılan bir kutunun molozu: parçalar darbenin yönünde savrulup yere yığılır, toz kalkar. */
+  private rubble(b: Building, from: THREE.Vector3, palette: number[]) {
+    const g = this.game;
+    const h = Math.max(3, b.eave - b.base + b.roofH);
     const cx = (b.minX + b.maxX) / 2;
     const cz = (b.minZ + b.maxZ) / 2;
     const w = b.maxX - b.minX;
@@ -54,11 +81,10 @@ export class Demolition {
     const l = Math.hypot(dx, dz) || 1;
     dx /= l;
     dz /= l;
-    // Moloz: sıva ve kiremit parçaları ile kırık kirişler; tekmenin yönüne savrulur.
-    const n = 14 + Math.round(Math.min(14, (w * d) / 10));
+    const n = Math.min(30, 10 + Math.round((w * d) / 12 + h * 0.4));
     for (let i = 0; i < n; i++) {
       const beam = i % 6 === 5;
-      const mat = beam ? this.mats[4] : this.mats[Math.floor(Math.random() * 4)];
+      const mat = this.mats[beam ? palette[palette.length - 1] : palette[Math.floor(Math.random() * (palette.length - 1))]];
       const m = new THREE.Mesh(beam ? this.beam : this.geo, mat);
       const size = beam ? 1 : 0.45 + Math.random() * 1.1;
       m.scale.setScalar(size);
@@ -72,9 +98,7 @@ export class Demolition {
       const spin = new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
       this.chunks.push({ m, v: vel, spin, rest: false, size });
     }
-    // Eski parçalar kaldırılır: sahnede çok fazla moloz birikmesin.
     while (this.chunks.length > MAX) g.scene.remove(this.chunks.shift()!.m);
-    // Toz bulutu, savrulan kırıntı, çöküş sesi ve sarsıntı.
     for (let i = 0; i < 3; i++) {
       v.set(cx + (Math.random() - 0.5) * w, gy + 1.5 + i * h * 0.25, cz + (Math.random() - 0.5) * d);
       g.smoke.burst(v, 10, 9, 2.4, 0xb4aa98, Math.max(w, d) * 0.5, 2, 5 + h * 0.3, 1.8);
@@ -82,9 +106,8 @@ export class Demolition {
     v.set(cx, gy + h * 0.5, cz);
     g.particles.burst(v, 40, 16, 1.4, 0xd0c4ae, Math.max(w, d) * 0.4, -12, 1.6, -0.1);
     g.audio.crumble(cx, cz, Math.min(1.4, 0.6 + (w * d) / 180));
-    g.shakeCam(0.5);
-    g.onHouseWrecked();
-    return true;
+    const pd = Math.hypot(cx - g.player.pos.x, cz - g.player.pos.z);
+    g.shakeCam(Math.max(0, 0.5 - pd / 300));
   }
 
   update(dt: number) {

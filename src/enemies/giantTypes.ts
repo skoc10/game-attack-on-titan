@@ -60,7 +60,7 @@ export const GIANT_TYPES: Record<CommonKind, GiantType> = {
     kind: 'normal',
     name: 'Dev',
     minH: 4,
-    maxH: 15,
+    maxH: 17,
     speed: 4.2,
     turn: 1.8,
     hpBase: 60,

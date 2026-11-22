@@ -5,7 +5,7 @@ import { buildWalls } from './walls';
 import { wallPush, wallSolid, wallTopAt } from './layout';
 import { EDGE_FOREST, buildForest, buildProps, edgeForest, generateTrees, giantPerches, type Bough, type Canopy, type Tree } from './forest';
 import { buildRuins, generateBuildings, roofY, type Building, type HousePiece, type Village } from './ruins';
-import { buildLandmarks, type Landmark } from './landmarks';
+import { buildLandmarks, type Landmark, type LandmarkPiece } from './landmarks';
 
 const CELL = 32;
 
@@ -43,6 +43,9 @@ export class World {
   /** Anıtsal yapılar (kuleler, değirmenler, karakollar, kale...) ve dönen değirmen kanatları. */
   readonly landmarks: Landmark[];
   private readonly rotors: THREE.Mesh[];
+  /** Anıtsal yapıların katı kutuları ve birleşik ağlardaki parçaları (hücrelere göre). */
+  private readonly landmarkSolids = new Set<Building>();
+  private readonly pieceGrid = new Map<number, LandmarkPiece[]>();
   /** Evlerin birleşik ağlardaki yerleri (yıkılınca biçimleri değiştirilir). */
   private readonly pieces: Map<Building, HousePiece>;
   /** Kenar ormanının parçaları (uzaktakiler gizlenir). */
@@ -107,12 +110,19 @@ export class World {
         addSolid: (b) => {
           this.buildings.push(b);
           this.gridBuilding(b);
+          this.landmarkSolids.add(b);
         },
       },
       this.villages,
     );
     this.landmarks = lm.marks;
     this.rotors = lm.rotors;
+    for (const pc of lm.pieces) {
+      const k = key(Math.floor(pc.x / CELL), Math.floor(pc.z / CELL));
+      let cell = this.pieceGrid.get(k);
+      if (!cell) this.pieceGrid.set(k, (cell = []));
+      cell.push(pc);
+    }
     scene.add(lm.group, ...lm.rotors);
     this.grappleTargets.push(lm.group);
   }
@@ -199,6 +209,74 @@ export class World {
     b.eave = b.base;
     b.top = b.base;
     return true;
+  }
+
+  /**
+   * (x, z) çevresinde `r` metrelik alandaki anıtsal yapı parçalarını yıkar: değen katı kutular kalkar
+   * (içinden geçilir), onların içindeki ve alana düşen bütün parçalar kırık, alçak bir yığına iner,
+   * yakındaki değirmen kanatları düşer. Yıkılan katı kutuları döner (moloz için).
+   */
+  wreckArea(x: number, z: number, r: number) {
+    const hit: Building[] = [];
+    for (const b of this.buildingsIn(x, z, r)) {
+      // Çok uzun yapılar (su kemerinin köprüsü) tek darbeyle bütünüyle çökmez.
+      if (!this.landmarkSolids.has(b) || b.wrecked || Math.max(b.maxX - b.minX, b.maxZ - b.minZ) > 60) continue;
+      hit.push({ ...b });
+      b.wrecked = true;
+      b.eave = b.base;
+      b.roofH = 0;
+      b.top = b.base;
+    }
+    // Yıkılan kutuların içindeki parçalar ve alanın içindekiler çöker.
+    const inside = (p: LandmarkPiece) =>
+      Math.hypot(p.x - x, p.z - z) < r || hit.some((b) => p.x > b.minX - 1 && p.x < b.maxX + 1 && p.z > b.minZ - 1 && p.z < b.maxZ + 1);
+    const reach = r + 40;
+    const dirty = new Set<THREE.BufferAttribute>();
+    for (let cx = Math.floor((x - reach) / CELL); cx <= Math.floor((x + reach) / CELL); cx++) {
+      for (let cz = Math.floor((z - reach) / CELL); cz <= Math.floor((z + reach) / CELL); cz++) {
+        const cell = this.pieceGrid.get(key(cx, cz));
+        if (!cell) continue;
+        for (const p of cell) {
+          if (p.wrecked || !p.mesh || !inside(p)) continue;
+          p.wrecked = true;
+          const g = heightAt(p.x, p.z) - 1;
+          const stub = 1.5 + Math.random() * 3;
+          const pos = p.mesh.geometry.attributes.position as THREE.BufferAttribute;
+          for (let i = p.start; i < p.start + p.count; i++) {
+            const y = pos.getY(i);
+            // Yüksekteki parçalar yere iner; kalanlar düzensiz, alçak bir yığın olur.
+            const s = Math.sin(pos.getX(i) * 12.9898 + pos.getZ(i) * 78.233) * 43758.5453;
+            pos.setY(i, g + Math.min(Math.max(0, y - g), stub * (0.4 + (s - Math.floor(s)) * 0.9)));
+          }
+          dirty.add(pos);
+        }
+      }
+    }
+    for (const a of dirty) a.needsUpdate = true;
+    if (hit.length > 0) {
+      for (const rt of this.rotors) {
+        if (rt.visible && Math.hypot(rt.position.x - x, rt.position.z - z) < r + 10) rt.visible = false;
+      }
+    }
+    return hit;
+  }
+
+  /** (x, z)'ye `r` metreden yakın bütün katı kutular. */
+  private buildingsIn(x: number, z: number, r: number) {
+    const out: Building[] = [];
+    for (let cx = Math.floor((x - r) / CELL); cx <= Math.floor((x + r) / CELL); cx++) {
+      for (let cz = Math.floor((z - r) / CELL); cz <= Math.floor((z + r) / CELL); cz++) {
+        const cell = this.buildingGrid.get(key(cx, cz));
+        if (!cell) continue;
+        for (const b of cell) {
+          if (out.includes(b)) continue;
+          const dx = Math.max(b.minX - x, 0, x - b.maxX);
+          const dz = Math.max(b.minZ - z, 0, z - b.maxZ);
+          if (Math.hypot(dx, dz) < r) out.push(b);
+        }
+      }
+    }
+    return out;
   }
 
   /** Yel değirmenlerinin kanatları döner (yalnızca yakındakiler). */

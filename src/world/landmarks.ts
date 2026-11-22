@@ -83,9 +83,26 @@ const tmpP = new THREE.Vector3();
 const ONE = new THREE.Vector3(1, 1, 1);
 const tmpC = new THREE.Color();
 
+/**
+ * Yapının birleşik ağdaki bir parçası: hangi ağda, hangi köşelerde ve nerede. Yıkılınca bu köşeler
+ * kırık bir yığına indirilir.
+ */
+export interface LandmarkPiece {
+  mesh: THREE.Mesh | null;
+  start: number;
+  count: number;
+  x: number;
+  z: number;
+  wrecked: boolean;
+  /** Birleştirmeden önce: ağın anahtarı. */
+  key: string;
+}
+
 /** Parçaları malzemeye ve bölgeye göre toplayıp birleştirir; her köşeye renk yazar. */
 class Kit {
   private readonly buckets = new Map<string, Map<MatKey, THREE.BufferGeometry[]>>();
+  private readonly used = new Map<string, number>();
+  readonly pieces: LandmarkPiece[] = [];
 
   /** `geo`yu (x, y, z)'ye yerleştirip `color` ile boyar. Dönüş: ry (Y), rx, rz. */
   put(mat: MatKey, geo: THREE.BufferGeometry, x: number, y: number, z: number, color: number, ry = 0, rx = 0, rz = 0) {
@@ -107,12 +124,17 @@ class Kit {
     let list = byMat.get(mat);
     if (!list) byMat.set(mat, (list = []));
     list.push(g);
+    const mk = `${k}|${mat}`;
+    const start = this.used.get(mk) ?? 0;
+    this.used.set(mk, start + n);
+    this.pieces.push({ mesh: null, start, count: n, x, z, wrecked: false, key: mk });
     geo.dispose();
   }
 
   build(mats: Record<MatKey, THREE.Material>) {
     const group = new THREE.Group();
-    for (const byMat of this.buckets.values()) {
+    const byKey = new Map<string, THREE.Mesh>();
+    for (const [k, byMat] of this.buckets) {
       for (const [mat, list] of byMat) {
         const merged = mergeGeometries(list, false);
         for (const g of list) g.dispose();
@@ -121,8 +143,10 @@ class Kit {
         m.castShadow = mat !== 'water';
         m.receiveShadow = true;
         group.add(m);
+        byKey.set(`${k}|${mat}`, m);
       }
     }
+    for (const p of this.pieces) p.mesh = byKey.get(p.key) ?? null;
     return group;
   }
 }
@@ -683,5 +707,5 @@ export function buildLandmarks(site: Site, villages: Village[]) {
     cloth: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
     water: new THREE.MeshLambertMaterial({ color: 0x4f8a9a, emissive: 0x0e2228 }),
   });
-  return { group, rotors, marks };
+  return { group, rotors, marks, pieces: kit.pieces };
 }
