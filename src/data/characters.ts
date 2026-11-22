@@ -189,7 +189,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Sena',
     title: 'İz Sürücü',
     bio: 'Dev ağaçlar ormanında büyüdü; avcıların izini rüzgârdan okur.',
-    perk: 'Hız +%12 · gaz +%15 · kendi formu: Avcı Devi',
+    perk: 'Hız +%12 · gaz +%15 · kendi formu: Kız Dev',
     price: 6800,
     level: 10,
     speed: 1.12,

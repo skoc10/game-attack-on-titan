@@ -132,7 +132,7 @@ Dünya 12,4 km'ye büyüdü: Sur Ötesi artık Kalkan Suru'nun 3 km dışına uz
 
 **Ağaçların üstü:** dev ağaçların dallarında ve yaprak kümelerinin üstünde durabilirsin. Kancayla çık, yaprak kümesinin tepesine ya da ağacın tepesindeki taca (90–140 m) in. Dalların üst yüzünde yürünür; kenardan yürürsen düşersin.
 
-**Avcı Dev:** ormana girince derinlikten biri seni fark eder.
+**Kız Dev:** ormana girince derinlikten biri seni fark eder.
 - **Doğuşu ve görünüşü:** yıldırım düşer, buharın içinden 22 m'lik bir dişi dev yükselir. Gövdesi derisizdir, kasları dışarıdadır: koyu kızıl kas lifleri, belirgin kas kütleleri (omuz, pazı, ön kol, uyluk, baldır, karın, sırt) ve aralarında açık renkli kirişler. Yüzü ve elleri ten rengidir, koyu kısa at kuyruğu vardır, gözleri yeşil yanar.
 - **Kovalaması:** ormanın her yerinden seni görür ve öne eğilip kolları geride koşar. Yayanken kaçamazsın. Attayken dörtnala neredeyse yetişir: aradaki mesafe saniyede ancak bir metre açılır.
 - **Saldırıları:** **Av Atılımı** ile ileri fırlayıp çarpar, **Kök Sarsıntısı** ile yeri döver, tekme atar.
@@ -284,7 +284,7 @@ Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kada
 | Aybüke | Son Simyacı | 3200 | Bar %15 hızlı dolar, formda %15 yavaş biter | Şafak Devi (22 m): büyük, hızlı, barı en yavaş yakan form |
 | Nehir | Boğa Güreşçisi | 4000 · Sv 6 | Can +%15, kanca çekişi +%10 | Toslayan Devi (15 m): kalın omuzlu; zırh delen uzun tos, yer tepip sersemletme |
 | Kaan | Uzak Nişancı | 5200 · Sv 8 | Kılıç erişimi +%20, gaz +%10 | Uzunkol Devi (20 m): kolları dizini geçer; uzaktan savuruş, kapan (sersemletme), taş fırlatma |
-| Sena | İz Sürücü | 6800 · Sv 10 | Hız +%12, gaz +%15 | Avcı Devi (22 m): derisiz, kasları dışarıda; en hızlı büyük form, av atılımı, kök sarsıntısı |
+| Sena | İz Sürücü | 6800 · Sv 10 | Hız +%12, gaz +%15 | Kız Dev (22 m): derisiz, kasları dışarıda; en hızlı büyük form, av atılımı, kök sarsıntısı |
 | Alp | Sur Demircisi | 8800 · Sv 12 | Can +%40, kılıç dayanımı +%30 | Zırhlı Dev (19 m): metal plakalı, darbelere en dayanıklı form; zırh delen yumruk, sur delen tos, kızgın plaka |
 | Yiğit | Vadi Haykırığı | 10000 · Sv 13 | Can +%10, keskin kılıç (dayanımı +%50), bar %15 hızlı dolar, formda %5 yavaş biter. Saçı düzgün, taranmış | Hücum Devi (18 m): dağınık saçlı; Hücum Ruhu ile yakın dövüşte en sert form, sertleşen yumruk, barı dolduran kükreyiş. Hücum İğnesi varsa yarım barla da dönüşür |
 | Oğuz | Dağ Çobanı | 11500 · Sv 14 | Bar %25 hızlı dolar, formda %10 yavaş biter | Canavar Dev (24 m): kürklü, boynuzlu; dev kaya fırlatma, geniş buyruk kükreyişi |

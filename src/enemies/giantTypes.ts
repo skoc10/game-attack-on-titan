@@ -34,7 +34,7 @@ export interface GiantType {
   thrower?: boolean;
   /** Avını görünce çığlık atıp başka devleri çağırır. */
   screamer?: boolean;
-  /** Koşucu gibi öne eğilip kolları geride koşar; attaki oyuncuya yetişmek için hızlanır (Avcı Dev). */
+  /** Koşucu gibi öne eğilip kolları geride koşar; attaki oyuncuya yetişmek için hızlanır (Kız Dev). */
   sprinter?: boolean;
   /** Dev ağaçlara tırmanır: dalda ya da yaprakların üstünde duran avına gövdeden çıkıp atılır. */
   climber?: boolean;

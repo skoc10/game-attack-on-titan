@@ -99,7 +99,7 @@ export class Story {
     this.restart();
   }
 
-  /** Görevin doğurduğu devleri kaldırır. Kapı Kıran, baskın devleri ve Avcı Dev dünyaya aittir, kalır. */
+  /** Görevin doğurduğu devleri kaldırır. Kapı Kıran, baskın devleri ve Kız Dev dünyaya aittir, kalır. */
   cleanup() {
     for (const gi of this.game.giants) {
       if (gi.tag && !WORLD_TAGS.has(gi.tag)) gi.gone = true;

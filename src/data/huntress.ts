@@ -3,14 +3,14 @@ import type { FormId, TitanDef } from './titans';
 import { shifterType, type GiantType } from '../enemies/giantTypes';
 
 /**
- * Avcı Dev: dev ağaçlar ormanında dolaşan, atlıları kovalayan dişi dev.
+ * Kız Dev: dev ağaçlar ormanında dolaşan, atlıları kovalayan dişi dev.
  * Gövdesi derisiz, kasları dışarıda; koyu at kuyruklu, gözleri yeşil yanar.
  * Atılıp çarpar, yeri dövüp ağaçları sarsar; ensesine üç temiz kesik gerekir.
  */
 export const HUNTRESS: TitanDef = {
   // Oyuncunun girebildiği bir form değildir; yalnızca düşman olarak doğar.
   id: 'avci' as FormId,
-  name: 'Avcı Dev',
+  name: 'Kız Dev',
   needle: '',
   tagline: 'Ormanın avcısı.',
   color: 0x7dff9a,
@@ -34,7 +34,7 @@ export const HUNTRESS: TitanDef = {
   opts: { style: 'titan', outline: 0.0022, bulk: 0.88, head: 0.92, arm: 1.08, female: true, muscle: true },
 };
 
-/** Avcı Dev'in türü: hızlı döner, ormanın her yerinden fark eder, üç ense kesiği ister. */
+/** Kız Dev'in türü: hızlı döner, ormanın her yerinden fark eder, üç ense kesiği ister. */
 export function huntressType(): GiantType {
   return {
     ...shifterType(HUNTRESS),

@@ -48,7 +48,7 @@ export class Spawner {
   private shepherdT: number = CFG.shepherd.first;
   /** Canavar Dev'in sürüsü: o yaşadıkça uzaklaşınca kaybolmaz. */
   private herd: Giant[] = [];
-  /** Avcı Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
+  /** Kız Dev: yaşıyorsa kendisi; değilse yeniden doğmasına kalan süre. */
   huntress: Giant | null = null;
   private huntressT: number = CFG.huntress.first;
   boss: Giant | null = null;
@@ -93,7 +93,7 @@ export class Spawner {
     return g;
   }
 
-  /** Avcı Dev ormanın derinliklerinde doğar: yıldırım düşer, buharın içinden yükselir ve avına koşar. */
+  /** Kız Dev ormanın derinliklerinde doğar: yıldırım düşer, buharın içinden yükselir ve avına koşar. */
   spawnHuntress(x: number, z: number, game: Game) {
     const g = new Giant(huntressType(), x, z, game, HUNTRESS);
     g.home = new THREE.Vector3(GIANT_FOREST.x, 0, GIANT_FOREST.z);
@@ -102,7 +102,7 @@ export class Spawner {
     g.yaw = Math.atan2(game.player.pos.x - x, game.player.pos.z - z);
     game.giants.push(g);
     game.strikeAt(x, g.pos.y, z, HUNTRESS.height, HUNTRESS.color);
-    game.hud.banner('AVCI DEV', 'Ormanın derinliğinden biri seni fark etti — atına bin ve kaç, ya da ensesini kes');
+    game.hud.banner('KIZ DEV', 'Ormanın derinliğinden biri seni fark etti — atına bin ve kaç, ya da ensesini kes');
     this.huntress = g;
     return g;
   }
@@ -145,7 +145,7 @@ export class Spawner {
     this.shepherdT = 5;
   }
 
-  /** Oyuncu dev ağaçlar ormanına girince, Avcı Dev yoksa (ve yeniden doğma süresi dolduysa) doğar. */
+  /** Oyuncu dev ağaçlar ormanına girince, Kız Dev yoksa (ve yeniden doğma süresi dolduysa) doğar. */
   private updateHuntress(dt: number, game: Game) {
     const h = this.huntress;
     if (h && h.alive && !h.gone) return;

@@ -708,7 +708,7 @@ export class Giant {
         this.buffT -= dt;
         this.body.armMat.emissive.setHex(this.buffT > 0 ? 0x2a4458 : 0x000000);
       }
-      if (!this.type.sprinter) this.mouthSmoke(dt, game); // Avcı Dev'in yüzü dumanla örtülmesin
+      if (!this.type.sprinter) this.mouthSmoke(dt, game); // Kız Dev'in yüzü dumanla örtülmesin
       if (this.introT > 0) {
         this.intro(dt, game);
         return;
