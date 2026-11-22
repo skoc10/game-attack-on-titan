@@ -583,6 +583,8 @@ export class TitanForm {
         }
         g.shakeCam(ab.fill ? 1.4 : 1);
         this.ring(p, ab.radius * 0.8, H * 0.85, this.def.color);
+        // Taç Soyu: kükreyiş (ışık ya da sis değil) bazen yanında dost dönüşümcüleri uyandırır.
+        if (ab.name.includes('Kükre')) g.blood.onRoar();
         if (ab.fill) {
           // Haykırış: dev barı sonuna kadar dolar; ikinci, daha geniş bir halka yayılır.
           g.meter.value = g.meter.max;

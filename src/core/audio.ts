@@ -313,6 +313,16 @@ export class GameAudio {
     this.noise(1.1, v * 0.9, 700, 60, 0.6, 0.02, dest, 'lowpass');
     this.noise(1.8, v * 0.35, 2400, 300, 0.5, 0.08, dest);
   }
+  /** Çelik Soyu uyanışı: iki derin kalp atışı, yükselen çelik çınlaması ve keskin bir soluk. */
+  awaken() {
+    for (const d of [0, 0.32]) {
+      this.tone('sine', 62, 34, 0.3, 0.9, d);
+      this.noise(0.12, 0.35, 220, 60, 0.9, d, this.bus, 'lowpass');
+    }
+    this.tone('triangle', 900, 2600, 0.6, 0.16, 0.5);
+    this.tone('sine', 3200, 4100, 0.9, 0.08, 0.55);
+    this.noise(0.35, 0.4, 6000, 2400, 1.4, 0.5, this.bus, 'highpass');
+  }
   /** Ev çöküşü: kırılan kirişlerin çatırtısı, dökülen taş ve kiremit, derin bir gümbürtü. Uzaklaştıkça kısılır. */
   crumble(x: number, z: number, size = 1) {
     const sp = spatial(this.listener, x, z, 60);

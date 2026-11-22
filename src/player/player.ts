@@ -52,6 +52,13 @@ export class Player {
   private speedMul = 1;
   private reachMul = 1;
   reelMul = 1;
+  /** Kanca çekişinin ve gaz tüketiminin o anki katı (Çelik Soyu uyanışı). */
+  get reelNow() {
+    return this.reelMul * this.game.blood.reelMul;
+  }
+  get gasUse() {
+    return this.game.blood.gasMul;
+  }
   private swingT = -1;
   private swingBonus = 1;
   private swingReach = 0;
@@ -290,6 +297,8 @@ export class Player {
       this.struggle();
       return;
     }
+    // Çelik Soyu: B ile uyanış.
+    if (inp.pressed('KeyB')) g.blood.awaken();
     // Top başında: tık ateş eder, E ya da Space toptan ayırır.
     if (g.cannons.manned !== null) {
       g.cannons.input(g);
@@ -937,7 +946,7 @@ export class Player {
     const hooked = this.grapple.active;
     const grounded = this.onGround && !hooked;
     if (grounded) {
-      const sp = (sprint ? P.sprint : P.walk) * this.speedMul;
+      const sp = (sprint ? P.sprint : P.walk) * this.speedMul * g.blood.moveMul;
       const cur = Math.hypot(this.vel.x, this.vel.z);
       const rate = (cur > sp + 2 ? P.friction : P.accelGround) * dt;
       const ddx = wish.x * sp - this.vel.x;
@@ -965,8 +974,8 @@ export class Player {
         look.copy(g.aimDir);
         look.y = Math.max(look.y, 0) + 0.35;
         look.normalize();
-        this.vel.addScaledVector(look, CFG.grapple.boostAccel * dt);
-        this.gas = Math.max(0, this.gas - CFG.grapple.boostGasPerSec * dt);
+        this.vel.addScaledVector(look, CFG.grapple.boostAccel * g.blood.boostMul * dt);
+        this.gas = Math.max(0, this.gas - CFG.grapple.boostGasPerSec * g.blood.gasMul * dt);
         this.puffT -= dt;
         if (this.puffT <= 0) {
           this.puffT = 0.03;
@@ -977,7 +986,8 @@ export class Player {
     }
     this.grapple.apply(dt, this);
     const sp2 = this.vel.length();
-    if (sp2 > CFG.grapple.maxSpeed) this.vel.multiplyScalar(CFG.grapple.maxSpeed / sp2);
+    const vmax = CFG.grapple.maxSpeed * g.blood.maxMul;
+    if (sp2 > vmax) this.vel.multiplyScalar(vmax / sp2);
 
     const px = this.pos.x;
     const pz = this.pos.z;

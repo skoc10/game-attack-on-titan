@@ -30,7 +30,10 @@ export const CFG = {
     spawn: { x: 0, z: 225 },
   },
   // Serbest imleçte: ortadaki ölü bölge (yarı genişlik oranı) ve kenardaki dönüş hızı (rad/sn).
-  camera: { deadZone: 0.28, edgeTurn: 2.6 },
+  // Fare: kilitliyken nişangâh ekranın ortasındaki `aimZone` alanında (ekranın yarı boyuna oranla) serbestçe kayar;
+  // alanın kenarını itince bakış döner, nişangâh `recenter` hızıyla ortaya döner ve bakış onu izler.
+  // Kilit yokken fareyi kaydırmak bakışı `freeSens` ile çevirir; imleç kenara yaklaşınca `edgeTurn` ile dönmeyi sürdürür.
+  camera: { deadZone: 0.28, edgeTurn: 2.6, aimZone: 0.22, recenter: 1.8, sens: 0.0024, freeSens: 0.0016 },
   // Dokunmatik: parmak kaydırmasının piksel başına dönüşü (radyan), çubuğun yarıçapı ve ölü bölgesi (piksel).
   touch: { lookYaw: 0.0052, lookPitch: 0.0042, stickRadius: 62, stickDead: 8 },
   grapple: {
@@ -79,6 +82,13 @@ export const CFG = {
   // Devlerin temposu (tür hızlarının çarpanları): walk her yürüyüşe, chase kovalarken ek olarak, turn dönüşe uygulanır.
   // Yaklaşan devin adımları yeri sarsar: `reach` × boy metre içinde, en çok `max` sarsıntı (boyla büyür); `dust` m'den uzun devlerin ayağından toz kalkar.
   tremor: { reach: 7, max: 0.45, dust: 9 },
+  // Kan soyları. Çelik: B ile `dur` sn uyanış (`cd` sn bekleme): koşu, itiş, kanca çekişi ve en yüksek hız artar, gaz `gas` katı yanar.
+  // Taç: dev formunda kükreyince `chance` olasılıkla `count` dost dönüşümcü `radius` m yanında belirir, `dur` sn savaşır;
+  // `seek` m içindeki düşmanları bulur, yumruğu formun yumruğunun `dmg` katı vurur.
+  blood: {
+    celik: { dur: 12, cd: 40, move: 1.3, boost: 1.35, reel: 1.25, maxSpeed: 1.2, gas: 0.45 },
+    tac: { chance: 0.45, count: 2, dur: 30, radius: 45, seek: 450, dmg: 1 },
+  },
   // `minH` m'den uzun devler yürürken yolundaki evleri ezip geçer; `structuresH` m'den uzunlar ve atılanlar kuleleri ve öbür yapıları da yıkar.
   trample: { minH: 8, structuresH: 15 },
   giantPace: { walk: 1.4, chase: 1.35, turn: 1.4 },

@@ -1,5 +1,6 @@
 import type { HairStyle } from '../enemies/humanoid';
 import type { FormId } from './titans';
+import type { BloodId } from '../player/bloodline';
 
 export type CharId = 'aras' | 'defne' | 'bora' | 'ilkim' | 'kuzey' | 'zeren' | 'tugrul' | 'ece' | 'mete' | 'aybuke' | 'nehir' | 'kaan' | 'sena' | 'alp' | 'yigit' | 'oguz';
 export const CHAR_IDS: CharId[] = ['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke', 'nehir', 'kaan', 'sena', 'alp', 'yigit', 'oguz'];
@@ -30,6 +31,8 @@ export interface CharDef {
   drain: number;
   /** Kendi dev formu: karakterlere özgü bir form ya da iğnesi de bulunan bir form. */
   titan: FormId | null;
+  /** Kan soyu: Çelik (uyanış) ya da Taç (kükreyince dost dönüşümcüler). */
+  blood?: BloodId;
   look: { skin: number; hair: number; hairStyle: HairStyle; top: number; cloak: number; eye: number };
 }
 
@@ -87,7 +90,8 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Kuzey',
     title: 'Kılıç Ustası',
     bio: 'Kılıcını her akşam biler, her sabah yeniden.',
-    perk: 'Kılıç erişimi +%15 · dayanımı +%50',
+    perk: 'Kılıç erişimi +%15 · dayanımı +%50 · Çelik Soyu: B ile uyanış',
+    blood: 'celik',
     price: 650,
     reach: 1.15,
     blades: 1.5,
@@ -189,7 +193,8 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Sena',
     title: 'İz Sürücü',
     bio: 'Dev ağaçlar ormanında büyüdü; avcıların izini rüzgârdan okur.',
-    perk: 'Hız +%12 · gaz +%15 · kendi formu: Kız Dev',
+    perk: 'Hız +%12 · gaz +%15 · kendi formu: Kız Dev · Çelik Soyu: B ile uyanış',
+    blood: 'celik',
     price: 6800,
     level: 10,
     speed: 1.12,
@@ -217,7 +222,8 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Yiğit',
     title: 'Vadi Haykırığı',
     bio: 'Sur ötesinde, yıkık bir köyde büyüdü. Kükreyişi vadide yankılanınca devler bile durup dinler.',
-    perk: 'Can +%10 · kılıcı keskin: dayanımı +%50 · dev barı %15 hızlı dolar · kendi formu: Hücum Devi',
+    perk: 'Can +%10 · kılıcı keskin: dayanımı +%50 · dev barı %15 hızlı dolar · kendi formu: Hücum Devi · Taç Soyu: kükreyince dostlar',
+    blood: 'tac',
     price: 10000,
     level: 13,
     hp: 1.1,
@@ -233,7 +239,8 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Oğuz',
     title: 'Dağ Çobanı',
     bio: 'Sur ötesinin dağlarında sürü güttü; devlerin bile onu dinlediği söylenir.',
-    perk: 'Dev barı %25 hızlı dolar, formda %10 yavaş biter · kendi formu: Canavar Dev',
+    perk: 'Dev barı %25 hızlı dolar, formda %10 yavaş biter · kendi formu: Canavar Dev · Taç Soyu: kükreyince dostlar',
+    blood: 'tac',
     price: 11500,
     level: 14,
     meter: 1.25,

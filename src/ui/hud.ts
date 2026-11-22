@@ -293,14 +293,15 @@ export class Hud {
       'ability',
       `<kbd>R</kbd> ${p.cls.ability}${p.abilityCd > 0 ? ` <b>${Math.ceil(p.abilityCd)}</b>` : p.heavyT > 0 ? ' <b>HAZIR</b>' : ''}` +
         ` &nbsp; <kbd>C</kbd> Koza${co.active ? ' <b>AÇIK</b>' : co.cd > 0 ? ` <b>${Math.ceil(co.cd)}</b>` : ''}` +
+        (g.blood.blood === 'celik' ? ` &nbsp; <kbd>B</kbd> Uyanış${g.blood.awake ? ` <b style="color:#ff5a3a">${Math.ceil(g.blood.awakeT)}</b>` : g.blood.awakeCd > 0 ? ` <b>${Math.ceil(g.blood.awakeCd)}</b>` : ''}` : '') +
         ` &nbsp; <kbd>H</kbd> Sargı <b class="n">${g.save.inv.sargi}</b> &nbsp; <kbd>I</kbd> Çanta` +
         (g.save.inv.wear ? (p.revealT > 0 ? ` &nbsp; <span class="hoodTag seen">KAPŞON · GÖRÜNÜRSÜN ${Math.ceil(p.revealT)}</span>` : ' &nbsp; <span class="hoodTag">KAPŞON · GİZLİ</span>') : ''),
     );
 
     // Nişangâh imleci izler.
     const cross = this.el.cross;
-    const cx = g.input.centerAim ? window.innerWidth / 2 : g.input.mouseX;
-    const cy = g.input.centerAim ? window.innerHeight / 2 : g.input.mouseY;
+    const cx = g.input.centerAim ? window.innerWidth / 2 : g.input.locked ? (1 + g.aimOff.x) * (window.innerWidth / 2) : g.input.mouseX;
+    const cy = g.input.centerAim ? window.innerHeight / 2 : g.input.locked ? (1 - g.aimOff.y) * (window.innerHeight / 2) : g.input.mouseY;
     cross.style.transform = `translate(${cx - 9}px, ${cy - 9}px)`;
     cross.classList.toggle('titan', titan);
     cross.classList.toggle('ok', g.aim !== null);
