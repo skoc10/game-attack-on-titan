@@ -1,4 +1,4 @@
-import { RAIDS, type RaidId } from '../data/raids';
+import { RAIDS, RAID_TIERS, type RaidId, type RaidTier } from '../data/raids';
 import { sanitizeCamps } from './camps';
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
@@ -37,6 +37,9 @@ export interface SaveData {
   inv: InvState;
   /** Püskürtülen baskınlar. */
   raids: RaidId[];
+  /** Baskınlar için seçili zorluk ve her baskında püskürtülen en zor zorluk. */
+  raidTier: RaidTier;
+  raidBest: Partial<Record<RaidId, RaidTier>>;
   /** Uğranan yapılar (doğuş noktaları, yapı sırasıyla) ve şu an seçili olanı (-1: şehir). */
   camps: number[];
   camp: number;
@@ -72,6 +75,8 @@ export function newSave(): SaveData {
     contracts: { nuran: newContractState(), kagan: newContractState(), behram: newContractState() },
     inv: newInv(),
     raids: [],
+    raidTier: 'B',
+    raidBest: {},
     camps: [],
     camp: -1,
   };
@@ -179,6 +184,13 @@ export function sanitizeSave(raw: unknown): SaveData {
   d.inv = sanitizeInv(r.inv);
   const won = Array.isArray(r.raids) ? r.raids : [];
   d.raids = RAIDS.map((x) => x.id).filter((id) => won.includes(id));
+  if (typeof r.raidTier === 'string' && (RAID_TIERS as string[]).includes(r.raidTier)) d.raidTier = r.raidTier as RaidTier;
+  const best = (r.raidBest ?? {}) as Record<string, unknown>;
+  for (const id of d.raids) {
+    const t = best[id];
+    // Eski kayıtlarda püskürtülen baskın olağan (B) zorlukta sayılır.
+    d.raidBest[id] = typeof t === 'string' && (RAID_TIERS as string[]).includes(t) ? (t as RaidTier) : 'B';
+  }
   // Yapı sayısı burada bilinmez; oyun açılınca yeniden sınırlanır.
   const cp = sanitizeCamps(r.camps, r.camp, 100000);
   d.camps = cp.camps;

@@ -91,3 +91,46 @@ export const RAID_BY_ID = Object.fromEntries(RAIDS.map((r) => [r.id, r])) as Rec
 export function waveSize(w: RaidWave) {
   return w.giants.reduce((n, [, c]) => n + c, 0) + (w.shifter ? 1 : 0);
 }
+
+/** Baskın zorluğu: C en kolay, B olağan, A zor, S en zor. */
+export type RaidTier = 'C' | 'B' | 'A' | 'S';
+export const RAID_TIERS: RaidTier[] = ['C', 'B', 'A', 'S'];
+
+/**
+ * Zorluğun baskına etkisi: dev sayısı (`count`), iri dev sayısı (`big`), devlerin canı (`hp`) ve vuruşu (`dmg`),
+ * köyü ya da suru yıkma hızı (`smash`), hazırlık süresi (`prep`), eşlik eden dev sayısı (`escort`) ve ödül (`reward`).
+ * S zorlukta son dalgaya, yoksa, bir dönüşümcü katılır.
+ */
+export const TIERS: Record<RaidTier, { name: string; desc: string; count: number; big: number; hp: number; dmg: number; smash: number; prep: number; escort: number; reward: number; shifter: boolean }> = {
+  C: { name: 'Kolay', desc: 'Az dev, köy dayanıklı', count: 0.7, big: 0.5, hp: 0.8, dmg: 0.75, smash: 0.7, prep: 1.25, escort: 0.6, reward: 0.6, shifter: false },
+  B: { name: 'Orta', desc: 'Olağan baskın', count: 1, big: 1, hp: 1, dmg: 1, smash: 1, prep: 1, escort: 1, reward: 1, shifter: false },
+  A: { name: 'Zor', desc: 'Daha çok ve iri dev, sert vurur', count: 1.35, big: 1.7, hp: 1.35, dmg: 1.25, smash: 1.3, prep: 0.8, escort: 1.4, reward: 1.7, shifter: false },
+  S: { name: 'En zor', desc: 'Kalabalık, iri, çok sert; dönüşümcü katılır', count: 1.75, big: 2.6, hp: 1.8, dmg: 1.5, smash: 1.6, prep: 0.65, escort: 1.9, reward: 2.8, shifter: true },
+};
+
+/** Zorluğa göre ayarlanmış baskın: dalgalar, hazırlık, eşlik eden devler ve ödül. */
+export function tierRaid(def: RaidDef, tier: RaidTier): RaidDef {
+  const T = TIERS[tier];
+  const waves = def.waves.map((w, i): RaidWave => {
+    const giants = w.giants.map(([k, n]): [CommonKind, number] => [k, Math.max(1, Math.round(n * T.count))]);
+    const last = i === def.waves.length - 1;
+    return {
+      giants,
+      big: w.big !== undefined || T.big > 1 ? Math.round((w.big ?? (i > 0 ? 1 : 0)) * T.big) : undefined,
+      shifter: w.shifter ?? (T.shifter && last && giants.length > 0 ? 'ofke' : undefined),
+    };
+  });
+  return {
+    ...def,
+    prep: Math.round(def.prep * T.prep),
+    waves,
+    escortCount: def.escortCount !== undefined ? Math.max(1, Math.round(def.escortCount * T.escort)) : undefined,
+    reward: { coins: Math.round((def.reward.coins * T.reward) / 10) * 10, xp: Math.round((def.reward.xp * T.reward) / 10) * 10 },
+  };
+}
+
+/** İki zorluktan daha zor olanı. */
+export function harderTier(a: RaidTier | undefined, b: RaidTier) {
+  if (!a) return b;
+  return RAID_TIERS.indexOf(a) >= RAID_TIERS.indexOf(b) ? a : b;
+}

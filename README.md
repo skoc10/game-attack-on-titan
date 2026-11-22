@@ -112,6 +112,17 @@ Surların tepesinde, yürüme yolunun dış kenarında aralıklarla **toplar** d
 
 Menüde (oyunun başında ya da `Esc` ile) **BASKINLAR** düğmesi üç baskını listeler. Birini seçince savunacağın yere götürülürsün; atın da yanına gelir. Baskın sürerken ekranın üstünde adı, aşaması ve savunulan yerin **sağlamlığı** görünür. Haritada ve ışık sütununda hedef baskın yeridir, olağan devler bu sırada doğmaz. Ölürsen baskın yerinde yeniden doğarsın. Savunulan yerden 760 m'den fazla uzaklaşırsan 10 saniye içinde dönmezsen baskın kaybedilir; menüden **Baskından çekil** de denebilir.
 
+**Zorluk:** BASKINLAR menüsünün üstündeki **ZORLUK** satırından seçilir; seçim kaydedilir. Kartlar dev sayısını ve ödülü seçilen zorluğa göre gösterir.
+
+| Zorluk | Dev sayısı | İri dev | Can | Vuruş | Yıkım hızı | Hazırlık | Ödül |
+|---|---|---|---|---|---|---|---|
+| **C** Kolay | ×0,7 | ×0,5 | ×0,8 | ×0,75 | ×0,7 | ×1,25 | ×0,6 |
+| **B** Orta | ×1 | ×1 | ×1 | ×1 | ×1 | ×1 | ×1 |
+| **A** Zor | ×1,35 | ×1,7 | ×1,35 | ×1,25 | ×1,3 | ×0,8 | ×1,7 |
+| **S** En zor | ×1,75 | ×2,6 | ×1,8 | ×1,5 | ×1,6 | ×0,65 | ×2,8 |
+
+S zorlukta köy baskınlarının son dalgasına, yoksa, bir dönüşümcü katılır. Sur baskınında yıkıcıya eşlik eden dev sayısı da zorlukla değişir. Her baskında püskürttüğün en zor zorluk kartta harfiyle görünür; baskın sürerken adının yanında zorluğu yazar.
+
 | Baskın | Yer | Akış | Ödül |
 |---|---|---|---|
 | **Değirmen Baskını** | Demir Ova'da bir köy | 3 dalga: 7 → 9 → 12 dev (koşucular, çığlıkçılar; son dalgada üç iri dev) | ◆ 450 · 400 XP |
