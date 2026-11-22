@@ -156,6 +156,15 @@ export class Minimap {
       c.fill();
     }
 
+    // Dost dönüşümcüler (Taç Soyu)
+    for (const a of g.blood.allies) {
+      const [x, y] = map(a.pos.x, a.pos.z);
+      c.fillStyle = '#7fe08a';
+      c.beginPath();
+      c.arc(x, y, 5, 0, Math.PI * 2);
+      c.fill();
+    }
+
     // Sur içindeki kişiler
     for (const n of g.npcs.list) {
       if (Math.hypot(n.x - p.x, n.z - p.z) > VIEW) continue;

@@ -23,6 +23,9 @@ export class Input {
   dragDY = 0;
   /** Fare kilitliyken biriken hareket. */
   mouseDX = 0;
+  /** Kilit yokken farenin kayması (bakışı çevirir). */
+  freeDX = 0;
+  freeDY = 0;
   mouseDY = 0;
   locked = false;
   /** İmleç pencerenin içinde mi (serbest imleçle dönüş için). */
@@ -98,6 +101,9 @@ export class Input {
       }
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
+      // Kilit yokken de fare kaydırması bakışı çevirir.
+      this.freeDX += e.movementX;
+      this.freeDY += e.movementY;
       if (this.btn[1]) {
         this.dragDX += e.movementX;
         this.dragDY += e.movementY;
@@ -128,9 +134,9 @@ export class Input {
     this.onTouchChange?.(on);
   }
 
-  /** Nişan ekranın ortasında mı (fare kilitli ya da dokunmatik). */
+  /** Nişan ekranın ortasında mı (dokunmatik). Fare kilitliyken nişangâh ortadaki alanda kayar. */
   get centerAim() {
-    return this.locked || this.touch;
+    return this.touch;
   }
 
   /** Çubuk sonuna kadar itildiyse koşulur (Shift yerine). */
@@ -193,6 +199,8 @@ export class Input {
     this.btnPressed.fill(false);
     this.mouseDX = 0;
     this.mouseDY = 0;
+    this.freeDX = 0;
+    this.freeDY = 0;
     this.dragDX = 0;
     this.dragDY = 0;
     this.lookDX = 0;

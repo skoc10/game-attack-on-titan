@@ -17,6 +17,7 @@ import { killStyle, type KillStyle } from './systems/contracts';
 import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { Camps } from './world/camps';
+import { Bloodline } from './player/bloodline';
 import { Demolition } from './world/demolish';
 import { tickWind } from './core/wind';
 import { clamp, lerp } from './core/rng';
@@ -83,6 +84,8 @@ export class Game {
   readonly stations: Stations;
   /** Yapılardaki doğuş noktaları. */
   readonly camps: Camps;
+  /** Kan soyu: Çelik Soyu uyanışı ve Taç Soyu'nun dost dönüşümcüleri. */
+  readonly blood: Bloodline;
   /** Dev tekmesiyle yıkılan evler ve molozları. */
   readonly demolition: Demolition;
   readonly grass: Grass;
@@ -121,6 +124,8 @@ export class Game {
   readonly cursor = new THREE.Vector2();
   readonly aimDir = new THREE.Vector3(0, 0, 1);
   readonly aimPoint = new THREE.Vector3();
+  /** Kilitli farede nişangâhın ekranın ortasına göre kayması (−1..1, ekranın yarı boyuna oranla). */
+  readonly aimOff = new THREE.Vector2();
   aimOnGround = false;
   private readonly cursorRay = new THREE.Raycaster();
   private readonly marker: THREE.Mesh;
@@ -192,6 +197,7 @@ export class Game {
     this.crates = new Crates(this.scene, this.world.villages);
     this.stations = new Stations(this.scene, this.world);
     this.camps = new Camps(this);
+    this.blood = new Bloodline(this);
     this.demolition = new Demolition(this);
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
@@ -249,6 +255,7 @@ export class Game {
     });
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === canvas;
+      this.aimOff.set(0, 0);
       // Esc fare kilidini açar: oyunu duraklat.
       if (!locked && this.wasLocked && this.running && !this.bigmap.open) this.pause();
       this.wasLocked = locked;
@@ -436,6 +443,7 @@ export class Game {
     this.save.mode = mode;
     this.story.restart();
     this.camps.paint();
+    this.blood.clear();
     this.loadoutDirty = true;
     this.meter.value = 0;
     this.meter.clearNeedles();
@@ -458,8 +466,9 @@ export class Game {
   /** İmleç ışınını araziyle kesiştirir: yürüme hedefi ve nişan yönü buradan gelir. */
   private updateCursor() {
     const inp = this.input;
-    // Fare kilitliyken ve dokunmatikte nişan ekranın ortasıdır.
+    // Dokunmatikte nişan ekranın ortasıdır; kilitli farede ortadaki alanda kayan nişangâhtır.
     if (inp.centerAim) this.cursor.set(0, 0);
+    else if (inp.locked) this.cursor.copy(this.aimOff);
     else this.cursor.set((inp.mouseX / window.innerWidth) * 2 - 1, -(inp.mouseY / window.innerHeight) * 2 + 1);
     this.cursorRay.setFromCamera(this.cursor, this.camera);
     const o = this.cursorRay.ray.origin;
@@ -921,14 +930,41 @@ export class Game {
     // imleç ekranın ortasından ne kadar yana kayarsa kamera o yöne o kadar hızlı döner.
     let mouseYaw = 0;
     let mousePitch = 0;
-    if (inp.centerAim) {
+    const C = CFG.camera;
+    if (inp.touch) {
       // Dokunmatikte parmak kaydırması fareden biraz daha hızlı çevirir.
-      mouseYaw = -inp.mouseDX * 0.0024 - inp.lookDX * CFG.touch.lookYaw;
-      mousePitch = -inp.mouseDY * 0.0022 - inp.lookDY * CFG.touch.lookPitch;
+      mouseYaw = -inp.lookDX * CFG.touch.lookYaw;
+      mousePitch = -inp.lookDY * CFG.touch.lookPitch;
+    } else if (inp.locked) {
+      // Kilitli fare: nişangâh ortadaki alanda kayar; alanın kenarını iten hareket bakışı çevirir.
+      // Nişangâh yavaşça ortaya döner, bakış da onunla birlikte o yöne kayar.
+      const w = window.innerWidth / 2;
+      const h = window.innerHeight / 2;
+      const Z = C.aimZone;
+      let ox = this.aimOff.x + inp.mouseDX / w;
+      let oy = this.aimOff.y - inp.mouseDY / h;
+      const cx = clamp(ox, -Z, Z);
+      const cy = clamp(oy, -Z, Z);
+      mouseYaw = -(ox - cx) * w * C.sens;
+      mousePitch = (oy - cy) * h * C.sens * 0.92;
+      ox = cx;
+      oy = cy;
+      const back = Math.min(1, C.recenter * dt);
+      // Ortaya dönen pay kadar bakış nişangâhın yönüne döner: nişangâhın altındaki yer ekranda yerinde kalır.
+      const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+      const th = tv * this.camera.aspect;
+      const nx2 = ox * (1 - back);
+      const ny2 = oy * (1 - back);
+      mouseYaw += -(Math.atan(ox * th) - Math.atan(nx2 * th));
+      mousePitch += Math.atan(oy * tv) - Math.atan(ny2 * tv);
+      this.aimOff.set(nx2, ny2);
     } else if (inp.inside) {
+      // Serbest imleç: fareyi kaydırmak bakışı çevirir; imleç kenara yaklaşınca dönmeye devam eder.
+      mouseYaw = -inp.freeDX * C.freeSens;
+      mousePitch = -inp.freeDY * C.freeSens * 0.8;
       const nx = (inp.mouseX / window.innerWidth) * 2 - 1;
-      const over = Math.abs(nx) - CFG.camera.deadZone;
-      if (over > 0) mouseYaw = -Math.sign(nx) * Math.pow(over / (1 - CFG.camera.deadZone), 1.4) * CFG.camera.edgeTurn * dt;
+      const over = Math.abs(nx) - C.deadZone;
+      if (over > 0) mouseYaw += -Math.sign(nx) * Math.pow(over / (1 - C.deadZone), 1.4) * C.edgeTurn * dt;
     }
     this.camYaw += mouseYaw - yawStep * 0.0024 - inp.dragDX * 0.005 + keyTurn * 1.8 * dt;
     this.camPitch = clamp(this.camPitch + mousePitch - pitchStep * 0.0016 - inp.dragDY * 0.004 + keyPitch * 1.2 * dt, -1.1, 1.2);
@@ -940,8 +976,8 @@ export class Game {
           inp.touch
             ? 'Solda parmağınla yürü, sağda ekranı kaydırarak bak'
             : inp.locked
-              ? 'Fareyi hareket ettirerek yönünü değiştir'
-              : 'Dönmek için imleci ekranın sağına ya da soluna götür',
+              ? 'Fareyi kaydır: nişangâh ortada kayar, kenarını itince bakışın döner'
+              : 'Fareyi kaydırarak bak; imleç kenara gelince dönmeye devam edersin',
         );
       }
     }
@@ -985,6 +1021,7 @@ export class Game {
     this.raid.update(sdt);
     this.breaker.update(sdt);
     this.camps.update(sdt);
+    this.blood.update(sdt);
     this.demolition.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);

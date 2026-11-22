@@ -72,6 +72,10 @@ export class Giant {
   raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
   /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
   breaching = false;
+  /** Dost dönüşümcü (Taç Soyu): oyuncunun yanında düşman devlerle savaşır; `allyT` sn sonra buharlaşır. */
+  ally = false;
+  allyT = 0;
+  private allyTarget: Giant | null = null;
   /** Yürürken evleri ezip geçmesinin bir sonraki denetimine kalan süre. */
   private trampleT = Math.random() * 0.3;
   /** Fırlatıldı: yere çarpınca devrilir. */
@@ -366,6 +370,82 @@ export class Giant {
     if (!this.alive || this.heavy) return;
     this.commandT = t;
     if (this.state === 'wander' || this.state === 'guard') this.setState('chase');
+  }
+
+  /**
+   * Dost dönüşümcü: en yakın düşman deve yürür ve yumruklar; düşman yoksa oyuncunun yanında durur.
+   * Süresi bitince buhar olup kaybolur.
+   */
+  private updateAlly(dt: number, game: Game) {
+    this.allyT -= dt;
+    if (this.allyT <= 0) {
+      this.napeWorld(v);
+      game.particles.burst(v, 60, this.h * 0.8, 2.2, 0xdddddd, this.h * 0.25, 6);
+      game.smoke.burst(v.set(this.pos.x, this.pos.y + this.h * 0.5, this.pos.z), 14, 6, 3, 0xe8e4dc, this.h * 0.4, 4, 4 + this.h * 0.3, 2);
+      this.gone = true;
+      return;
+    }
+    const p = game.player;
+    let t = this.allyTarget;
+    if (!t || !t.alive || t.gone) {
+      t = null;
+      let best: number = CFG.blood.tac.seek;
+      for (const o of game.giants) {
+        if (!o.alive || o.gone) continue;
+        const d = Math.hypot(o.pos.x - this.pos.x, o.pos.z - this.pos.z);
+        if (d < best) {
+          best = d;
+          t = o;
+        }
+      }
+      this.allyTarget = t;
+    }
+    // Hedef yoksa oyuncunun birkaç adım yanında durur.
+    const tx = t ? t.pos.x : p.pos.x + Math.cos(p.faceYaw) * 20;
+    const tz = t ? t.pos.z : p.pos.z - Math.sin(p.faceYaw) * 20;
+    const dx = tx - this.pos.x;
+    const dz = tz - this.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const reach = this.h * 0.45 + 2 + (t ? t.radius : 0);
+    if (this.attackCd > 0) this.attackCd -= dt;
+    let move = 0;
+    if (this.state === 'windup') {
+      if (this.stateT > 0.55) {
+        if (t && t.alive && dist < reach * 1.2) {
+          const dmg = (this.form?.punch.dmg ?? 120) * CFG.blood.tac.dmg;
+          t.titanHit(dmg, game, this.form?.punch.armorBreak ?? false, this.pos, false, { melee: true, push: 2 });
+          v.set(this.pos.x + (dx / (dist || 1)) * this.h * 0.35, this.pos.y + this.h * 0.6, this.pos.z + (dz / (dist || 1)) * this.h * 0.35);
+          game.particles.burst(v, 12, 8, 0.4, 0xfff0d0, this.h * 0.05);
+          game.audio.block();
+        }
+        this.attackCd = 1.1;
+        this.setState('recover');
+      }
+    } else if (this.state === 'recover') {
+      if (this.stateT > 0.5) this.setState('chase');
+    } else {
+      if (this.state !== 'chase') this.setState('chase');
+      if (t && dist < reach && this.attackCd <= 0) {
+        this.attackKind = 'swipe';
+        this.setState('windup');
+      } else if (dist > (t ? reach * 0.8 : 8)) {
+        move = this.type.speed * (0.8 + this.h / 40) * CFG.giantPace.chase * (dist > 120 ? 1.5 : 1);
+      }
+    }
+    this.yaw = turnToward(this.yaw, Math.atan2(dx, dz), 3 * dt);
+    this.moving = move > 0;
+    if (move > 0) {
+      const step = move * dt;
+      this.pos.x += Math.sin(this.yaw) * step;
+      this.pos.z += Math.cos(this.yaw) * step;
+      game.world.resolve(this.pos, this.radius, OBSTACLES);
+      this.phase += step / (this.h * 0.22);
+    }
+    wallPush(this.pos, this.bodyR, 0, this.h);
+    this.pos.y = game.world.heightAt(this.pos.x, this.pos.z);
+    this.body.root.rotation.y = this.yaw;
+    this.lookYaw = 0;
+    this.animate(dt, 0, dist);
   }
 
   /** Adım yere değdi: yakındaysa yer sarsılır, iri devin ayağından toz ve kırıntı kalkar. */
@@ -739,6 +819,10 @@ export class Giant {
         this.intro(dt, game);
         return;
       }
+    }
+    if (this.ally) {
+      this.updateAlly(dt, game);
+      return;
     }
     // Arada bir kendi sesini çıkarır; kovalarken daha sık.
     this.talkT -= dt;

@@ -9,7 +9,7 @@ import { FORMS, hex } from '../data/titans';
 import { missionAt, missionsDone, storyDone } from '../systems/storyRules';
 
 const CONTROLS: [string, string][] = [
-  ['Fareyi hareket ettir', 'Yönünü ve bakışını çevir'],
+  ['Fareyi kaydır', 'Bakışını çevir; nişangâh ortadaki alanda kayar, kenarını itince bakış döner'],
   ['Sağ tık (basılı)', 'Baktığın yöne koş'],
   ['Sol tık (basılı)', 'Nişana kanca at, çekil'],
   ['Sol tık', 'Dev yakınken kılıç — enseye vur'],

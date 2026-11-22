@@ -92,8 +92,8 @@ export class Grapple {
     if (dist < 1e-4) return;
     dir.multiplyScalar(1 / dist);
     if (dist > G.holdDist) {
-      p.vel.addScaledVector(dir, G.reelAccel * p.reelMul * dt);
-      p.gas -= G.gasPerSec * dt;
+      p.vel.addScaledVector(dir, G.reelAccel * p.reelNow * dt);
+      p.gas -= G.gasPerSec * p.gasUse * dt;
     } else {
       // Tutunma noktasında asılı kal.
       p.vel.multiplyScalar(Math.max(0, 1 - 8 * dt));

@@ -219,6 +219,17 @@ Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, ka
 - Sıradan devler 17 m'ye kadar doğar. Devlerin %24'ü türünün 1,4–2 katı iri doğar; böylece bazı devler dev formların boyuna (15–30 m) ulaşır.
 - **Yer sarsıntısı:** yaklaşan devin her adımı yeri sarsar; dev ne kadar iri ve yakınsa sarsıntı o kadar güçlüdür. 9 m'den uzun devlerin ayağından toz ve kırıntı kalkar, 16 m'den uzunların adımında yerde halka yayılır.
 
+## Kan soyları
+
+Bazı karakterlerin kanında özgün bir soy vardır (karakter kartında yazar):
+
+- **Çelik Soyu** (Kuzey, Sena): `B` ile **uyanış**. 12 saniye boyunca %30 hızlı koşarsın, gaz itişin %35, kanca çekişin %25 güçlenir, en yüksek hızın %20 artar ve gazın **%55 az** tükenir. Gövdenden kızıl kıvılcımlar savrulur. 40 saniyede bir kullanılır.
+- **Taç Soyu** (Yiğit, Oğuz): dev formunda **kükreyince** %45 olasılıkla yanında iki **dost dönüşümcü** belirir (yıldırımla, buharın içinden yükselerek). 30 saniye boyunca en yakın düşman devlere yürüyüp onları yumruklarlar, sonra buhar olup kaybolurlar. Senin darbelerin, toplar ve mızraklar onlara değmez; mini haritada yeşil görünürler.
+
+## Fare ve nişangâh
+
+Fare kilitliyken nişangâh ekranın ortasındaki bir alanda fareyle birlikte kayar; alanın kenarını itince bakışın döner. Nişangâh yavaşça ortaya döner, bakış da onu izler: nişan aldığın yer ekranda yerinde kalır. Fare kilitli değilse fareyi kaydırmak bakışı çevirir, imleç ekranın kenarına gelince dönmeye devam eder.
+
 ## Sınır Ormanı
 
 Haritanın dış kenarını baştan sona sık bir orman sarar. Kuşak dünyanın sınırından yaklaşık 480 m içeride seyrek başlar, sınıra yaklaştıkça sıklaşır. Sınırda uzun çamlar ve geniş yapraklılar gövde gövdeye durur, dışarısı görünmez. Orman yalnızca yakındayken çizilir.
