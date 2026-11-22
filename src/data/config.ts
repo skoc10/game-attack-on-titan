@@ -85,6 +85,12 @@ export const CFG = {
   // Kan soyları. Çelik: B ile `dur` sn uyanış (`cd` sn bekleme): koşu, itiş, kanca çekişi ve en yüksek hız artar, gaz `gas` katı yanar.
   // Taç: dev formunda kükreyince `chance` olasılıkla `count` dost dönüşümcü `radius` m yanında belirir, `dur` sn savaşır;
   // `seek` m içindeki düşmanları bulur, yumruğu formun yumruğunun `dmg` katı vurur.
+  // İşaret fişeği: sandıktan `perCrate` çıkar (en çok `max`, başta `start`); `range` m'ye kadar atılır, `burn` sn yanar.
+  // Yandığı yerin `radius` m çevresindeki devler oraya yürür; av `notice` m'den yakına gelince ona döner.
+  flare: { start: 1, max: 5, perCrate: 2, range: 160, speed: 55, gravity: 30, burn: 14, radius: 320, notice: 28 },
+  // Beceri ağacı: Çevik Adım hız katı, Derin Nefes gaz katı, Kaçış hızı/dokunulmazlık/bekleme/gaz,
+  // Kol Kesme'de kolların yeniden çıkma süresi, Girdap'ın erişimi, süresi ve beklemesi.
+  skills: { cevik: 1.12, nefes: 0.8, dash: 30, dashInvuln: 0.45, dashCd: 1.4, dashGas: 3, armRegrow: 12, girdapReach: 3.4, girdapTime: 0.75, girdapCd: 3.5 },
   blood: {
     celik: { dur: 12, cd: 40, move: 1.3, boost: 1.35, reel: 1.25, maxSpeed: 1.2, gas: 0.45 },
     tac: { chance: 0.45, count: 2, dur: 30, radius: 45, seek: 450, dmg: 1 },

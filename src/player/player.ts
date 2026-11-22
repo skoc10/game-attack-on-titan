@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Game } from '../game';
 import type { EyeResult, Giant, NapeResult } from '../enemies/giant';
+import type { SkillId } from '../data/skills';
 import { CFG } from '../data/config';
 import { angDiff, clamp, lerp, turnToward } from '../core/rng';
 import { CHARACTERS, type CharDef } from '../data/characters';
@@ -52,12 +53,82 @@ export class Player {
   private speedMul = 1;
   private reachMul = 1;
   reelMul = 1;
-  /** Kanca çekişinin ve gaz tüketiminin o anki katı (Çelik Soyu uyanışı). */
+  /** Kanca çekişinin ve gaz tüketiminin o anki katı (Çelik Soyu uyanışı, Derin Nefes). */
   get reelNow() {
     return this.reelMul * this.game.blood.reelMul;
   }
   get gasUse() {
-    return this.game.blood.gasMul;
+    return this.game.blood.gasMul * (this.has('nefes') ? CFG.skills.nefes : 1);
+  }
+  /** Çevik Adım: koşu, itiş ve en yüksek hız katı. */
+  private get nimble() {
+    return this.has('cevik') ? CFG.skills.cevik : 1;
+  }
+  /** Beceri ağacından bu beceri alınmış mı. */
+  has(id: SkillId) {
+    return this.game.save.skills.includes(id);
+  }
+  /** Kaçış ve Girdap'ın yeniden kullanılmasına kalan süre. */
+  dashCd = 0;
+  girdapCd = 0;
+
+  /** Kaçış (X): gidilen yöne (ya da bakılan yöne) fırlar; bir an hiçbir darbe değmez. */
+  private dash() {
+    const g = this.game;
+    const S = CFG.skills;
+    if (!this.has('kacis')) {
+      g.hud.toast('Kaçış becerin yok — K ile beceri ağacından al');
+      return;
+    }
+    if (this.dashCd > 0 || this.mode === 'mounted') return;
+    if (!this.onGround) {
+      if (this.gas < S.dashGas) return;
+      this.gas -= S.dashGas;
+    }
+    const inp = g.input;
+    const f = (inp.down('KeyW') ? 1 : 0) - (inp.down('KeyS') ? 1 : 0) + inp.stickY;
+    const r = (inp.down('KeyD') ? 1 : 0) - (inp.down('KeyA') ? 1 : 0) + inp.stickX;
+    const yaw = g.camYaw;
+    let dx = Math.sin(yaw) * f - Math.cos(yaw) * r;
+    let dz = Math.cos(yaw) * f + Math.sin(yaw) * r;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.1) {
+      dx = Math.sin(yaw);
+      dz = Math.cos(yaw);
+    } else {
+      dx /= l;
+      dz /= l;
+    }
+    this.grapple.release();
+    this.vel.x = dx * S.dash;
+    this.vel.z = dz * S.dash;
+    this.vel.y = Math.max(this.vel.y, this.onGround ? 5 : 3);
+    this.onGround = false;
+    this.invuln = Math.max(this.invuln, S.dashInvuln);
+    this.dashCd = S.dashCd;
+    g.audio.gas();
+    for (let i = 0; i < 14; i++) g.particles.emit(this.pos.x, this.pos.y + 0.9, this.pos.z, -dx * 6 + (Math.random() - 0.5) * 3, Math.random() * 2, -dz * 6 + (Math.random() - 0.5) * 3, 0.5, 0xcfe4ee);
+  }
+
+  /** Girdap (Z): yerinde dönerek çevredeki her devi keser (ense, bacak ve kol). */
+  private girdap() {
+    const g = this.game;
+    const S = CFG.skills;
+    if (!this.has('girdap')) {
+      g.hud.toast('Girdap becerin yok — K ile beceri ağacından al');
+      return;
+    }
+    if (this.girdapCd > 0 || this.mode === 'mounted') return;
+    this.girdapCd = S.girdapCd;
+    this.spinT = S.girdapTime;
+    this.swingHit.clear();
+    this.reveal();
+    g.audio.swing();
+    g.audio.slash(0.6);
+    look.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw));
+    tmp.set(this.pos.x, this.pos.y + 1.1, this.pos.z);
+    g.slashes.spawn(tmp, look, 3.6, 0xbfe0ff, 0, 0.4);
+    g.rings.spawn(this.pos.x, this.pos.y + 1, this.pos.z, S.girdapReach + 3, 0xbfe0ff, 0.35);
   }
   private swingT = -1;
   private swingBonus = 1;
@@ -354,6 +425,10 @@ export class Player {
     if (inp.pressed('KeyE')) this.interact();
     if (inp.pressed('KeyR')) this.useAbility();
     if (inp.pressed('KeyQ') && g.spears.fire(g) !== false) this.reveal();
+    // İşaret fişeği ve beceri ağacından alınan etkin beceriler.
+    if (inp.pressed('KeyJ')) g.flares.fire();
+    if (inp.pressed('KeyZ')) this.girdap();
+    if (inp.pressed('KeyX')) this.dash();
     // Sol tık: imlecin altında tutunacak yer varsa kanca atar; yakında dev varsa (ya da kanca atılamadıysa) kılıç savurur.
     if (inp.mousePressed(0)) {
       let hooked = false;
@@ -783,6 +858,22 @@ export class Player {
         this.afterNape(gi.hitNape(g, sharp, pierce), tmp, gi);
         continue;
       }
+      // Kol Kesme: önkola değen savruş kolları koparır (dev bir süre tutamaz, vuramaz).
+      if (this.has('kolkes') && gi.armlessT <= 0 && !gi.heavy && sharp) {
+        let cut = false;
+        for (let i = 0; i < 2 && !cut; i++) {
+          gi.armWorld(i, tmp);
+          if (chest.distanceTo(tmp) < reach + gi.h * 0.06 + 0.6 && gi.cutArms(g)) {
+            cut = true;
+            this.swingHit.add(gi);
+            this.useBlade();
+            g.audio.slash(0.5);
+            g.hud.callout('KOLLAR KESİLDİ');
+            g.hud.toast(`${gi.type.name} kollarını kaybetti — ${CFG.skills.armRegrow} sn seni tutamaz, vuramaz`);
+          }
+        }
+        if (cut) continue;
+      }
       for (let i = 0; i < 2; i++) {
         gi.footWorld(i, tmp);
         if (chest.distanceTo(tmp) < reach + gi.legRadius) {
@@ -871,6 +962,8 @@ export class Player {
     if (this.revealT > 0) this.revealT -= dt;
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.abilityCd > 0) this.abilityCd -= dt;
+    if (this.dashCd > 0) this.dashCd -= dt;
+    if (this.girdapCd > 0) this.girdapCd -= dt;
     if (this.heavyT > 0) this.heavyT -= dt;
     if (this.blockedToastT > 0) this.blockedToastT -= dt;
     if (this.gasToastT > 0) this.gasToastT -= dt;
@@ -946,7 +1039,7 @@ export class Player {
     const hooked = this.grapple.active;
     const grounded = this.onGround && !hooked;
     if (grounded) {
-      const sp = (sprint ? P.sprint : P.walk) * this.speedMul * g.blood.moveMul;
+      const sp = (sprint ? P.sprint : P.walk) * this.speedMul * g.blood.moveMul * this.nimble;
       const cur = Math.hypot(this.vel.x, this.vel.z);
       const rate = (cur > sp + 2 ? P.friction : P.accelGround) * dt;
       const ddx = wish.x * sp - this.vel.x;
@@ -974,8 +1067,8 @@ export class Player {
         look.copy(g.aimDir);
         look.y = Math.max(look.y, 0) + 0.35;
         look.normalize();
-        this.vel.addScaledVector(look, CFG.grapple.boostAccel * g.blood.boostMul * dt);
-        this.gas = Math.max(0, this.gas - CFG.grapple.boostGasPerSec * g.blood.gasMul * dt);
+        this.vel.addScaledVector(look, CFG.grapple.boostAccel * g.blood.boostMul * this.nimble * dt);
+        this.gas = Math.max(0, this.gas - CFG.grapple.boostGasPerSec * this.gasUse * dt);
         this.puffT -= dt;
         if (this.puffT <= 0) {
           this.puffT = 0.03;
@@ -986,7 +1079,7 @@ export class Player {
     }
     this.grapple.apply(dt, this);
     const sp2 = this.vel.length();
-    const vmax = CFG.grapple.maxSpeed * g.blood.maxMul;
+    const vmax = CFG.grapple.maxSpeed * g.blood.maxMul * this.nimble;
     if (sp2 > vmax) this.vel.multiplyScalar(vmax / sp2);
 
     const px = this.pos.x;
@@ -1017,7 +1110,7 @@ export class Player {
     }
     if (this.spinT > 0) {
       this.spinT -= dt;
-      this.bladeCheck(2.6, false);
+      this.bladeCheck(this.has('girdap') ? CFG.skills.girdapReach : 2.6, false);
     }
   }
 

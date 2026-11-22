@@ -72,6 +72,12 @@ export class Giant {
   raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
   /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
   breaching = false;
+  /** İşaret fişeği: yandığı yer ve kalan süre; o sürece dev oraya yürür (av çok yakına gelmedikçe). */
+  private lureX = 0;
+  private lureZ = 0;
+  lureT = 0;
+  /** Kolları kesildi: yeniden çıkana dek kalan süre; o sürece yakalayamaz, vuramaz, kaya atamaz. */
+  armlessT = 0;
   /** Dost dönüşümcü (Taç Soyu): oyuncunun yanında düşman devlerle savaşır; `allyT` sn sonra buharlaşır. */
   ally = false;
   allyT = 0;
@@ -242,6 +248,41 @@ export class Giant {
 
   get alive() {
     return this.state !== 'dead';
+  }
+
+  /** İşaret fişeğinin yandığı yere yönelir. */
+  lureTo(x: number, z: number, t: number) {
+    if (!this.alive || this.heavy) return;
+    this.lureX = x;
+    this.lureZ = z;
+    this.lureT = t;
+    if (this.state === 'wander' || this.state === 'guard') this.setState('chase');
+  }
+
+  /** Önkolların dünyadaki yeri (kol kesme hedefi). */
+  armWorld(i: number, out: THREE.Vector3) {
+    return (i === 0 ? this.body.foreL : this.body.foreR).getWorldPosition(out);
+  }
+
+  /**
+   * Kılıç kolları kesti: önkollar kopar (buhar tüter), dev bir an sendeler ve elindeki avı bırakır.
+   * Kollar yeniden çıkana dek yakalayamaz, vuramaz, kaya atamaz.
+   */
+  cutArms(game: Game) {
+    if (!this.alive || this.armlessT > 0 || this.heavy) return false;
+    this.armlessT = CFG.skills.armRegrow;
+    this.body.foreL.visible = false;
+    this.body.foreR.visible = false;
+    game.boulders.drop(this);
+    for (let i = 0; i < 2; i++) {
+      (i === 0 ? this.body.armL : this.body.armR).getWorldPosition(v);
+      game.particles.burst(v, 18, 8, 0.7, 0xc8322a, this.h * 0.04);
+      game.smoke.burst(v, 4, 3, 1.6, 0xe8e4dc, this.h * 0.05, 2, 1 + this.h * 0.12, 1.4);
+    }
+    this.flash();
+    this.say('pain', 1.4);
+    if (this.state === 'grab' || this.state === 'windup' || this.state === 'chase' || this.state === 'wander' || this.state === 'guard') this.stun(0.9);
+    return true;
   }
 
   /** Canını `k` katına çıkarır (baskın zorluğu); can yeniden dolar. */
@@ -803,6 +844,19 @@ export class Giant {
       }
       if (this.blindT <= 0) this.body.eyeWound.visible = false;
     }
+    if (this.armlessT > 0) {
+      this.armlessT -= dt;
+      // Kopan kolların yerinden buhar tüter; süre dolunca kollar yeniden çıkar.
+      if (Math.random() < 0.2) {
+        (Math.random() < 0.5 ? this.body.armL : this.body.armR).getWorldPosition(v);
+        game.particles.emit(v.x, v.y, v.z, 0, 2 + this.h * 0.05, 0, 0.9, 0xf0ece4, 0, 0.6 + this.h * 0.04, 0.25);
+      }
+      if (this.armlessT <= 0) {
+        this.body.foreL.visible = true;
+        this.body.foreR.visible = true;
+      }
+    }
+    if (this.lureT > 0) this.lureT -= dt;
     if (this.commandT > 0) {
       this.commandT -= dt;
       // Buyruk altındaki devin başının üstünde kızıl kıvılcımlar.
@@ -847,8 +901,17 @@ export class Giant {
     let move = 0;
     let moveYaw = this.yaw;
     this.moving = false;
-
-    switch (this.state) {
+    const armed = this.armlessT <= 0;
+    // İşaret fişeği: av yakında değilse dev fişeğin yandığı yere yürür ve orada dolanır.
+    const lured = this.lureT > 0 && (this.state === 'wander' || this.state === 'chase') && dist > CFG.flare.notice;
+    if (lured) {
+      const lx = this.lureX - this.pos.x;
+      const lz = this.lureZ - this.pos.z;
+      const ld = Math.hypot(lx, lz);
+      moveYaw = ld > 10 ? Math.atan2(lx, lz) : this.yaw + Math.sin(this.stateT * 0.7 + this.phase) * 0.8;
+      move = speed * (ld > 10 ? CFG.giantPace.chase : 0.3);
+      if (this.state !== 'chase') this.setState('chase');
+    } else switch (this.state) {
       case 'wander': {
         if (this.raid) {
           // Baskın: hedefe yürür, varınca yumruklarıyla yıkar; ancak yakınına gelen avı fark eder.
@@ -915,7 +978,7 @@ export class Giant {
           }
           moveYaw += Math.sin(this.stateT * 1.7 + this.phase) * 0.7;
           if (dist > reach * 0.7) move = speed * 0.55;
-          if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
+          if (armed && dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
             this.attackKind = this.heavy ? 'stomp' : 'swipe';
             this.setState('windup');
             this.say('grunt');
@@ -934,7 +997,7 @@ export class Giant {
             this.say('growl', 3);
             break;
           }
-          if (dist > 45 && dist < 280) {
+          if (armed && dist > 45 && dist < 280) {
             if (this.attackCd <= 0) {
               const big = Math.random() < 0.55;
               this.attackKind = big ? 'boulder' : 'shard';
@@ -983,13 +1046,13 @@ export class Giant {
           }
         }
         // Taşçı uzaktan atar: menzile girince durur, çok yaklaşılırsa yumrukla karşılar.
-        const holds = this.type.thrower === true && dist > 36 && dist < 125;
+        const holds = armed && this.type.thrower === true && dist > 36 && dist < 125;
         if (dist > reach * 0.7 && !holds) move = speed * CFG.giantPace.chase * (this.type.sprinter && p.mode === 'mounted' ? CFG.huntress.mountedChase : 1);
         if (holds && this.attackCd <= 0) {
           this.attackKind = 'throw';
           this.setState('windup');
           this.say('grunt');
-        } else if (dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
+        } else if (armed && dist < reach && dy < this.h * 1.2 && this.attackCd <= 0) {
           if (this.heavy) this.attackKind = titan || dy < 8 ? (Math.random() < 0.35 ? 'kick' : 'stomp') : 'swipe';
           else this.attackKind = pickMelee({ crawl: !!this.type.crawl, titan, low: dy < this.h * 0.5, grabChance: this.grabChance, grabRoll: Math.random(), biteRoll: Math.random(), kickRoll: Math.random() });
           this.setState('windup');

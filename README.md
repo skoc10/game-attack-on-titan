@@ -219,6 +219,22 @@ Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, ka
 - Sıradan devler 17 m'ye kadar doğar. Devlerin %24'ü türünün 1,4–2 katı iri doğar; böylece bazı devler dev formların boyuna (15–30 m) ulaşır.
 - **Yer sarsıntısı:** yaklaşan devin her adımı yeri sarsar; dev ne kadar iri ve yakınsa sarsıntı o kadar güçlüdür. 9 m'den uzun devlerin ayağından toz ve kırıntı kalkar, 16 m'den uzunların adımında yerde halka yayılır.
 
+## İşaret fişeği
+
+Kızıl ışıklı **fişek sandıklarından** ikişer işaret fişeği çıkar (en çok 5 taşınır, oyuna 1 fişekle başlarsın). `J` ile nişan aldığın yere (en çok 160 m) atılır; yay çizerek uçar, düştüğü yerde 14 saniye kızıl yanar ve göğe kızıl duman yükselir. Yandığı yerin 320 m çevresindeki devler oraya yürür ve orada dolanır; sen 28 m'den yakına gelirsen sana dönerler. Yanına atarsan devleri yanına çekersin, uzağa atarsan peşindekileri oraya saptırırsın. Bölüm sonu devleri ve dönüşümcüler kanmaz.
+
+## Beceri ağacı
+
+Her öldürdüğün dev **beceri puanı** verir: sıradan dev 1, seçkin dev ya da dönüşümcü 2, bölüm sonu devi 5. `K` beceri ağacını açar; açıkken `1`–`5` ile beceri alınır (dokunmatikte satıra dokun). Yürürken de açık kalır.
+
+| Dal | Beceri | Bedel | Önce | Etkisi |
+|---|---|---|---|---|
+| Hareket | **Çevik Adım** | 3 | — | Koşu, gaz itişi ve en yüksek hız %12 artar |
+| Hareket | **Derin Nefes** | 4 | Çevik Adım | Gaz %20 az tükenir |
+| Hareket | **Kaçış** (`X`) | 5 | Çevik Adım | Gittiğin yöne (tuş yoksa baktığın yöne) fırlarsın, 0,45 sn hiçbir darbe değmez; havadaysan 3 gaz harcar; 1,4 sn bekleme |
+| Kılıç | **Kol Kesme** | 4 | — | Devin önkoluna değen savruş kollarını koparır: dev sendeler, elindeki avı bırakır; 12 saniye seni tutamaz, vuramaz, kaya atamaz (kopan yerden buhar tüter, sonra kollar yeniden çıkar). Bölüm sonu devleri ve dönüşümcülerde işlemez |
+| Kılıç | **Girdap** (`Z`) | 6 | Kol Kesme | Yerinde dönerek 3,4 m çevrendeki her devin ensesini, bacağını ve kolunu kesersin; 3,5 sn bekleme |
+
 ## Kan soyları
 
 Bazı karakterlerin kanında özgün bir soy vardır (karakter kartında yazar):

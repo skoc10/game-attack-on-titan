@@ -1,4 +1,5 @@
 import type { Game } from '../game';
+import type { SkillRow } from './skillTree';
 import { CFG } from '../data/config';
 import { FORMS, hex, TITAN_IDS, TITANS } from '../data/titans';
 import { streakMult, xpToNext } from '../systems/progression';
@@ -54,6 +55,7 @@ export class Hud {
       <div class="cocoon" data-id="cocoon"><span class="label">BİLLUR KOZA</span><b data-id="cocoonT"></b><div class="bar"><i data-id="cocoonBar"></i></div><small><kbd>C</kbd> erken kır</small></div>
       <div class="npc" data-id="npc"></div>
       <div class="inv" data-id="inv"></div>
+      <div class="inv skills" data-id="skills"></div>
       <div class="streak" data-id="streak"><b data-id="streakN"></b><small data-id="streakM"></small><div class="bar"><i data-id="streakT"></i></div></div>
       <div class="banner" data-id="banner"><div data-id="bannerTitle"></div><small data-id="bannerSub"></small></div>
       <div class="chapter" data-id="chapter"><small data-id="chapterLabel"></small><div data-id="chapterTitle"></div><p data-id="chapterSub"></p></div>
@@ -192,6 +194,20 @@ export class Hud {
       const gear = iv.gear.map((x) => `<span style="--c:${x.color}">${esc(x.name)} <b>${esc(x.value)}</b></span>`).join('');
       this.html('inv', `<div class="npcHead"><b>ÇANTA</b><span>yürürken de açık kalır</span></div><ul>${rows}</ul><div class="invGear">${gear}</div><div class="npcKeys" data-key="Escape"><kbd>I</kbd> / <kbd>Esc</kbd> kapat<b class="tapClose">KAPAT ✕</b></div>`);
     }
+    // Beceri ağacı
+    const sv = g.skillTree.view();
+    this.el.skills.classList.toggle('show', sv !== null);
+    if (sv) {
+      let branch = '';
+      const rows = sv.rows
+        .map((r: SkillRow) => {
+          const head = r.branch !== branch ? `<li class="branch">${esc(r.branch.toLocaleUpperCase('tr'))}</li>` : '';
+          branch = r.branch;
+          return `${head}<li class="${r.state}" data-key="Digit${r.key}"><kbd>${r.key}</kbd><div><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></div><em>${esc(r.tag)}</em></li>`;
+        })
+        .join('');
+      this.html('skills', `<div class="npcHead"><b>BECERİ AĞACI</b><span>${sv.pts} beceri puanı · dev öldürdükçe kazanılır</span></div><ul>${rows}</ul><div class="npcKeys" data-key="Escape"><kbd>K</kbd> / <kbd>Esc</kbd> kapat<b class="tapClose">KAPAT ✕</b></div>`);
+    }
     this.html(
       'contracts',
       g.npcs
@@ -293,6 +309,10 @@ export class Hud {
       'ability',
       `<kbd>R</kbd> ${p.cls.ability}${p.abilityCd > 0 ? ` <b>${Math.ceil(p.abilityCd)}</b>` : p.heavyT > 0 ? ' <b>HAZIR</b>' : ''}` +
         ` &nbsp; <kbd>C</kbd> Koza${co.active ? ' <b>AÇIK</b>' : co.cd > 0 ? ` <b>${Math.ceil(co.cd)}</b>` : ''}` +
+        ` &nbsp; <kbd>J</kbd> Fişek <b class="n">${g.flares.count}</b>` +
+        (p.has('girdap') ? ` &nbsp; <kbd>Z</kbd> Girdap${p.girdapCd > 0 ? ` <b>${Math.ceil(p.girdapCd)}</b>` : ''}` : '') +
+        (p.has('kacis') ? ` &nbsp; <kbd>X</kbd> Kaçış${p.dashCd > 0 ? ` <b>${Math.ceil(p.dashCd)}</b>` : ''}` : '') +
+        ` &nbsp; <kbd>K</kbd> Beceriler${g.save.skillPts > 0 ? ` <b class="n">${g.save.skillPts}</b>` : ''}` +
         (g.blood.blood === 'celik' ? ` &nbsp; <kbd>B</kbd> Uyanış${g.blood.awake ? ` <b style="color:#ff5a3a">${Math.ceil(g.blood.awakeT)}</b>` : g.blood.awakeCd > 0 ? ` <b>${Math.ceil(g.blood.awakeCd)}</b>` : ''}` : '') +
         ` &nbsp; <kbd>H</kbd> Sargı <b class="n">${g.save.inv.sargi}</b> &nbsp; <kbd>I</kbd> Çanta` +
         (g.save.inv.wear ? (p.revealT > 0 ? ` &nbsp; <span class="hoodTag seen">KAPŞON · GÖRÜNÜRSÜN ${Math.ceil(p.revealT)}</span>` : ' &nbsp; <span class="hoodTag">KAPŞON · GİZLİ</span>') : ''),
