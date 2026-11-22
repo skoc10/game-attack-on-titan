@@ -1,5 +1,6 @@
 import { RAIDS, RAID_TIERS, type RaidId, type RaidTier } from '../data/raids';
 import { sanitizeCamps } from './camps';
+import { SKILL_IDS, SKILLS, type SkillId } from '../data/skills';
 import { CHARACTERS, CHAR_IDS, type CharId } from '../data/characters';
 import { CHAPTERS } from '../data/story';
 import { NPC_IDS, NPCS, type NpcId } from '../data/npcs';
@@ -43,6 +44,9 @@ export interface SaveData {
   /** Uğranan yapılar (doğuş noktaları, yapı sırasıyla) ve şu an seçili olanı (-1: şehir). */
   camps: number[];
   camp: number;
+  /** Beceri ağacı: alınan beceriler ve harcanmamış beceri puanı (dev öldürerek kazanılır). */
+  skills: SkillId[];
+  skillPts: number;
 }
 
 export const MAX_UPGRADE = 5;
@@ -79,6 +83,8 @@ export function newSave(): SaveData {
     raidBest: {},
     camps: [],
     camp: -1,
+    skills: [],
+    skillPts: 0,
   };
 }
 
@@ -192,6 +198,10 @@ export function sanitizeSave(raw: unknown): SaveData {
     d.raidBest[id] = typeof t === 'string' && (RAID_TIERS as string[]).includes(t) ? (t as RaidTier) : 'B';
   }
   // Yapı sayısı burada bilinmez; oyun açılınca yeniden sınırlanır.
+  // Beceriler: bilinmeyenler atılır, önündeki becerisi olmayan sayılmaz.
+  const sk = Array.isArray(r.skills) ? r.skills.filter((x): x is SkillId => (SKILL_IDS as unknown[]).includes(x)) : [];
+  for (const id of SKILL_IDS) if (sk.includes(id) && (SKILLS[id].req === null || sk.includes(SKILLS[id].req!))) d.skills.push(id);
+  d.skillPts = num(r.skillPts, 0, 0, 9999);
   const cp = sanitizeCamps(r.camps, r.camp, 100000);
   d.camps = cp.camps;
   d.camp = cp.camp;

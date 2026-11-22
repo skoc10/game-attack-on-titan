@@ -1138,6 +1138,33 @@ kbd {
 #hud .inv li.off b {
   opacity: 0.5;
 }
+#hud .inv.skills {
+  border-left-color: #ff7a5a;
+  width: min(400px, 88vw);
+}
+#hud .inv.skills li b {
+  color: #f0e6d0;
+}
+#hud .inv.skills li.branch {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+  padding: 8px 0 2px;
+  border-top: none;
+}
+#hud .inv.skills li.have b {
+  color: #8fd18a;
+}
+#hud .inv.skills li.have em {
+  color: #8fd18a;
+}
+#hud .inv.skills li.can b {
+  color: var(--gold);
+}
+#hud .inv.skills li.locked,
+#hud .inv.skills li.poor {
+  opacity: 0.55;
+}
 #hud .invGear {
   display: flex;
   flex-wrap: wrap;

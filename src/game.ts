@@ -18,6 +18,9 @@ import { combatIntensity } from './core/audioMath';
 import { clearSave, loadSave, storeSave } from './core/save';
 import { Camps } from './world/camps';
 import { Bloodline } from './player/bloodline';
+import { Flares } from './player/flares';
+import { SkillTree } from './ui/skillTree';
+import { skillPointsFor } from './data/skills';
 import { Demolition } from './world/demolish';
 import { tickWind } from './core/wind';
 import { clamp, lerp } from './core/rng';
@@ -84,6 +87,9 @@ export class Game {
   readonly stations: Stations;
   /** Yapılardaki doğuş noktaları. */
   readonly camps: Camps;
+  /** Beceri ağacı paneli (K) ve işaret fişekleri (J). */
+  readonly skillTree: SkillTree;
+  readonly flares: Flares;
   /** Kan soyu: Çelik Soyu uyanışı ve Taç Soyu'nun dost dönüşümcüleri. */
   readonly blood: Bloodline;
   /** Dev tekmesiyle yıkılan evler ve molozları. */
@@ -198,6 +204,8 @@ export class Game {
     this.stations = new Stations(this.scene, this.world);
     this.camps = new Camps(this);
     this.blood = new Bloodline(this);
+    this.skillTree = new SkillTree(this);
+    this.flares = new Flares(this);
     this.demolition = new Demolition(this);
     this.grass = new Grass(this.scene, this.world);
     this.quests = new QuestLog(this);
@@ -444,6 +452,7 @@ export class Game {
     this.story.restart();
     this.camps.paint();
     this.blood.clear();
+    this.flares.clear();
     this.loadoutDirty = true;
     this.meter.value = 0;
     this.meter.clearNeedles();
@@ -553,6 +562,11 @@ export class Game {
       this.hud.banner(`${g.type.name.toLocaleUpperCase('tr')} DÜŞTÜ`, g.tag === 'gate' ? 'Demir Sur kapısı yeniden açık' : 'Dev barın doldu');
     }
     this.grantXp(g.type.xp);
+    // Beceri puanı: her öldürme puan verir; ilkinde ağacın nasıl açılacağı söylenir.
+    const sp = skillPointsFor({ boss: g.type.kind === 'boss', elite: g.isElite || g.form !== null });
+    const firstPts = this.save.skillPts === 0 && this.save.skills.length === 0;
+    this.save.skillPts += sp;
+    if (firstPts) this.hud.toast(`+${sp} beceri puanı — K ile beceri ağacını aç`);
     this.npcs.emit({ type: 'kill', giant: g.type.kind, elite: g.isElite, by: this.killBy ?? source, style });
     this.npcs.emit({ type: 'streak', n: this.streak });
     const p = this.player;
@@ -719,6 +733,9 @@ export class Game {
       this.inventory.giveSargi(1);
     } else if (c.content === 'hood') {
       this.inventory.giveHood();
+    } else if (c.content === 'flare') {
+      const got = this.flares.give(CFG.flare.perCrate);
+      this.hud.toast(got > 0 ? `İşaret fişeği +${got} — J ile at, yandığı yere devler yürür` : 'Fişek kesen dolu');
     } else if (c.content === 'coin') {
       this.grantCoins(CFG.crate.coins);
       this.hud.toast(`Ganimet: +${CFG.crate.coins} av puanı`);
@@ -987,6 +1004,10 @@ export class Game {
     if (talking) {
       this.inventory.open = false;
       this.npcs.keys();
+    } else if (this.skillTree.open || inp.pressed('KeyK')) {
+      // Beceri ağacı açıkken rakamlar ve Esc ağaca gider; oyuncu yürümeye devam eder.
+      this.inventory.open = false;
+      this.skillTree.keys();
     } else if (this.inventory.open || inp.pressed('KeyI') || inp.pressed('KeyH')) {
       // Çanta açıkken Esc ve rakamlar çantaya gider; oyuncu yürümeye devam eder.
       this.inventory.keys();
@@ -1022,6 +1043,7 @@ export class Game {
     this.breaker.update(sdt);
     this.camps.update(sdt);
     this.blood.update(sdt);
+    this.flares.update(sdt);
     this.demolition.update(sdt);
     this.crates.update(sdt, this.player.pos.x, this.player.pos.z);
     this.stations.update(sdt, this);

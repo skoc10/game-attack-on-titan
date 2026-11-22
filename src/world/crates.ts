@@ -6,7 +6,7 @@ import { rollTitan, TITANS, type TitanId } from '../data/titans';
 import { heightAt } from './terrain';
 import { EDGE, inSafe, wallDist } from './layout';
 
-export type CrateContent = 'needle' | 'gas' | 'blade' | 'spear' | 'medic' | 'coin' | 'hood';
+export type CrateContent = 'needle' | 'gas' | 'blade' | 'spear' | 'medic' | 'coin' | 'hood' | 'flare';
 
 export interface Crate {
   x: number;
@@ -29,6 +29,7 @@ const CRATE_COLORS: Record<Exclude<CrateContent, 'needle'>, number> = {
   medic: 0xff7fa0,
   coin: 0x2ee6a6,
   hood: 0x1f7a35,
+  flare: 0xff3a1a,
 };
 const CRATE_NAMES: Record<Exclude<CrateContent, 'needle'>, string> = {
   gas: 'Gaz sandığı',
@@ -37,6 +38,7 @@ const CRATE_NAMES: Record<Exclude<CrateContent, 'needle'>, string> = {
   medic: 'Sargı sandığı',
   coin: 'Ganimet sandığı',
   hood: 'Kapşon sandığı',
+  flare: 'Fişek sandığı',
 };
 
 /** Her sandık türünün kendi ışık rengi vardır; iğne sandıklarınınki dev formunun rengidir. */
@@ -51,8 +53,8 @@ export function crateLabel(c: { content: CrateContent; form: TitanId }) {
 /** 0..1 arası bir zarla sandığın içeriğini seçer. Köy sandıklarından daha çok mızrak çıkar. */
 export function rollContent(roll: number, village = false): CrateContent {
   const table: [CrateContent, number][] = village
-    ? [['spear', 0.43], ['needle', 0.25], ['medic', 0.12], ['gas', 0.08], ['blade', 0.05], ['hood', 0.03], ['coin', 0.04]]
-    : [['needle', 0.38], ['blade', 0.15], ['spear', 0.14], ['gas', 0.13], ['medic', 0.09], ['hood', 0.03], ['coin', 0.08]];
+    ? [['spear', 0.38], ['needle', 0.25], ['medic', 0.12], ['gas', 0.08], ['blade', 0.05], ['hood', 0.03], ['flare', 0.05], ['coin', 0.04]]
+    : [['needle', 0.33], ['blade', 0.15], ['spear', 0.14], ['gas', 0.13], ['medic', 0.09], ['hood', 0.03], ['flare', 0.05], ['coin', 0.08]];
   let acc = 0;
   for (const [c, w] of table) {
     acc += w;
