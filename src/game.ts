@@ -726,7 +726,7 @@ export class Game {
   /** Dev formunda bir ev yıkıldı: ilkinde ne olduğunu söyler. */
   onHouseWrecked() {
     const n = this.demolition.count;
-    if (n === 1) this.hud.toast('Evi tekmeyle yıktın — dev formunda tekme evleri yerle bir eder');
+    if (n === 1) this.hud.toast('Evi yıktın — dev formunda tekme, yumruk, ezme ve atılım evleri ve yapıları yerle bir eder');
     else if (n % 10 === 0) this.hud.toast(`${n} ev yıkıldı`);
   }
 

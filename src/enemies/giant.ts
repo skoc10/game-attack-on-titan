@@ -69,6 +69,8 @@ export class Giant {
   raid: { x: number; z: number; r: number; siege: boolean; march?: boolean } | null = null;
   /** Sura toslayışı sürüyor: sura değdiği an gedik açılır. */
   breaching = false;
+  /** Yürürken evleri ezip geçmesinin bir sonraki denetimine kalan süre. */
+  private trampleT = Math.random() * 0.3;
   /** Fırlatıldı: yere çarpınca devrilir. */
   private thrown = false;
   /** Gözleri kesildi: iyileşene dek kalan süre (sn). Körken avını yalnızca çok yakından sezer. */
@@ -355,6 +357,21 @@ export class Giant {
     if (!this.alive || this.heavy) return;
     this.commandT = t;
     if (this.state === 'wander' || this.state === 'guard') this.setState('chase');
+  }
+
+  /** Adım yere değdi: yakındaysa yer sarsılır, iri devin ayağından toz ve kırıntı kalkar. */
+  private tremor(game: Game, dist: number) {
+    const T = CFG.tremor;
+    const reach = this.h * T.reach;
+    if (dist > reach) return;
+    const near = 1 - dist / reach;
+    game.shakeCam(Math.min(T.max, this.h / 40) * near);
+    if (this.h < T.dust) return;
+    this.footWorld(this.stepNo % 2, v);
+    v.y = this.pos.y + 0.3;
+    game.smoke.burst(v, 3, 3 + this.h * 0.15, 1.2, 0xa39a86, this.h * 0.06, 0.8, 1.5 + this.h * 0.12, 1.4);
+    game.particles.burst(v, 6, 4 + this.h * 0.25, 0.6, 0x8c8272, this.h * 0.05, -6);
+    if (this.h >= 16 && near > 0.4) game.rings.spawn(v.x, v.y, v.z, this.h * 0.5, 0xd8cdb4, 0.3);
   }
 
   /** Yerdeyken mi öldürüldü (ölüm efekti buna göre değişir). */
@@ -1088,6 +1105,7 @@ export class Giant {
         if (stepNo !== this.stepNo) {
           this.stepNo = stepNo;
           if (dist < 40 + this.h * 5) game.audio.footstep(this.h, this.pos.x, this.pos.z);
+          this.tremor(game, dist);
         }
         this.moving = true;
       }
@@ -1112,6 +1130,13 @@ export class Giant {
       }
     }
     // Gövde (omuzlar, kollar) merkezden geniştir: sura gömülmesin diye daha geniş itilir; kemere sığmayan kapıdan geçemez.
+    // İri devler yürürken ve atılırken yolundaki evleri ezip geçer; çok iriler ve atılanlar yapıları da yıkar.
+    this.trampleT -= dt;
+    if (this.trampleT <= 0 && (this.moving || this.state === 'rush') && this.h >= CFG.trample.minH) {
+      this.trampleT = 0.25;
+      const rushing = this.state === 'rush';
+      game.demolition.smash(this.pos.x, this.pos.z, this.bodyR * (rushing ? 1.3 : 1.05), this.pos, rushing || this.h >= CFG.trample.structuresH, false);
+    }
     if (this.state !== 'leap' && wallPush(this.pos, this.bodyR, 0, this.h) && this.breaching && this.state === 'rush') {
       // Toslayış sura ulaştı: gedik açılır, dev bir an sersemler.
       this.breaching = false;

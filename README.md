@@ -195,9 +195,18 @@ Her yapının yanında gri bir sancak durur. Yapıya yaklaşınca (kale 70 m, ka
 - **Ağaçlar ve otlar** rüzgârda sallanır; sallanış rüzgâr sesiyle aynı esintiyi izler.
 - **Renk:** ton eşlemeden sonra hafif keskinleştirme, yumuşak kontrast eğrisi ve sıcak–serin renk dengesi uygulanır.
 
-## Ev yıkma
+## Ev ve yapı yıkma
 
-Dev formundayken **tekme** (`V`, dokunmatikte TEKME) değdiği evleri yıkar. Duvarlar düzensiz kenarlı, alçak bir harabeye iner, çatı çöker. Sıva, kiremit ve kiriş parçaları tekmenin yönünde savrulup yere yığılır, toz bulutu kalkar, çöküş sesi duyulur. Yıkılan evin içinden geçilir. Kuleler, şapeller ve öbür anıtsal yapılar yıkılmaz. Yıkılan evler oyunu yeniden açınca yerine gelir.
+- **Dev formunda:** tekme, yumruk, ezme (`Space`) ve atılım değdiği evleri ve yapıları yıkar. Gözcü kuleleri, değirmenler, şapeller, karakolların çitleri ve kuleleri, kalenin burç ve surları, sur asansörleri ve su kemerinin ayakları yıkılabilir. Su kemerinin uzun köprüsü tek darbeyle çökmez.
+- **Devler:** 8 m'den uzun devler yürürken yollarındaki evleri ezip geçer. 15 m'den uzunlar ve atılan (toslayan) devler kuleleri ve öbür yapıları da yıkar.
+- **Görünüş:** yıkılan ev ya da yapı düzensiz kenarlı, alçak bir yığına iner, çatı çöker, değirmen kanatları düşer. Sıva, kiremit, taş ve kiriş parçaları darbenin yönünde savrulup yere yığılır; toz kalkar, çöküş sesi duyulur.
+- Yıkılan yerin içinden geçilir. Yıkılanlar oyunu yeniden açınca yerine gelir.
+
+## Devlerin boyu, hızı ve adımları
+
+- Devler eskisinden %15 hızlı yürür ve kovalar.
+- Sıradan devler 17 m'ye kadar doğar. Devlerin %24'ü türünün 1,4–2 katı iri doğar; böylece bazı devler dev formların boyuna (15–30 m) ulaşır.
+- **Yer sarsıntısı:** yaklaşan devin her adımı yeri sarsar; dev ne kadar iri ve yakınsa sarsıntı o kadar güçlüdür. 9 m'den uzun devlerin ayağından toz ve kırıntı kalkar, 16 m'den uzunların adımında yerde halka yayılır.
 
 ## Sınır Ormanı
 

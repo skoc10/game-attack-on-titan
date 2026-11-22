@@ -820,6 +820,7 @@ export class TitanForm {
     if (this.slamCd > 0 || !g.meter.spend(s.cost)) return;
     this.slamCd = 1.2;
     this.hitArea(p, p.pos.x, p.pos.z, s.radius, s.dmg * this.mult, this.stone || this.def.punch.armorBreak);
+    g.demolition.smash(p.pos.x, p.pos.z, s.radius * 0.7, p.pos);
     g.audio.stomp();
     g.shakeCam(1);
     this.ring(p, s.radius * 0.7, 0.5, 0x9a8f7a);
@@ -861,6 +862,8 @@ export class TitanForm {
         g.shakeCam(0.7);
       }
       g.particles.emit(p.pos.x, p.pos.y + 1, p.pos.z, 0, 4, 0, 0.7, 0xa39a86);
+      // Atılımın yolundaki evler ve yapılar yıkılır.
+      g.demolition.smash(p.pos.x, p.pos.z, d.radius + 2, p.pos);
     }
     if (this.punchT >= 0) {
       this.punchT += dt;
@@ -869,6 +872,8 @@ export class TitanForm {
         const cx = p.pos.x + Math.sin(p.faceYaw) * d.punch.reach;
         const cz = p.pos.z + Math.cos(p.faceYaw) * d.punch.reach;
         const hits = this.hitArea(p, cx, cz, d.punch.range, d.punch.dmg * this.mult * this.punchMult, d.punch.armorBreak || this.stone, this.punchStun, undefined, { melee: true, guardBreak: this.finisher, push: this.finisher ? 6 : this.combo > 0 ? 1.2 : undefined });
+        // Yumruk değdiği evleri ve yapıları da yıkar.
+        g.demolition.smash(cx, cz, d.punch.range * 0.6, p.pos);
         if (hits > 0) {
           this.landed();
           g.audio.hit();
@@ -903,8 +908,8 @@ export class TitanForm {
           g.slashes.spawn(v, look, d.height * 0.25 + 1.5, this.stone ? 0xbfe0ff : d.color, 0, 0.3);
         }
         g.smoke.burst(v, 6, 6, 1.1, 0xa39a86, d.radius, 1.5, 2 + d.height * 0.15, 1.3);
-        // Tekme evlere de değer: değdiği evleri yıkar.
-        g.demolition.kickAt(cx, cz, d.punch.range * K.range * 0.8 + d.radius * 0.5, p.pos);
+        // Tekme evlere ve yapılara da değer: değdiği yerleri yıkar.
+        g.demolition.smash(cx, cz, d.punch.range * K.range * 0.8 + d.radius * 0.5, p.pos);
       }
       if (this.kickT >= this.kickDur) this.kickT = -1;
     }

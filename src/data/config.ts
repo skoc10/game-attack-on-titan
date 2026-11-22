@@ -77,9 +77,13 @@ export const CFG = {
   giantGuard: { normal: 0.22, armored: 0.35, heavy: 0.5, fast: 0.12, dur: [0.9, 1.7] as [number, number], cd: [2.5, 4.5] as [number, number], block: 0.75 },
   giantKick: { chance: 0.24, titanChance: 0.3, dmg: 1.25, knock: 24, windup: 0.8, pierce: 0.5 },
   // Devlerin temposu (tür hızlarının çarpanları): walk her yürüyüşe, chase kovalarken ek olarak, turn dönüşe uygulanır.
-  giantPace: { walk: 1.2, chase: 1.15, turn: 1.3 },
+  // Yaklaşan devin adımları yeri sarsar: `reach` × boy metre içinde, en çok `max` sarsıntı (boyla büyür); `dust` m'den uzun devlerin ayağından toz kalkar.
+  tremor: { reach: 7, max: 0.45, dust: 9 },
+  // `minH` m'den uzun devler yürürken yolundaki evleri ezip geçer; `structuresH` m'den uzunlar ve atılanlar kuleleri ve öbür yapıları da yıkar.
+  trample: { minH: 8, structuresH: 15 },
+  giantPace: { walk: 1.4, chase: 1.35, turn: 1.4 },
   // Devlerin gücü: can ve vuruş çarpanları; bazı devler (bigChance) türünün boyunun big katı kadar iri doğar.
-  giantPower: { hp: 1.4, dmg: 1.3, bigChance: 0.16, big: [1.35, 1.8] as [number, number] },
+  giantPower: { hp: 1.4, dmg: 1.3, bigChance: 0.24, big: [1.4, 2] as [number, number] },
   // Düşman dönüşümcüler: oyuncunun dönüşebildiği dev formlarına giren düşmanlar. İlki `first` sn sonra,
   // sonrakiler `every` aralığında, oyuncudan `dist` uzaklıkta, kendi güçleriyle saldırır.
   // Kız Dev: dev ağaçlar ormanına giren oyuncuyu kovalar. hp dev gücüne karşı can, respawn öldükten sonra yeniden doğma
