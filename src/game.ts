@@ -98,7 +98,7 @@ export class Game {
   readonly bigmap: BigMap;
   /** Baskınlar: köy savunması ve sur kuşatması. */
   readonly raid: Raid;
-  /** Demir Koç: surlara toslayıp gedik açan zırhlı dev. */
+  /** Zırhlı Dev: surlara toslayıp gedik açan zırhlı dev. */
   readonly breaker: Breaker;
   /** Haritada konan işaret; dünyada üstünde bir ok durur, ekranda yönü gösterilir. */
   mark: { x: number; z: number } | null = null;

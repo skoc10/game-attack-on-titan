@@ -151,9 +151,9 @@ Kalkan Suru'nun dışında (orman dışında) dolaşırken bir süre sonra 300�
 
 **Duman ve toz:** duman parçacıkları artık düzensiz kenarlı yumuşak bulutlar. Kameranın dibine gelip ekranı kaplayacak kadar büyüyen bir parçacık söner, boyutu da sınırlıdır.
 
-## Demir Koç ve surdaki gedik
+## Zırhlı Dev ve surdaki gedik
 
-**Demir Koç:** sur ötesinde (Kalkan Suru'nun dışında) dolaşan 19 m'lik zırhlı bir dev.
+**Zırhlı Dev:** sur ötesinde (Kalkan Suru'nun dışında) dolaşan 19 m'lik zırhlı bir dev.
 - **Doğuşu:** oyuncu Demir Sur'un dışına çıkınca bir süre sonra, oyuncunun yönünde bir yerde belirir.
 - **Görünüşü:** baştan aşağı metal plakalarla kaplıdır:
   - Gövde: göğüs ve sırt plakaları, bölümlü karın bantları, boyunluk ve kalça plakası.
@@ -162,13 +162,13 @@ Kalkan Suru'nun dışında (orman dışında) dolaşırken bir süre sonra 300�
   - Plakalar ortamı yansıtan parlak metaldir, kenarları pirinç süslüdür. Göz yarıkları ve plaka araları kor rengi parlar.
 - **Toslayışı:** oyuncu 700 m yakınındayken bir süre sonra surdan 260 m geri çekilip koşu yolu alır. Sonra kollarını yüzünün önünde çaprazlayıp başını eğer ve saniyede 44 m hızla Kalkan Suru'na toslar. Yolundakini savurur; önünden çekil.
 - **Gedik:** sura çarptığı yerde 34 m'lik bir gedik açılır. Taşlar savrulur, toz bulutu yükselir, gediğin iki yanına moloz yığılır, oradaki toplar yıkılır. Gediğin hizasında sur ne engeldir ne kalkan: devler de sen de geçebilirsin, üstü yürünmez. Gedik kapılardan ve kasabalardan uzakta açılır.
-- **İçeri dolanlar:** gediğin dışında dokuz dev (sıradan, koşucu, zırhlı, sıçrayan, toslayan) belirir. Önce gediğin ortasından geçer, sonra surun içine dağılırlar. Demir Koç da gedikten içeri girip surun içinde dolaşır.
+- **İçeri dolanlar:** gediğin dışında dokuz dev (sıradan, koşucu, zırhlı, sıçrayan, toslayan) belirir. Önce gediğin ortasından geçer, sonra surun içine dağılırlar. Zırhlı Dev de gedikten içeri girip surun içinde dolaşır.
 - **Öldürmek:** zırhlıdır, ensesi ancak yere düşünce kesilir. Bacaklarına dört kesik, patlar mızrak ya da sur topu onu yere serer; yerdeyken ensesine üç temiz kesik gerekir.
-- **Onarım:** Demir Koç düşünce gedik 45 saniye sonra onarılır, toplar yerine gelir. Kendisi 8 dakika sonra yeniden doğar. Büyük haritada gedik kırmızı bir işaretle görünür.
+- **Onarım:** Zırhlı Dev düşünce gedik 45 saniye sonra onarılır, toplar yerine gelir. Kendisi 8 dakika sonra yeniden doğar. Büyük haritada gedik kırmızı bir işaretle görünür.
 
-### Oyuncunun Demir Koç formu surları yıkar
+### Oyuncunun Zırhlı Dev formu surları yıkar
 
-Demir Koç formundayken `Q` (**Sur Delen**) hücumuyla herhangi bir halka sura toslarsan orada 26 m'lik bir gedik açılır; gövden gedikten geçip koşusunu sürdürür. Kapı kasabalarının hizasında ve zaten gedik olan yerde açılmaz. Gedik 90 saniye sonra onarılır; o arada devler de geçebilir. Büyük haritada kırmızıyla görünür.
+Zırhlı Dev formundayken `Q` (**Sur Delen**) hücumuyla herhangi bir halka sura toslarsan orada 26 m'lik bir gedik açılır; gövden gedikten geçip koşusunu sürdürür. Kapı kasabalarının hizasında ve zaten gedik olan yerde açılmaz. Gedik 90 saniye sonra onarılır; o arada devler de geçebilir. Büyük haritada kırmızıyla görünür.
 
 ## Sur içi ve sur ötesi yapılar
 
@@ -285,7 +285,7 @@ Her dev, XP'sinin yanında **av puanı** (◆) düşürür (XP'nin yarısı kada
 | Nehir | Boğa Güreşçisi | 4000 · Sv 6 | Can +%15, kanca çekişi +%10 | Toslayan Devi (15 m): kalın omuzlu; zırh delen uzun tos, yer tepip sersemletme |
 | Kaan | Uzak Nişancı | 5200 · Sv 8 | Kılıç erişimi +%20, gaz +%10 | Uzunkol Devi (20 m): kolları dizini geçer; uzaktan savuruş, kapan (sersemletme), taş fırlatma |
 | Sena | İz Sürücü | 6800 · Sv 10 | Hız +%12, gaz +%15 | Avcı Devi (22 m): derisiz, kasları dışarıda; en hızlı büyük form, av atılımı, kök sarsıntısı |
-| Alp | Sur Demircisi | 8800 · Sv 12 | Can +%40, kılıç dayanımı +%30 | Demir Koç (19 m): metal plakalı, darbelere en dayanıklı form; zırh delen yumruk, sur delen tos, kızgın plaka |
+| Alp | Sur Demircisi | 8800 · Sv 12 | Can +%40, kılıç dayanımı +%30 | Zırhlı Dev (19 m): metal plakalı, darbelere en dayanıklı form; zırh delen yumruk, sur delen tos, kızgın plaka |
 | Yiğit | Vadi Haykırığı | 10000 · Sv 13 | Can +%10, keskin kılıç (dayanımı +%50), bar %15 hızlı dolar, formda %5 yavaş biter. Saçı düzgün, taranmış | Hücum Devi (18 m): dağınık saçlı; Hücum Ruhu ile yakın dövüşte en sert form, sertleşen yumruk, barı dolduran kükreyiş. Hücum İğnesi varsa yarım barla da dönüşür |
 | Oğuz | Dağ Çobanı | 11500 · Sv 14 | Bar %25 hızlı dolar, formda %10 yavaş biter | Çoban Devi (24 m): kürklü, boynuzlu; dev kaya fırlatma, geniş buyruk kükreyişi |
 

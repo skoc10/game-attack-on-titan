@@ -86,7 +86,7 @@ export interface Breach {
   ang: number;
   half: number;
 }
-/** Şu an açık olan gedikler (Demir Koç surları deler, onarılınca kalkar). */
+/** Şu an açık olan gedikler (Zırhlı Dev surları deler, onarılınca kalkar). */
 export const BREACHES: Breach[] = [];
 
 /** Halka surun bu açısında gedik var mı. */

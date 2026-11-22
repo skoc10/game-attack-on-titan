@@ -46,7 +46,7 @@ describe('surdaki gedik', () => {
     expect(breachAngle(A)).toBeCloseTo(A);
   });
 
-  it('Demir Koç zırhlı, metal plakalı ve sur delen bir devdir', () => {
+  it('Zırhlı Dev zırhlı, metal plakalı ve sur delen bir devdir', () => {
     const k = BOSSES.koc;
     expect(k.armored).toBe(true);
     expect(k.breaker).toBe(true);
@@ -54,7 +54,7 @@ describe('surdaki gedik', () => {
     expect(k.maxH).toBeLessThan(W.wallH);
   });
 
-  it('Demir Koç formundaki oyuncu halka surların her birinde gedik açabilir; kapı kasabalarında ve açık gedikte açamaz', () => {
+  it('Zırhlı Dev formundaki oyuncu halka surların her birinde gedik açabilir; kapı kasabalarında ve açık gedikte açamaz', () => {
     for (let ring = 0; ring < 3; ring++) {
       const r = W.walls[ring].r;
       const p = at(r + HALF_T + 3);
