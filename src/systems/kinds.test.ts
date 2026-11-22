@@ -52,7 +52,7 @@ describe('dev ağacın üstü', () => {
   });
 });
 
-describe('Çoban Dev', () => {
+describe('Canavar Dev', () => {
   it('kürklü ve boynuzludur, kaya atar ve devleri yönetir; ensesi açıktır', () => {
     const c = BOSSES.coban;
     expect(c.shepherd).toBe(true);

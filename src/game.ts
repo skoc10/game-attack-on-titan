@@ -787,7 +787,7 @@ export class Game {
     }
   }
 
-  /** Çoban Dev kükredi: çevresindeki devler bir süre onun buyruğuyla oyuncuya koşar. */
+  /** Canavar Dev kükredi: çevresindeki devler bir süre onun buyruğuyla oyuncuya koşar. */
   onCommand(g: Giant) {
     const C = CFG.shepherd;
     let n = 0;
@@ -800,7 +800,7 @@ export class Game {
     this.rings.spawn(g.pos.x, g.pos.y, g.pos.z, C.radius * 0.4, 0xff6a4a, 1.2);
     const p = this.player.pos;
     this.shakeCam(Math.max(0.2, 0.9 - Math.hypot(g.pos.x - p.x, g.pos.z - p.z) / 400));
-    this.hud.banner('ÇOBAN DEV KÜKREDİ', n > 0 ? `${n} dev onun buyruğuyla üstüne geliyor — önce Çoban'ı devir` : 'Sürüsünü çağırıyor');
+    this.hud.banner('CANAVAR DEV KÜKREDİ', n > 0 ? `${n} dev onun buyruğuyla üstüne geliyor — önce Canavar Dev'i devir` : 'Sürüsünü çağırıyor');
   }
 
   onPlayerHurt() {

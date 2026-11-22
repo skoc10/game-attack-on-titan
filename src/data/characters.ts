@@ -233,7 +233,7 @@ export const CHARACTERS: Record<CharId, CharDef> = {
     name: 'Oğuz',
     title: 'Dağ Çobanı',
     bio: 'Sur ötesinin dağlarında sürü güttü; devlerin bile onu dinlediği söylenir.',
-    perk: 'Dev barı %25 hızlı dolar, formda %10 yavaş biter · kendi formu: Çoban Devi',
+    perk: 'Dev barı %25 hızlı dolar, formda %10 yavaş biter · kendi formu: Canavar Dev',
     price: 11500,
     level: 14,
     meter: 1.25,

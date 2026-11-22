@@ -76,7 +76,7 @@ describe('av puanı ve karakterler', () => {
 });
 
 describe('yeni devlerin formlarına sahip karakterler', () => {
-  it('Toslayan, Uzunkol, Avcı, Zırhlı Dev ve Çoban formlarının birer sahibi var; hepsi eski kadrodan pahalı', () => {
+  it('Toslayan, Uzunkol, Avcı, Zırhlı Dev ve Canavar Dev formlarının birer sahibi var; hepsi eski kadrodan pahalı', () => {
     const top = Math.max(...(['aras', 'defne', 'bora', 'ilkim', 'kuzey', 'zeren', 'tugrul', 'ece', 'mete', 'aybuke'] as const).map((id) => CHARACTERS[id].price));
     for (const [id, form] of [['nehir', 'toslayan'], ['kaan', 'uzunkol'], ['sena', 'avci'], ['alp', 'koc'], ['oguz', 'coban']] as const) {
       const c = CHARACTERS[id];

@@ -53,9 +53,9 @@ export class Giant {
   private attackCd = 0;
   private leapCd = 2;
   private attackKind: 'swipe' | 'stomp' | 'grab' | 'throw' | 'bite' | 'kick' | 'smash' | 'charge' | 'boulder' | 'shard' | 'command' | 'power' = 'swipe';
-  /** Çoban Dev'in yeniden kükremesine kalan süre. */
+  /** Canavar Dev'in yeniden kükremesine kalan süre. */
   private commandCd = 8;
-  /** Çoban Dev'in buyruğu altında kalan süre: avına koşar, hızlanır, kolay vazgeçmez. */
+  /** Canavar Dev'in buyruğu altında kalan süre: avına koşar, hızlanır, kolay vazgeçmez. */
   commandT = 0;
   private readonly handsV = new THREE.Vector3();
   /** Tırmanıcının sarıldığı dev ağaç. */
@@ -350,7 +350,7 @@ export class Giant {
     return this.handsV.add(v).multiplyScalar(0.5);
   }
 
-  /** Çoban Dev'in buyruğu: `t` saniye avına koşar. */
+  /** Canavar Dev'in buyruğu: `t` saniye avına koşar. */
   command(t: number) {
     if (!this.alive || this.heavy) return;
     this.commandT = t;
@@ -816,7 +816,7 @@ export class Giant {
           this.screamT -= dt; // çığlık atarken olduğu yerde durur
           break;
         }
-        // Çoban Dev: yakınında dev varsa kükreyip onları avına salar; uzaktan kaya atar ya da kaya ezip parça saçar.
+        // Canavar Dev: yakınında dev varsa kükreyip onları avına salar; uzaktan kaya atar ya da kaya ezip parça saçar.
         if (this.type.shepherd) {
           if (this.commandCd <= 0 && game.giants.some((o) => o !== this && o.alive && !o.heavy && Math.hypot(o.pos.x - this.pos.x, o.pos.z - this.pos.z) < 320)) {
             this.attackKind = 'command';
